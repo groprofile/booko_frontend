@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(node .verify-shots/shot.cjs)",
+      "Read(//c/Users/Lenovo/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/**)",
+      "Bash(node screenshot-checkout.mjs)"
+    ]
+  }
+}

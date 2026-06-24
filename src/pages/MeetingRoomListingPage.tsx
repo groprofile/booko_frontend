@@ -1,0 +1,324 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import MeetingRoomSearchBar from "../components/meetingroom/MeetingRoomSearchBar";
+import MeetingRoomFilterSidebar from "../components/meetingroom/MeetingRoomFilterSidebar";
+import MeetingRoomListingCard from "../components/meetingroom/MeetingRoomListingCard";
+import PromoBanner from "../components/meetingroom/PromoBanner";
+import {
+  CITY_NAMES,
+  allAmenities,
+  allBookingOptions,
+  allBrands,
+  allEquipment,
+  allRoomTypes,
+  allSeatingCapacities,
+  meetingRoomListings,
+} from "../data/meetingRoomListings";
+import type { MeetingRoomFilters, MeetingSortOption } from "../data/meetingRoomListings";
+import { findByDeslug, slugify } from "../utils/slug";
+
+const PRICE_MIN = 200;
+const PRICE_MAX = 20000;
+const PAGE_SIZE = 6;
+
+type ArrayFilterKey = "roomTypes" | "seatingCapacity" | "equipment" | "brands" | "amenities" | "bookingOptions";
+
+function cityLabel(slug: string) {
+  return (
+    CITY_NAMES[slug] ??
+    slug
+      .split("-")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  );
+}
+
+export default function MeetingRoomListingPage() {
+  const params = useParams<{ city: string }>();
+  const citySlug = (params.city ?? "mumbai").toLowerCase();
+  const cityName = cityLabel(citySlug);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState("10:00");
+  const [duration, setDuration] = useState(1);
+  const [capacity, setCapacity] = useState(4);
+  const [roomTypeField, setRoomTypeField] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    document.title = `Meeting Rooms in ${cityName} | Book Hourly Meeting Rooms | Bokko`;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute(
+      "content",
+      `Book meeting rooms, conference rooms, board rooms and training rooms in ${cityName} with instant confirmation on Bokko.`,
+    );
+  }, [cityName]);
+
+  const filters: MeetingRoomFilters = useMemo(() => {
+    const parseList = (key: string, options: readonly string[]) => {
+      const raw = searchParams.get(key)?.split(",").filter(Boolean) ?? [];
+      return raw
+        .map((slug) => findByDeslug(options, slug))
+        .filter((value): value is string => Boolean(value));
+    };
+    return {
+      roomTypes: parseList("roomTypes", allRoomTypes),
+      seatingCapacity: parseList("seatingCapacity", allSeatingCapacities),
+      equipment: parseList("equipment", allEquipment),
+      brands: parseList("brands", allBrands),
+      amenities: parseList("amenities", allAmenities),
+      bookingOptions: parseList("bookingOptions", allBookingOptions),
+      priceMin: Number(searchParams.get("priceMin") ?? PRICE_MIN),
+      priceMax: Number(searchParams.get("priceMax") ?? PRICE_MAX),
+      sort: (searchParams.get("sort") as MeetingSortOption) ?? "popularity",
+      q: searchParams.get("q") ?? "",
+    };
+  }, [searchParams]);
+
+  const activeFilterCount =
+    filters.roomTypes.length +
+    filters.seatingCapacity.length +
+    filters.equipment.length +
+    filters.brands.length +
+    filters.amenities.length +
+    filters.bookingOptions.length +
+    (filters.priceMin > PRICE_MIN || filters.priceMax < PRICE_MAX ? 1 : 0);
+
+  function updateParams(updater: (params: URLSearchParams) => void) {
+    const next = new URLSearchParams(searchParams);
+    updater(next);
+    setSearchParams(next, { replace: true });
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function toggleArrayValue(key: ArrayFilterKey, rawValue: string) {
+    const slug = slugify(rawValue);
+    updateParams((next) => {
+      const current = next.get(key)?.split(",").filter(Boolean) ?? [];
+      const nextList = current.includes(slug)
+        ? current.filter((value) => value !== slug)
+        : [...current, slug];
+      if (nextList.length) next.set(key, nextList.join(","));
+      else next.delete(key);
+    });
+  }
+
+  function setSort(value: MeetingSortOption) {
+    updateParams((next) => {
+      if (value === "popularity") next.delete("sort");
+      else next.set("sort", value);
+    });
+  }
+
+  function setPriceRange(min: number, max: number) {
+    updateParams((next) => {
+      if (min > PRICE_MIN) next.set("priceMin", String(min));
+      else next.delete("priceMin");
+      if (max < PRICE_MAX) next.set("priceMax", String(max));
+      else next.delete("priceMax");
+    });
+  }
+
+  function applySearchBarFilters() {
+    updateParams((next) => {
+      if (roomTypeField) next.set("roomTypes", slugify(roomTypeField));
+      else next.delete("roomTypes");
+
+      const bucket =
+        capacity <= 4 ? "4 Seater" : capacity <= 6 ? "6 Seater" : capacity <= 8 ? "8 Seater" : "Board Room";
+      next.set("seatingCapacity", slugify(bucket));
+    });
+  }
+
+  const filteredListings = useMemo(() => {
+    let list = meetingRoomListings.filter((listing) => listing.city === citySlug);
+
+    if (filters.roomTypes.length) {
+      list = list.filter((listing) => filters.roomTypes.includes(listing.roomType));
+    }
+    if (filters.seatingCapacity.length) {
+      list = list.filter((listing) => filters.seatingCapacity.includes(listing.seatingCapacity));
+    }
+    if (filters.equipment.length) {
+      list = list.filter((listing) => filters.equipment.every((item) => listing.equipment.includes(item)));
+    }
+    if (filters.brands.length) {
+      list = list.filter((listing) => filters.brands.includes(listing.brand));
+    }
+    if (filters.amenities.length) {
+      list = list.filter((listing) => filters.amenities.every((item) => listing.amenities.includes(item)));
+    }
+    if (filters.bookingOptions.length) {
+      list = list.filter((listing) =>
+        filters.bookingOptions.every((item) => listing.bookingOptions.includes(item)),
+      );
+    }
+    list = list.filter(
+      (listing) => listing.bestPrice >= filters.priceMin && listing.bestPrice <= filters.priceMax,
+    );
+
+    const sorted = [...list];
+    if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+    else if (filters.sort === "price-asc") sorted.sort((a, b) => a.bestPrice - b.bestPrice);
+    else if (filters.sort === "price-desc") sorted.sort((a, b) => b.bestPrice - a.bestPrice);
+    else if (filters.sort === "capacity-asc") sorted.sort((a, b) => a.capacity - b.capacity);
+    else if (filters.sort === "capacity-desc") sorted.sort((a, b) => b.capacity - a.capacity);
+    else sorted.sort((a, b) => Number(b.popular) - Number(a.popular));
+
+    return sorted;
+  }, [citySlug, filters]);
+
+  const visibleListings = filteredListings.slice(0, visibleCount);
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+      <Header />
+
+      <main className="flex-1 pb-10">
+        <MeetingRoomSearchBar
+          citySlug={citySlug}
+          date={date}
+          onDateChange={setDate}
+          time={time}
+          onTimeChange={setTime}
+          duration={duration}
+          onDurationChange={setDuration}
+          capacity={capacity}
+          onCapacityChange={setCapacity}
+          roomType={roomTypeField}
+          onRoomTypeChange={setRoomTypeField}
+          onSubmit={applySearchBarFilters}
+        />
+
+        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-[#64748B]">
+            <Link to="/" className="hover:text-[#2563EB]">
+              Home
+            </Link>
+            <ChevronRight size={14} />
+            <span>{cityName}</span>
+            <ChevronRight size={14} />
+            <span className="font-semibold text-[#0F172A]">Meeting Rooms</span>
+          </nav>
+
+          <h1 className="mt-3 text-[26px] font-extrabold tracking-tight text-[#0F172A] sm:text-[34px] lg:text-[42px]">
+            Book Meeting Rooms in {cityName}
+          </h1>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-base font-semibold text-[#0F172A]">
+              Showing {filteredListings.length} results for Meeting Rooms in {cityName} for {date} ({duration}{" "}
+              {duration === 1 ? "Hr" : "Hrs"})
+            </p>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] lg:hidden"
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[11px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <aside className="hidden lg:block">
+              <div className="sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+                <MeetingRoomFilterSidebar
+                  filters={filters}
+                  toggleArrayValue={toggleArrayValue}
+                  setSort={setSort}
+                  setPriceRange={setPriceRange}
+                />
+              </div>
+            </aside>
+
+            <div className="min-w-0">
+              {filteredListings.length === 0 ? (
+                <div className="flex h-[300px] flex-col items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-center">
+                  <p className="text-base font-bold text-[#0F172A]">No meeting rooms found.</p>
+                  <p className="mt-1 text-sm text-[#64748B]">Try changing filters.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {visibleListings.map((listing, index) => (
+                    <div key={listing.id} className="flex flex-col gap-5">
+                      <MeetingRoomListingCard listing={listing} defaultHours={duration} />
+                      {index === 3 && <PromoBanner />}
+                    </div>
+                  ))}
+
+                  {visibleCount < filteredListings.length && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                      className="mx-auto mt-2 rounded-xl border border-[#E2E8F0] bg-white px-8 py-3 text-sm font-bold text-[#334155] shadow-soft transition-colors hover:border-[#94A3B8]"
+                    >
+                      Load More
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+
+      {filtersOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center lg:hidden">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[#0F172A]/55"
+            onClick={() => setFiltersOpen(false)}
+          />
+          <div className="relative flex max-h-[88vh] w-full flex-col rounded-t-[24px] bg-[#F8FAFC]">
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-white px-5 py-4">
+              <span className="mx-auto h-1.5 w-10 rounded-full bg-[#E2E8F0]" />
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Close filters"
+                className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-full text-[#64748B] hover:bg-[#F8FAFC]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <MeetingRoomFilterSidebar
+                filters={filters}
+                toggleArrayValue={toggleArrayValue}
+                setSort={setSort}
+                setPriceRange={setPriceRange}
+              />
+            </div>
+            <div className="sticky bottom-0 border-t border-[#E2E8F0] bg-white p-4">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="w-full rounded-xl bg-[#111111] py-3.5 text-sm font-bold text-white hover:bg-black"
+              >
+                Show {filteredListings.length} results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
