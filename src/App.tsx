@@ -1,4 +1,19 @@
 import { Route, Routes } from "react-router-dom";
+// Admin
+import AdminRoute from "./components/admin/AdminRoute";
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminVendorsPage from "./pages/admin/AdminVendorsPage";
+import AdminVendorDetailPage from "./pages/admin/AdminVendorDetailPage";
+import AdminVendorApprovalsPage from "./pages/admin/AdminVendorApprovalsPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
+import AdminRevenuePage from "./pages/admin/AdminRevenuePage";
+import AdminSettlementsPage from "./pages/admin/AdminSettlementsPage";
+import AdminCentersPage from "./pages/admin/AdminCentersPage";
+import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
+import AdminSupportPage from "./pages/admin/AdminSupportPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import HomePage from "./pages/HomePage";
 import DayPassListingPage from "./pages/DayPassListingPage";
 import DayPassDetailsPage from "./pages/DayPassDetailsPage";
@@ -20,7 +35,7 @@ import TermsPage from "./pages/TermsPage";
 import RefundPolicyPage from "./pages/RefundPolicyPage";
 import FAQsPage from "./pages/FAQsPage";
 import StaticPage from "./pages/StaticPage";
-// Partner
+// Partner — auth & onboarding
 import PartnerSignupPage from "./pages/partner/PartnerSignupPage";
 import PartnerSigninPage from "./pages/partner/PartnerSigninPage";
 import PartnerVerifyEmailPage from "./pages/partner/PartnerVerifyEmailPage";
@@ -32,6 +47,22 @@ import CenterSetupPage from "./pages/partner/onboarding/CenterSetupPage";
 import KycDocumentsPage from "./pages/partner/onboarding/KycDocumentsPage";
 import BankDetailsPage from "./pages/partner/onboarding/BankDetailsPage";
 import ReviewSubmitPage from "./pages/partner/onboarding/ReviewSubmitPage";
+// Partner — route guard
+import PartnerRoute from "./components/partner/PartnerRoute";
+// Partner — Super Partner dashboard
+import SuperPartnerOverviewPage from "./pages/partner/dashboard/SuperPartnerOverviewPage";
+import SuperPartnerCentersPage from "./pages/partner/dashboard/SuperPartnerCentersPage";
+import SuperPartnerBookingsPage from "./pages/partner/dashboard/SuperPartnerBookingsPage";
+import SuperPartnerRevenuePage from "./pages/partner/dashboard/SuperPartnerRevenuePage";
+import SuperPartnerTeamPage from "./pages/partner/dashboard/SuperPartnerTeamPage";
+// Partner — Center (Vendor) dashboard
+import CenterOverviewPage from "./pages/partner/center/CenterOverviewPage";
+import CenterBookingsPage from "./pages/partner/center/CenterBookingsPage";
+import GuestCheckInPage from "./pages/partner/center/GuestCheckInPage";
+import SpecialRequestsPage from "./pages/partner/center/SpecialRequestsPage";
+import CenterCalendarPage from "./pages/partner/center/CenterCalendarPage";
+// Partner — shared settings
+import PartnerSettingsPage from "./pages/partner/PartnerSettingsPage";
 
 function App() {
   return (
@@ -80,6 +111,22 @@ function App() {
       <Route path="/list-your-space" element={<StaticPage title="List Your Space" subtitle="Start receiving bookings within 48 hours" sections={[{ heading: "Get Started", body: "Email partners@bokkoapp.com with your workspace details or call +91 80080 08000." }]} />} />
       <Route path="/blog" element={<StaticPage title="Bokko Blog" subtitle="Workspace tips, city guides and productivity insights" sections={[{ heading: "Coming Soon", body: "Our blog is being set up. Check back soon for workspace guides, coworking tips and city-specific workspace roundups." }]} />} />
       <Route path="/cookie-policy" element={<StaticPage title="Cookie Policy" subtitle="How Bokko uses cookies and similar technologies" sections={[{ heading: "What Are Cookies", body: "Cookies are small text files stored on your device when you visit Bokko. They help us remember your preferences, keep you logged in, and understand how you use our platform." }, { heading: "Cookies We Use", body: "Essential Cookies — Required for the platform to work. These cannot be disabled.\n\nAnalytics Cookies — Help us understand which pages are visited and how users navigate the site. Data is anonymised.\n\nPreference Cookies — Remember your city, search filters and display settings.\n\nMarketing Cookies — Used to show relevant ads and measure campaign performance." }, { heading: "Managing Cookies", body: "You can control or delete cookies through your browser settings. Disabling cookies may affect some features such as staying logged in or saving your preferences." }, { heading: "Third-Party Cookies", body: "We use trusted third-party services (Google Analytics, payment gateways) that may set their own cookies. These are governed by their respective privacy policies." }, { heading: "Contact", body: "For questions about our cookie practices:\n\nGrofeed Technology India Pvt Ltd (Brand: Bokko)\nLightbridge, 07B-101 & 07A-127, Saki Vihar Rd,\nTunga Village, Chandivali, Powai, Mumbai, Maharashtra 400072\nEmail: Hello@bokkoapp.com" }]} />} />
+      {/* Admin */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route element={<AdminRoute />}>
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/vendors" element={<AdminVendorsPage />} />
+        <Route path="/admin/vendors/:vendorId" element={<AdminVendorDetailPage />} />
+        <Route path="/admin/vendor-approvals" element={<AdminVendorApprovalsPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+        <Route path="/admin/revenue" element={<AdminRevenuePage />} />
+        <Route path="/admin/settlements" element={<AdminSettlementsPage />} />
+        <Route path="/admin/centers" element={<AdminCentersPage />} />
+        <Route path="/admin/coupons" element={<AdminCouponsPage />} />
+        <Route path="/admin/support" element={<AdminSupportPage />} />
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
+      </Route>
       {/* Partner auth & onboarding */}
       <Route path="/partner/signup" element={<PartnerSignupPage />} />
       <Route path="/partner/signin" element={<PartnerSigninPage />} />
@@ -92,6 +139,23 @@ function App() {
         <Route path="kyc" element={<KycDocumentsPage />} />
         <Route path="bank" element={<BankDetailsPage />} />
         <Route path="review" element={<ReviewSubmitPage />} />
+      </Route>
+      {/* Partner — protected dashboards */}
+      <Route element={<PartnerRoute />}>
+        {/* Super Partner (multi-center) */}
+        <Route path="/partner/dashboard" element={<SuperPartnerOverviewPage />} />
+        <Route path="/partner/centers" element={<SuperPartnerCentersPage />} />
+        <Route path="/partner/bookings" element={<SuperPartnerBookingsPage />} />
+        <Route path="/partner/revenue" element={<SuperPartnerRevenuePage />} />
+        <Route path="/partner/team" element={<SuperPartnerTeamPage />} />
+        {/* Center / Vendor (single center) */}
+        <Route path="/partner/center/overview" element={<CenterOverviewPage />} />
+        <Route path="/partner/center/bookings" element={<CenterBookingsPage />} />
+        <Route path="/partner/center/checkin" element={<GuestCheckInPage />} />
+        <Route path="/partner/center/requests" element={<SpecialRequestsPage />} />
+        <Route path="/partner/center/calendar" element={<CenterCalendarPage />} />
+        {/* Shared */}
+        <Route path="/partner/settings" element={<PartnerSettingsPage />} />
       </Route>
     </Routes>
   );
