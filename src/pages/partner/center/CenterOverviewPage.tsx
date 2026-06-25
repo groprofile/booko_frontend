@@ -5,7 +5,6 @@ import {
   CalendarDays,
   IndianRupee,
   CheckCircle2,
-  UserPlus,
   PlusCircle,
   FileBarChart2,
   Check,

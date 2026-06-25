@@ -7,7 +7,7 @@ import { useAdmin } from "../../context/AdminContext";
 const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(2)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
 export default function AdminSettlementsPage() {
-  const { settlements, markSettlementPaid, vendors } = useAdmin();
+  const { settlements, markSettlementPaid } = useAdmin();
   const [filter, setFilter] = useState<"all" | "pending" | "processing" | "paid">("all");
 
   const filtered = settlements.filter((s) => filter === "all" || s.status === filter);

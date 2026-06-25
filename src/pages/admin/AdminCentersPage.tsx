@@ -11,6 +11,8 @@ const STATUS_OPTS: Array<{ label: string; value: CenterStatus | "all" }> = [
 
 const SERVICES = ["Day Pass", "Meeting Room", "Monthly Pass", "Virtual Office", "Hotel Room", "Hourly Stay", "Full Day Stay", "Private Cabin", "Managed Office", "Event Space"];
 
+type StringAddFormKey = "name" | "vendorName" | "city" | "area";
+
 export default function AdminCentersPage() {
   const { centers, approveCenterLive, addCenter } = useAdmin();
   const [search, setSearch] = useState("");
@@ -134,15 +136,17 @@ export default function AdminCentersPage() {
             </div>
             <div className="max-h-[70vh] overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: "Center Name", key: "name", placeholder: "WorkHub Lower Parel" },
-                  { label: "Vendor Name", key: "vendorName", placeholder: "WorkHub Spaces" },
-                  { label: "City", key: "city", placeholder: "Mumbai" },
-                  { label: "Area / Locality", key: "area", placeholder: "Lower Parel" },
-                ].map((f) => (
+                {(
+                  [
+                    { label: "Center Name", key: "name" as StringAddFormKey, placeholder: "WorkHub Lower Parel" },
+                    { label: "Vendor Name", key: "vendorName" as StringAddFormKey, placeholder: "WorkHub Spaces" },
+                    { label: "City", key: "city" as StringAddFormKey, placeholder: "Mumbai" },
+                    { label: "Area / Locality", key: "area" as StringAddFormKey, placeholder: "Lower Parel" },
+                  ] satisfies Array<{ label: string; key: StringAddFormKey; placeholder: string }>
+                ).map((f) => (
                   <div key={f.key}>
                     <label className="mb-1 block text-xs font-medium text-[#0F172A]">{f.label}</label>
-                    <input type="text" value={(addForm as Record<string, string>)[f.key]}
+                    <input type="text" value={addForm[f.key]}
                       onChange={(e) => setAddForm((p) => ({ ...p, [f.key]: e.target.value }))}
                       placeholder={f.placeholder}
                       className="h-9 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />

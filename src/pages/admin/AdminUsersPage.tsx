@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, ShieldOff, Shield, Eye, Users } from "lucide-react";
+import { Search, ShieldOff, Shield, Eye } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import { useAdmin } from "../../context/AdminContext";

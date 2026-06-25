@@ -105,7 +105,6 @@ export default function CenterCalendarPage() {
   const selectedDayData = selectedDay && IS_JUNE_2026 ? JUNE_DATA[selectedDay] : null;
 
   // Build grid cells: empty slots + day numbers
-  const totalCells = startDow + daysInMonth;
   const gridCells: Array<number | null> = [
     ...Array<null>(startDow).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),

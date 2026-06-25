@@ -73,7 +73,6 @@ function formatINR(amount: number): string {
 }
 
 export default function SuperPartnerOverviewPage() {
-  const totalRevenue = 299400;
   const totalBookings = 203;
   const activeCenters = 3;
   const avgRating = 4.83;
