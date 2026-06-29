@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { apiPost, ApiError } from "../lib/api";
 
 export type PartnerStatus =
   | "email_unverified"
@@ -45,6 +46,7 @@ export interface KycDocumentRecord {
   docType: string;
   label: string;
   fileName: string;
+  fileKey?: string;
   status: "pending" | "uploaded" | "verified" | "rejected";
   required: boolean;
 }
@@ -93,11 +95,8 @@ export const ONBOARDING_STEPS = [
 ];
 
 const STORAGE_KEY = "bokko_partner_v1";
-const PWD_PREFIX = "bokko_partner_pwd_";
-
-function makeId() {
-  return `partner_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
+const TOKEN_KEY = "bokko_vendor_token";
+const REFRESH_KEY = "bokko_vendor_refresh";
 
 export function defaultKycDocs(): KycDocumentRecord[] {
   return [
@@ -130,8 +129,8 @@ interface SignupData {
 interface PartnerCtx {
   partner: PartnerDraft | null;
   isAuthenticated: boolean;
-  signup: (data: SignupData, password: string) => { success: boolean; error?: string };
-  signin: (email: string, password: string) => { success: boolean; error?: string; status?: PartnerStatus };
+  signup: (data: SignupData, password: string) => Promise<{ success: boolean; error?: string }>;
+  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus }>;
   signout: () => void;
   updatePartner: (updates: Partial<PartnerDraft>) => void;
   verifyEmail: () => void;
@@ -155,63 +154,112 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
     if (partner) localStorage.setItem(STORAGE_KEY, JSON.stringify(partner));
   }, [partner]);
 
-  function signup(data: SignupData, password: string) {
-    const existing = localStorage.getItem(STORAGE_KEY);
-    if (existing) {
-      try {
-        const p = JSON.parse(existing) as PartnerDraft;
-        if (p.email === data.email)
-          return { success: false, error: "An account with this email already exists." };
-      } catch { /* ignore */ }
-    }
-    const id = makeId();
-    const newPartner: PartnerDraft = {
-      id,
-      ...data,
-      status: "email_unverified",
-      emailVerified: false,
-      completedSteps: [],
-      business: {
+  async function signup(data: SignupData, password: string) {
+    try {
+      await apiPost<{ message: string; vendorId: string }>('/auth/vendor/signup', {
         businessName: data.businessName,
-        businessType: data.businessType,
+        ownerName: data.name,
+        email: data.businessEmail,
+        phone: data.mobile,
+        password,
+        category: data.businessType,
+      });
+
+      const draft: PartnerDraft = {
+        id: '',
+        name: data.name,
+        email: data.email,
+        mobile: data.mobile,
         businessEmail: data.businessEmail,
+        businessName: data.businessName,
         city: data.city,
         state: data.state,
-        contactPerson: data.name,
-        mobile: data.mobile,
-        registeredAddress: "",
-        pincode: "",
-        website: "",
-        instagram: "",
-        linkedin: "",
-      },
-      centers: [],
-      kyc: defaultKycDocs(),
-      gstBank: {},
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(`${PWD_PREFIX}${id}`, password);
-    setPartner(newPartner);
-    return { success: true };
-  }
-
-  function signin(email: string, password: string) {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { success: false, error: "No account found. Please sign up first." };
-      const p = JSON.parse(raw) as PartnerDraft;
-      if (p.email !== email && p.businessEmail !== email)
-        return { success: false, error: "Incorrect email or password." };
-      const stored = localStorage.getItem(`${PWD_PREFIX}${p.id}`);
-      if (stored !== password) return { success: false, error: "Incorrect email or password." };
-      setPartner(p);
-      return { success: true, status: p.status };
-    } catch {
-      return { success: false, error: "Something went wrong. Please try again." };
+        businessType: data.businessType,
+        centerType: data.centerType,
+        status: 'email_unverified',
+        emailVerified: false,
+        completedSteps: [],
+        business: {
+          businessName: data.businessName,
+          businessType: data.businessType,
+          businessEmail: data.businessEmail,
+          city: data.city,
+          state: data.state,
+          contactPerson: data.name,
+          mobile: data.mobile,
+          registeredAddress: '',
+          pincode: '',
+          website: '',
+          instagram: '',
+          linkedin: '',
+        },
+        centers: [],
+        kyc: defaultKycDocs(),
+        gstBank: {},
+        createdAt: new Date().toISOString(),
+      };
+      setPartner(draft);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message ?? 'Signup failed' };
     }
   }
 
-  function signout() { setPartner(null); }
+  async function signin(email: string, password: string) {
+    try {
+      const data = await apiPost<{
+        vendor: { id: string; ownerName: string; businessName: string; status: string; dashboardLocked: boolean };
+        accessToken: string;
+        refreshToken: string;
+      }>('/auth/vendor/login', { email, password });
+
+      const STATUS_MAP: Record<string, PartnerStatus> = {
+        pending:        'onboarding_started',
+        kyc_submitted:  'submitted_for_review',
+        under_review:   'under_review',
+        approved:       'approved',
+        rejected:       'rejected',
+      };
+      const status: PartnerStatus = STATUS_MAP[data.vendor.status] ?? 'onboarding_started';
+
+      const draft: PartnerDraft = {
+        id: data.vendor.id,
+        name: data.vendor.ownerName,
+        email,
+        mobile: '',
+        businessEmail: email,
+        businessName: data.vendor.businessName,
+        city: '',
+        state: '',
+        businessType: '',
+        centerType: 'single',
+        status,
+        emailVerified: true,
+        completedSteps: [],
+        business: { businessName: data.vendor.businessName, contactPerson: data.vendor.ownerName },
+        centers: [],
+        kyc: defaultKycDocs(),
+        gstBank: {},
+        createdAt: new Date().toISOString(),
+      };
+
+      setPartner(draft);
+      sessionStorage.setItem(TOKEN_KEY, data.accessToken);
+      sessionStorage.setItem(REFRESH_KEY, data.refreshToken);
+      return { success: true, status };
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        return { success: true as const, status: 'email_unverified' as PartnerStatus };
+      }
+      return { success: false, error: (err as Error).message ?? 'Sign in failed' };
+    }
+  }
+
+  function signout() {
+    setPartner(null);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_KEY);
+  }
 
   function updatePartner(updates: Partial<PartnerDraft>) {
     setPartner((prev) => (prev ? { ...prev, ...updates } : prev));

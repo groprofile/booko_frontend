@@ -1,19 +1,214 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2, MapPin, Phone, Mail, CreditCard, CheckCircle, XCircle, ShieldOff, Shield, FileText } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  ArrowLeft, Building2, MapPin, Phone, Mail, CreditCard,
+  CheckCircle, XCircle, ShieldOff, Shield, FileText,
+  Eye, Loader2, X, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import { useAdmin } from "../../context/AdminContext";
+import { apiGet, getAdminToken, ApiError } from "../../lib/api";
 
-const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
+const fmt = (n: number) =>
+  n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
-const KYC_DOCS = ["Company PAN", "Aadhaar", "GST Certificate", "Shop Establishment", "Business Registration", "Cancelled Cheque", "Address Proof"];
+const DOC_TYPE_LABELS: Record<string, string> = {
+  company_pan: "Company PAN",
+  owner_aadhaar: "Aadhaar",
+  gst_certificate: "GST Certificate",
+  shop_establishment: "Shop Establishment",
+  business_registration: "Business Registration",
+  cancelled_cheque: "Cancelled Cheque",
+  address_proof: "Address Proof",
+  fssai: "FSSAI License",
+  trade_license: "Trade License",
+  fire_noc: "Fire NOC",
+  hotel_license: "Hotel License",
+};
 
+const MANDATORY_DOC_TYPES = [
+  "company_pan",
+  "owner_aadhaar",
+  "gst_certificate",
+  "shop_establishment",
+  "business_registration",
+  "cancelled_cheque",
+  "address_proof",
+];
+
+interface VendorDocument {
+  doc_type: string;
+  file_key: string;
+  status: string;
+}
+
+interface ViewerState {
+  label: string;
+  url: string;
+  isPdf: boolean;
+  index: number;         // index in the viewable docs list
+}
+
+// ── Document Viewer Modal ──────────────────────────────────────────────────────
+function DocViewer({
+  viewer,
+  total,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  viewer: ViewerState;
+  total: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  // Close on Escape, navigate with arrow keys
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && viewer.index > 0) onPrev();
+      if (e.key === "ArrowRight" && viewer.index < total - 1) onNext();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose, onPrev, onNext, viewer.index, total]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Header bar */}
+      <div
+        className="flex shrink-0 items-center justify-between px-5 py-3 bg-[#0F172A]/90"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <FileText size={15} className="text-[#94A3B8]" />
+          <span className="text-sm font-semibold text-white">{viewer.label}</span>
+          <span className="text-xs text-[#64748B]">{viewer.index + 1} / {total}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Content area */}
+      <div
+        className="relative flex flex-1 items-center justify-center overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Prev arrow */}
+        {viewer.index > 0 && (
+          <button
+            onClick={onPrev}
+            className="absolute left-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
+
+        {/* Document display */}
+        <div className="flex h-full w-full max-w-5xl items-center justify-center p-4">
+          {viewer.isPdf ? (
+            <iframe
+              src={viewer.url}
+              title={viewer.label}
+              className="h-full w-full rounded-xl border-0 bg-white"
+              style={{ minHeight: "70vh" }}
+            />
+          ) : (
+            <img
+              src={viewer.url}
+              alt={viewer.label}
+              className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
+              style={{ maxHeight: "calc(100vh - 120px)" }}
+            />
+          )}
+        </div>
+
+        {/* Next arrow */}
+        {viewer.index < total - 1 && (
+          <button
+            onClick={onNext}
+            className="absolute right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <ChevronRight size={22} />
+          </button>
+        )}
+      </div>
+
+      {/* Bottom hint */}
+      <div className="shrink-0 py-2 text-center text-[11px] text-[#475569]">
+        Press Esc to close · Arrow keys to navigate
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminVendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
   const { vendors, centers, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor } = useAdmin();
 
+  const [vendorDocs, setVendorDocs] = useState<VendorDocument[]>([]);
+  const [loadingViewKey, setLoadingViewKey] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<ViewerState | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
+
   const vendor = vendors.find((v) => v.id === vendorId);
+
+  useEffect(() => {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<VendorDocument[]>(`/admin/vendors/${vendorId}/documents`, token)
+      .then(setVendorDocs)
+      .catch(() => {});
+  }, [vendorId]);
+
+  // Build viewable docs list (only ones that have a file_key)
+  const viewableDocs = vendorDocs.filter((d) => !!d.file_key);
+
+  const openViewer = useCallback(
+    async (fileKey: string, label: string) => {
+      const token = getAdminToken();
+      if (!token) return;
+      setLoadingViewKey(fileKey);
+      setViewError(null);
+      try {
+        const { url } = await apiGet<{ url: string }>(
+          `/admin/vendors/${vendorId}/kyc/view-url?key=${encodeURIComponent(fileKey)}`,
+          token,
+        );
+        const ext = fileKey.split(".").pop()?.toLowerCase() ?? "";
+        const idx = viewableDocs.findIndex((d) => d.file_key === fileKey);
+        setViewer({ label, url, isPdf: ext === "pdf", index: idx });
+      } catch (err) {
+        setViewError(err instanceof ApiError ? err.message : "Failed to load document");
+      } finally {
+        setLoadingViewKey(null);
+      }
+    },
+    [vendorId, viewableDocs],
+  );
+
+  const navigateViewer = useCallback(
+    async (newIndex: number) => {
+      const doc = viewableDocs[newIndex];
+      if (!doc) return;
+      const label = DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type;
+      await openViewer(doc.file_key, label);
+    },
+    [viewableDocs, openViewer],
+  );
+
   if (!vendor) return (
     <AdminLayout title="Vendor Detail">
       <div className="text-center py-24 text-[#94A3B8]">Vendor not found.</div>
@@ -24,175 +219,235 @@ export default function AdminVendorDetailPage() {
   const vBookings = bookings.filter((b) => b.vendorId === vendorId);
   const vRevenue = vBookings.filter((b) => b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
 
+  const docMap = Object.fromEntries(vendorDocs.map((d) => [d.doc_type, d.file_key]));
+  const extraDocTypes = vendorDocs.map((d) => d.doc_type).filter((t) => !MANDATORY_DOC_TYPES.includes(t));
+  const allDocTypes = [...MANDATORY_DOC_TYPES, ...extraDocTypes];
+
   return (
-    <AdminLayout title={vendor.businessName} subtitle={`${vendor.businessType} · ${vendor.city}`}>
-      {/* Back */}
-      <button onClick={() => navigate(-1)} className="mb-4 flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#0F172A]">
-        <ArrowLeft size={14} /> Back to Vendors
-      </button>
+    <>
+      {/* Lightbox viewer — renders outside normal flow, covers entire screen */}
+      {viewer && (
+        <DocViewer
+          viewer={viewer}
+          total={viewableDocs.length}
+          onClose={() => setViewer(null)}
+          onPrev={() => navigateViewer(viewer.index - 1)}
+          onNext={() => navigateViewer(viewer.index + 1)}
+        />
+      )}
 
-      {/* Header card */}
-      <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm mb-5">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0F172A] text-xl font-extrabold text-white">
-            {vendor.businessName.charAt(0)}
-          </div>
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-extrabold text-[#0F172A]">{vendor.businessName}</h2>
-              <StatusBadge status={vendor.status} />
+      <AdminLayout title={vendor.businessName} subtitle={`${vendor.businessType} · ${vendor.city}`}>
+        <button onClick={() => navigate(-1)} className="mb-4 flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#0F172A]">
+          <ArrowLeft size={14} /> Back to Vendors
+        </button>
+
+        {/* Header card */}
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm mb-5">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0F172A] text-xl font-extrabold text-white">
+              {vendor.businessName.charAt(0)}
             </div>
-            <p className="mt-0.5 text-sm text-[#64748B]">{vendor.businessType} · {vendor.city}, {vendor.state}</p>
-            <div className="mt-2 flex flex-wrap gap-4 text-xs text-[#64748B]">
-              <span className="flex items-center gap-1"><Mail size={11} />{vendor.businessEmail}</span>
-              <span className="flex items-center gap-1"><Phone size={11} />{vendor.mobile}</span>
-              <span className="flex items-center gap-1"><FileText size={11} />GSTIN: {vendor.gstin}</span>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-extrabold text-[#0F172A]">{vendor.businessName}</h2>
+                <StatusBadge status={vendor.status} />
+              </div>
+              <p className="mt-0.5 text-sm text-[#64748B]">{vendor.businessType} · {vendor.city}, {vendor.state}</p>
+              <div className="mt-2 flex flex-wrap gap-4 text-xs text-[#64748B]">
+                <span className="flex items-center gap-1"><Mail size={11} />{vendor.businessEmail}</span>
+                <span className="flex items-center gap-1"><Phone size={11} />{vendor.mobile}</span>
+                <span className="flex items-center gap-1"><FileText size={11} />GSTIN: {vendor.gstin}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {vendor.status !== "approved" && (
+                <button onClick={() => approveVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
+                  <CheckCircle size={13} /> Approve
+                </button>
+              )}
+              {vendor.status !== "rejected" && (
+                <button onClick={() => rejectVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
+                  <XCircle size={13} /> Reject
+                </button>
+              )}
+              {vendor.status === "blocked" ? (
+                <button onClick={() => unblockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
+                  <Shield size={13} /> Unblock
+                </button>
+              ) : (
+                <button onClick={() => blockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
+                  <ShieldOff size={13} /> Block
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex gap-2">
-            {vendor.status !== "approved" && (
-              <button onClick={() => approveVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
-                <CheckCircle size={13} /> Approve
-              </button>
-            )}
-            {vendor.status !== "rejected" && (
-              <button onClick={() => rejectVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
-                <XCircle size={13} /> Reject
-              </button>
-            )}
-            {vendor.status === "blocked" ? (
-              <button onClick={() => unblockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
-                <Shield size={13} /> Unblock
-              </button>
-            ) : (
-              <button onClick={() => blockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
-                <ShieldOff size={13} /> Block
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Metrics */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Total Revenue", value: fmt(vRevenue) },
-            { label: "Total Bookings", value: vBookings.length.toString() },
-            { label: "Centers", value: vCenters.length.toString() },
-            { label: "Commission Rate", value: `${vendor.commissionRate}%` },
-          ].map((m) => (
-            <div key={m.label} className="rounded-xl bg-[#F8FAFC] p-3 text-center">
-              <p className="text-lg font-extrabold text-[#0F172A]">{m.value}</p>
-              <p className="text-[11px] text-[#94A3B8]">{m.label}</p>
-            </div>
-          ))}
-        </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: "Total Revenue", value: fmt(vRevenue) },
+              { label: "Total Bookings", value: vBookings.length.toString() },
+              { label: "Centers", value: vCenters.length.toString() },
+              { label: "Commission Rate", value: `${vendor.commissionRate}%` },
+            ].map((m) => (
+              <div key={m.label} className="rounded-xl bg-[#F8FAFC] p-3 text-center">
+                <p className="text-lg font-extrabold text-[#0F172A]">{m.value}</p>
+                <p className="text-[11px] text-[#94A3B8]">{m.label}</p>
+              </div>
+            ))}
+          </div>
 
-        {vendor.notes && (
-          <div className="mt-4 rounded-xl bg-[#FEF9C3] px-4 py-3 text-xs text-[#92400E]">
-            <span className="font-bold">Note:</span> {vendor.notes}
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* KYC Status */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="font-bold text-[#0F172A]">KYC Documents</p>
-            <StatusBadge status={vendor.kycStatus} />
-          </div>
-          <div className="flex flex-col gap-2">
-            {KYC_DOCS.map((doc) => {
-              const approved = vendor.kycStatus === "approved";
-              const submitted = vendor.kycStatus === "submitted" || vendor.kycStatus === "approved";
-              return (
-                <div key={doc} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${approved ? "border-[#DCFCE7] bg-[#F0FDF4]" : submitted ? "border-[#DBEAFE] bg-[#EFF6FF]" : "border-[#E2E8F0] bg-[#F8FAFC]"}`}>
-                  <div className="flex items-center gap-2.5">
-                    <FileText size={13} className={approved ? "text-[#16A34A]" : submitted ? "text-[#2563EB]" : "text-[#94A3B8]"} />
-                    <span className="text-xs font-medium text-[#0F172A]">{doc}</span>
-                  </div>
-                  <StatusBadge status={approved ? "approved" : submitted ? "submitted" : "not_submitted"} size="sm" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bank Details */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="font-bold text-[#0F172A]">Bank Details</p>
-            <StatusBadge status={vendor.bankStatus} />
-          </div>
-          {vendor.bankStatus !== "not_submitted" ? (
-            <div className="flex flex-col gap-3">
-              {[
-                { label: "Account Holder", value: vendor.ownerName },
-                { label: "Account Number", value: "XXXX XXXX 9456" },
-                { label: "IFSC Code", value: "HDFC0001234" },
-                { label: "Bank Name", value: "HDFC Bank" },
-                { label: "Branch", value: "Andheri West, Mumbai" },
-              ].map((r) => (
-                <div key={r.label} className="flex items-center justify-between border-b border-[#F8FAFC] pb-3 last:border-0 last:pb-0">
-                  <span className="text-xs text-[#64748B]">{r.label}</span>
-                  <span className="text-xs font-semibold text-[#0F172A]">{r.value}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <CreditCard size={28} className="text-[#E2E8F0]" />
-              <p className="mt-2 text-sm text-[#94A3B8]">Bank details not submitted yet</p>
+          {vendor.notes && (
+            <div className="mt-4 rounded-xl bg-[#FEF9C3] px-4 py-3 text-xs text-[#92400E]">
+              <span className="font-bold">Note:</span> {vendor.notes}
             </div>
           )}
         </div>
 
-        {/* Centers */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <p className="mb-4 font-bold text-[#0F172A]">Centers ({vCenters.length})</p>
-          {vCenters.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#94A3B8]">No centers added yet.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {vCenters.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] p-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF]">
-                    <Building2 size={14} className="text-[#2563EB]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-xs font-semibold text-[#0F172A]">{c.name}</p>
-                    <p className="flex items-center gap-1 text-[11px] text-[#94A3B8]"><MapPin size={9} />{c.area}, {c.city}</p>
-                  </div>
-                  <StatusBadge status={c.status} size="sm" />
-                </div>
-              ))}
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* KYC Documents */}
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-bold text-[#0F172A]">KYC Documents</p>
+              <StatusBadge status={vendor.kycStatus} />
             </div>
-          )}
-        </div>
 
-        {/* Recent Bookings */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-          <p className="mb-4 font-bold text-[#0F172A]">Recent Bookings ({vBookings.length})</p>
-          {vBookings.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#94A3B8]">No bookings yet.</p>
-          ) : (
+            {viewError && (
+              <div className="mb-3 rounded-xl bg-[#FEE2E2] px-4 py-2.5 text-xs text-[#B91C1C]">
+                {viewError}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
-              {vBookings.slice(0, 6).map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-xl border border-[#F1F5F9] bg-[#F8FAFC] px-3 py-2.5">
-                  <div>
-                    <p className="text-xs font-semibold text-[#0F172A]">{b.customerName}</p>
-                    <p className="text-[11px] text-[#94A3B8]">{b.product} · {b.date}</p>
+              {allDocTypes.map((docType) => {
+                const fileKey = docMap[docType];
+                const hasFile = !!fileKey;
+                const approved = vendor.kycStatus === "approved";
+                const submitted = hasFile || vendor.kycStatus === "submitted" || vendor.kycStatus === "approved";
+                const label = DOC_TYPE_LABELS[docType] ?? docType;
+                const isLoading = loadingViewKey === fileKey;
+
+                return (
+                  <div
+                    key={docType}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
+                      approved
+                        ? "border-[#DCFCE7] bg-[#F0FDF4]"
+                        : submitted
+                        ? "border-[#DBEAFE] bg-[#EFF6FF]"
+                        : "border-[#E2E8F0] bg-[#F8FAFC]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileText
+                        size={13}
+                        className={approved ? "text-[#16A34A]" : submitted ? "text-[#2563EB]" : "text-[#94A3B8]"}
+                      />
+                      <span className="text-xs font-medium text-[#0F172A]">{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge
+                        status={approved ? "approved" : submitted ? "submitted" : "not_submitted"}
+                        size="sm"
+                      />
+                      {hasFile && (
+                        <button
+                          onClick={() => openViewer(fileKey, label)}
+                          disabled={isLoading}
+                          className="flex items-center gap-1 rounded-lg bg-[#0F172A] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
+                        >
+                          {isLoading ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <Eye size={10} />
+                          )}
+                          View
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-[#0F172A]">₹{b.amount}</p>
-                    <StatusBadge status={b.paymentStatus} size="sm" />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          )}
+          </div>
+
+          {/* Bank Details */}
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-bold text-[#0F172A]">Bank Details</p>
+              <StatusBadge status={vendor.bankStatus} />
+            </div>
+            {vendor.bankStatus !== "not_submitted" ? (
+              <div className="flex flex-col gap-3">
+                {[
+                  { label: "Account Holder", value: vendor.ownerName },
+                  { label: "Account Number", value: "XXXX XXXX 9456" },
+                  { label: "IFSC Code", value: "HDFC0001234" },
+                  { label: "Bank Name", value: "HDFC Bank" },
+                  { label: "Branch", value: "Andheri West, Mumbai" },
+                ].map((r) => (
+                  <div key={r.label} className="flex items-center justify-between border-b border-[#F8FAFC] pb-3 last:border-0 last:pb-0">
+                    <span className="text-xs text-[#64748B]">{r.label}</span>
+                    <span className="text-xs font-semibold text-[#0F172A]">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <CreditCard size={28} className="text-[#E2E8F0]" />
+                <p className="mt-2 text-sm text-[#94A3B8]">Bank details not submitted yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Centers */}
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <p className="mb-4 font-bold text-[#0F172A]">Centers ({vCenters.length})</p>
+            {vCenters.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[#94A3B8]">No centers added yet.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {vCenters.map((c) => (
+                  <div key={c.id} className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF]">
+                      <Building2 size={14} className="text-[#2563EB]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-xs font-semibold text-[#0F172A]">{c.name}</p>
+                      <p className="flex items-center gap-1 text-[11px] text-[#94A3B8]">
+                        <MapPin size={9} />{c.area}, {c.city}
+                      </p>
+                    </div>
+                    <StatusBadge status={c.status} size="sm" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Bookings */}
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <p className="mb-4 font-bold text-[#0F172A]">Recent Bookings ({vBookings.length})</p>
+            {vBookings.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[#94A3B8]">No bookings yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {vBookings.slice(0, 6).map((b) => (
+                  <div key={b.id} className="flex items-center justify-between rounded-xl border border-[#F1F5F9] bg-[#F8FAFC] px-3 py-2.5">
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F172A]">{b.customerName}</p>
+                      <p className="text-[11px] text-[#94A3B8]">{b.product} · {b.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-[#0F172A]">₹{b.amount}</p>
+                      <StatusBadge status={b.paymentStatus} size="sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </AdminLayout>
+      </AdminLayout>
+    </>
   );
 }

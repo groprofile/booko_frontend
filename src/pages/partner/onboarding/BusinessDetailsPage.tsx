@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, Save } from "lucide-react";
 import { usePartner } from "../../../context/PartnerContext";
+import { apiPatch, ApiError, getVendorToken } from "../../../lib/api";
 
 const BUSINESS_TYPES = [
   "Coworking Space","Hotel","Meeting Room Provider","Virtual Office Provider","Managed Office","Event Space",
@@ -53,6 +54,8 @@ export default function BusinessDetailsPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -76,17 +79,53 @@ export default function BusinessDetailsPage() {
     return Object.keys(e).length === 0;
   }
 
-  function handleSave() {
-    updatePartner({ business: { ...partner?.business, ...form } });
-    setSaved(true);
+  async function saveToBackend() {
+    const token = getVendorToken();
+    if (!token) return;
+    await apiPatch('/vendor/profile', {
+      businessName: form.businessName,
+      businessType: form.businessType,
+      phone: form.mobile ?? form.contactPerson,
+      contactPerson: form.contactPerson,
+      registeredAddress: form.registeredAddress,
+      city: form.city,
+      state: form.state,
+      pincode: form.pincode,
+      website: form.website || undefined,
+      instagram: form.instagram || undefined,
+      linkedin: form.linkedin || undefined,
+    }, token);
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSave() {
+    updatePartner({ business: { ...partner?.business, ...form } });
+    setSaving(true);
+    setApiError("");
+    try {
+      await saveToBackend();
+      setSaved(true);
+    } catch (err) {
+      setApiError((err as ApiError).message ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (!validate()) return;
-    updatePartner({ business: { ...partner?.business, ...form } });
-    markStepComplete(1);
-    navigate("/partner/onboarding/centers");
+    setSaving(true);
+    setApiError("");
+    try {
+      await saveToBackend();
+      updatePartner({ business: { ...partner?.business, ...form } });
+      markStepComplete(1);
+      navigate("/partner/onboarding/centers");
+    } catch (err) {
+      setApiError((err as ApiError).message ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -95,6 +134,13 @@ export default function BusinessDetailsPage() {
         <h2 className="text-2xl font-extrabold text-[#0F172A]">Business Details</h2>
         <p className="mt-1 text-sm text-[#64748B]">Tell us about your business. This information will be used for verification.</p>
       </div>
+
+      {apiError && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {apiError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
         {/* Business Identity */}
@@ -177,14 +223,14 @@ export default function BusinessDetailsPage() {
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={handleSave}
-            className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]">
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC] disabled:opacity-60">
             <Save size={15} />
-            {saved ? "Saved ✓" : "Save Draft"}
+            {saving ? "Saving…" : saved ? "Saved ✓" : "Save Draft"}
           </button>
-          <button type="submit"
-            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">
-            Save &amp; Continue →
+          <button type="submit" disabled={saving}
+            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60">
+            {saving ? "Saving…" : "Save & Continue →"}
           </button>
         </div>
       </form>

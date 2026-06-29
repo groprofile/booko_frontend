@@ -34,17 +34,15 @@ export default function AdminLoginPage() {
     return e;
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true); setError("");
-    setTimeout(() => {
-      const result = login(email.trim().toLowerCase(), pwd, otp || undefined);
-      setLoading(false);
-      if (!result.success) { setError(result.error ?? "Login failed"); return; }
-      navigate("/admin/dashboard");
-    }, 600);
+    const result = await login(email.trim().toLowerCase(), pwd, otp || undefined);
+    setLoading(false);
+    if (!result.success) { setError(result.error ?? "Login failed"); return; }
+    navigate("/admin/dashboard");
   }
 
   const inputBase = "w-full rounded-xl border px-4 py-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] outline-none transition-all bg-[#F8FAFC] focus:bg-white";

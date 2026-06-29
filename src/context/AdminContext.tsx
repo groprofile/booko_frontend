@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { apiGet, apiPost, getAdminToken } from "../lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,12 @@ export interface ActivityLog {
 
 export interface MonthlyPoint { month: string; value: number; }
 
+export interface DashboardStats {
+  totalUsers: number; totalVendors: number; totalCenters: number;
+  todayBookings: number; monthlyBookings: number;
+  pendingKyc: number; pendingSettlements: number; totalRevenue: number;
+}
+
 // ─── Permissions ─────────────────────────────────────────────────────────────
 
 export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
@@ -112,43 +119,41 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
   support_admin: "Support", sales_admin: "Sales", content_admin: "Content",
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Static chart data (no backend aggregate endpoint yet) ───────────────────
 
-const MOCK_ADMINS = [
-  { id: "a001", name: "Arjun Mehta", email: "admin@bokkoapp.com", role: "super_admin" as AdminRole, password: "Admin@2024", otp: "123456", joinedAt: "2024-01-01" },
-  { id: "a002", name: "Priya Sharma", email: "finance@bokkoapp.com", role: "finance_admin" as AdminRole, password: "Finance@2024", otp: "234567", joinedAt: "2024-02-01" },
-  { id: "a003", name: "Rohit Kumar", email: "ops@bokkoapp.com", role: "operations_admin" as AdminRole, password: "Ops@2024", otp: "345678", joinedAt: "2024-02-15" },
-  { id: "a004", name: "Anjali Singh", email: "support@bokkoapp.com", role: "support_admin" as AdminRole, password: "Support@2024", otp: "456789", joinedAt: "2024-03-01" },
-  { id: "a005", name: "Varun Gupta", email: "sales@bokkoapp.com", role: "sales_admin" as AdminRole, password: "Sales@2024", otp: "567890", joinedAt: "2024-03-15" },
+export const MONTHLY_REVENUE: MonthlyPoint[] = [
+  { month: "Jul'25", value: 8.5 }, { month: "Aug'25", value: 9.8 }, { month: "Sep'25", value: 11.2 },
+  { month: "Oct'25", value: 13.5 }, { month: "Nov'25", value: 15.1 }, { month: "Dec'25", value: 16.8 },
+  { month: "Jan'26", value: 18.2 }, { month: "Feb'26", value: 21.5 }, { month: "Mar'26", value: 24.8 },
+  { month: "Apr'26", value: 28.1 }, { month: "May'26", value: 31.4 }, { month: "Jun'26", value: 34.8 },
 ];
 
-const INIT_VENDORS: Vendor[] = [
-  { id: "v001", businessName: "WorkHub Spaces", ownerName: "Rahul Mehta", email: "rahul@workhub.in", businessEmail: "info@workhub.in", mobile: "9820123456", businessType: "Coworking Space", city: "Mumbai", state: "Maharashtra", gstin: "27AAPFU0939F1ZV", centerType: "multiple", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-08-15", approvedAt: "2025-08-20", totalRevenue: 485000, totalBookings: 312, totalCenters: 3, commissionRate: 10 },
-  { id: "v002", businessName: "The Desk Factory", ownerName: "Sneha Patel", email: "sneha@deskfactory.in", businessEmail: "hello@deskfactory.in", mobile: "9845678901", businessType: "Coworking Space", city: "Bangalore", state: "Karnataka", gstin: "29BAAFD1234C1Z5", centerType: "multiple", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-07-10", approvedAt: "2025-07-15", totalRevenue: 362000, totalBookings: 241, totalCenters: 2, commissionRate: 10 },
-  { id: "v003", businessName: "IndiCowork Delhi", ownerName: "Amit Sharma", email: "amit@indicowork.in", businessEmail: "delhi@indicowork.in", mobile: "9711234567", businessType: "Coworking Space", city: "New Delhi", state: "Delhi", gstin: "07AAACI0989C1ZQ", centerType: "single", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-09-05", approvedAt: "2025-09-12", totalRevenue: 198000, totalBookings: 143, totalCenters: 1, commissionRate: 10 },
-  { id: "v004", businessName: "StayEasy Business Hotels", ownerName: "Vikram Nair", email: "vikram@stayeasy.in", businessEmail: "ops@stayeasy.in", mobile: "9820987654", businessType: "Hotel", city: "Mumbai", state: "Maharashtra", gstin: "27AAPSE0123B1ZK", centerType: "multiple", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-06-20", approvedAt: "2025-06-28", totalRevenue: 712000, totalBookings: 398, totalCenters: 4, commissionRate: 12 },
-  { id: "v005", businessName: "Nexus Meeting Hub", ownerName: "Kavya Reddy", email: "kavya@nexushub.in", businessEmail: "rooms@nexushub.in", mobile: "9876543210", businessType: "Meeting Room Provider", city: "Pune", state: "Maharashtra", gstin: "27AANNM0567F1ZT", centerType: "multiple", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-10-01", approvedAt: "2025-10-08", totalRevenue: 156000, totalBookings: 187, totalCenters: 2, commissionRate: 10 },
-  { id: "v006", businessName: "SmartStay Hotels Gurgaon", ownerName: "Rajesh Bansal", email: "rajesh@smartstay.in", businessEmail: "info@smartstay.in", mobile: "9810456789", businessType: "Hotel", city: "Gurgaon", state: "Haryana", gstin: "06AAABS0789G1ZM", centerType: "single", status: "approved", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-11-12", approvedAt: "2025-11-19", totalRevenue: 289000, totalBookings: 156, totalCenters: 1, commissionRate: 12 },
-  { id: "v007", businessName: "VirtualDesk India", ownerName: "Ananya Iyer", email: "ananya@virtualdesk.in", businessEmail: "support@virtualdesk.in", mobile: "9845012345", businessType: "Virtual Office Provider", city: "Bangalore", state: "Karnataka", gstin: "29AAANV0234A1ZP", centerType: "single", status: "under_review", kycStatus: "submitted", bankStatus: "submitted", joinedAt: "2026-06-01", totalRevenue: 0, totalBookings: 0, totalCenters: 0, commissionRate: 8 },
-  { id: "v008", businessName: "FlexiWork Hyderabad", ownerName: "Srinivas Rao", email: "srinivas@flexiwork.in", businessEmail: "hyd@flexiwork.in", mobile: "9848567890", businessType: "Coworking Space", city: "Hyderabad", state: "Telangana", gstin: "36AAAFH0456E1ZR", centerType: "multiple", status: "under_review", kycStatus: "submitted", bankStatus: "not_submitted", joinedAt: "2026-06-10", totalRevenue: 0, totalBookings: 0, totalCenters: 0, commissionRate: 10 },
-  { id: "v009", businessName: "Premier Business Suites", ownerName: "Lakshmi Krishnan", email: "lakshmi@premierbiz.in", businessEmail: "info@premierbiz.in", mobile: "9841234567", businessType: "Managed Office", city: "Chennai", state: "Tamil Nadu", gstin: "33AAAPP0678D1ZS", centerType: "single", status: "pending", kycStatus: "not_submitted", bankStatus: "not_submitted", joinedAt: "2026-06-15", totalRevenue: 0, totalBookings: 0, totalCenters: 0, commissionRate: 10 },
-  { id: "v010", businessName: "EventPro Venues Delhi", ownerName: "Karan Malhotra", email: "karan@eventpro.in", businessEmail: "delhi@eventpro.in", mobile: "9810234567", businessType: "Event Space", city: "New Delhi", state: "Delhi", gstin: "07AAAEP0890C1ZU", centerType: "single", status: "under_review", kycStatus: "submitted", bankStatus: "not_submitted", joinedAt: "2026-06-18", totalRevenue: 0, totalBookings: 0, totalCenters: 0, commissionRate: 10 },
-  { id: "v011", businessName: "CoSpace India Mumbai", ownerName: "Nikhil Joshi", email: "nikhil@cospace.in", businessEmail: "mumbai@cospace.in", mobile: "9820789012", businessType: "Coworking Space", city: "Mumbai", state: "Maharashtra", gstin: "27AAACJ0123H1ZA", centerType: "multiple", status: "blocked", kycStatus: "approved", bankStatus: "verified", joinedAt: "2025-05-01", approvedAt: "2025-05-10", totalRevenue: 45000, totalBookings: 28, totalCenters: 2, commissionRate: 10, notes: "Blocked: repeated customer complaints and no-show violations." },
-  { id: "v012", businessName: "HomeAway Hospitality", ownerName: "Divya Nair", email: "divya@homeaway.in", businessEmail: "info@homeaway.in", mobile: "9887654321", businessType: "Hotel", city: "Jaipur", state: "Rajasthan", gstin: "08AAADH0345I1ZB", centerType: "single", status: "rejected", kycStatus: "rejected", bankStatus: "not_submitted", joinedAt: "2026-04-20", totalRevenue: 0, totalBookings: 0, totalCenters: 0, commissionRate: 12, notes: "KYC rejected: GST not active, Aadhaar mismatch." },
+export const MONTHLY_BOOKINGS: MonthlyPoint[] = [
+  { month: "Jul'25", value: 342 }, { month: "Aug'25", value: 421 }, { month: "Sep'25", value: 445 },
+  { month: "Oct'25", value: 532 }, { month: "Nov'25", value: 641 }, { month: "Dec'25", value: 752 },
+  { month: "Jan'26", value: 818 }, { month: "Feb'26", value: 924 }, { month: "Mar'26", value: 1034 },
+  { month: "Apr'26", value: 1182 }, { month: "May'26", value: 1341 }, { month: "Jun'26", value: 1489 },
 ];
 
-const INIT_CENTERS: Center[] = [
-  { id: "c001", vendorId: "v001", vendorName: "WorkHub Spaces", name: "WorkHub Lower Parel", businessType: "Coworking Space", city: "Mumbai", area: "Lower Parel", state: "Maharashtra", address: "Kamala Mills, Lower Parel, Mumbai 400013", status: "live", services: ["Day Pass", "Monthly Pass", "Meeting Room", "Private Cabin"], totalBookings: 145, totalRevenue: 218000, rating: 4.6, addedAt: "2025-08-22" },
-  { id: "c002", vendorId: "v001", vendorName: "WorkHub Spaces", name: "WorkHub BKC", businessType: "Coworking Space", city: "Mumbai", area: "Bandra Kurla Complex", state: "Maharashtra", address: "G-Block, BKC, Mumbai 400051", status: "live", services: ["Day Pass", "Monthly Pass", "Meeting Room", "Managed Office"], totalBookings: 112, totalRevenue: 182000, rating: 4.8, addedAt: "2025-09-05" },
-  { id: "c003", vendorId: "v001", vendorName: "WorkHub Spaces", name: "WorkHub Powai", businessType: "Coworking Space", city: "Mumbai", area: "Powai", state: "Maharashtra", address: "Hiranandani Business Park, Powai, Mumbai 400076", status: "live", services: ["Day Pass", "Monthly Pass", "Meeting Room"], totalBookings: 55, totalRevenue: 85000, rating: 4.4, addedAt: "2026-01-10" },
-  { id: "c004", vendorId: "v002", vendorName: "The Desk Factory", name: "Desk Factory Koramangala", businessType: "Coworking Space", city: "Bangalore", area: "Koramangala", state: "Karnataka", address: "5th Block, Koramangala, Bangalore 560095", status: "live", services: ["Day Pass", "Monthly Pass", "Meeting Room", "Event Space"], totalBookings: 134, totalRevenue: 196000, rating: 4.7, addedAt: "2025-07-18" },
-  { id: "c005", vendorId: "v002", vendorName: "The Desk Factory", name: "Desk Factory Indiranagar", businessType: "Coworking Space", city: "Bangalore", area: "Indiranagar", state: "Karnataka", address: "100 Feet Road, Indiranagar, Bangalore 560038", status: "live", services: ["Day Pass", "Monthly Pass", "Private Cabin"], totalBookings: 107, totalRevenue: 166000, rating: 4.5, addedAt: "2025-09-22" },
-  { id: "c006", vendorId: "v003", vendorName: "IndiCowork Delhi", name: "IndiCowork Connaught Place", businessType: "Coworking Space", city: "New Delhi", area: "Connaught Place", state: "Delhi", address: "Block E, Connaught Place, New Delhi 110001", status: "live", services: ["Day Pass", "Monthly Pass", "Meeting Room", "Virtual Office"], totalBookings: 143, totalRevenue: 198000, rating: 4.3, addedAt: "2025-09-15" },
-  { id: "c007", vendorId: "v004", vendorName: "StayEasy Business Hotels", name: "StayEasy Powai", businessType: "Hotel", city: "Mumbai", area: "Powai", state: "Maharashtra", address: "Hiranandani Gardens, Powai, Mumbai 400076", status: "live", services: ["Hotel Room", "Hourly Stay", "Full Day Stay"], totalBookings: 210, totalRevenue: 385000, rating: 4.2, addedAt: "2025-06-30" },
-  { id: "c008", vendorId: "v005", vendorName: "Nexus Meeting Hub", name: "Nexus Hinjewadi", businessType: "Meeting Room Provider", city: "Pune", area: "Hinjewadi", state: "Maharashtra", address: "Phase 1, Hinjewadi, Pune 411057", status: "live", services: ["Meeting Room", "Day Pass", "Event Space"], totalBookings: 98, totalRevenue: 89000, rating: 4.6, addedAt: "2025-10-12" },
-  { id: "c009", vendorId: "v007", vendorName: "VirtualDesk India", name: "VirtualDesk Whitefield", businessType: "Virtual Office Provider", city: "Bangalore", area: "Whitefield", state: "Karnataka", address: "EPIP Zone, Whitefield, Bangalore 560066", status: "pending_approval", services: ["Virtual Office"], totalBookings: 0, totalRevenue: 0, rating: 0, addedAt: "2026-06-05" },
-  { id: "c010", vendorId: "v011", vendorName: "CoSpace India Mumbai", name: "CoSpace Andheri West", businessType: "Coworking Space", city: "Mumbai", area: "Andheri West", state: "Maharashtra", address: "Veera Desai Road, Andheri West, Mumbai 400053", status: "inactive", services: ["Day Pass", "Monthly Pass"], totalBookings: 28, totalRevenue: 45000, rating: 3.1, addedAt: "2025-05-05" },
+export const CATEGORY_REVENUE = [
+  { label: "Hotels", value: 38, color: "#2563EB" },
+  { label: "Coworking", value: 24, color: "#7C3AED" },
+  { label: "Meeting Rooms", value: 18, color: "#059669" },
+  { label: "Day Pass", value: 12, color: "#D97706" },
+  { label: "Virtual Office", value: 5, color: "#DC2626" },
+  { label: "Monthly Pass", value: 3, color: "#64748B" },
 ];
+
+export const CITY_BOOKINGS = [
+  { city: "Mumbai", pct: 34 },
+  { city: "Bangalore", pct: 28 },
+  { city: "New Delhi", pct: 18 },
+  { city: "Hyderabad", pct: 10 },
+  { city: "Pune", pct: 7 },
+  { city: "Others", pct: 3 },
+];
+
+// ─── Mock data for sections without backend endpoints ─────────────────────────
 
 const INIT_USERS: AppUser[] = [
   { id: "u001", name: "Ravi Khanna", email: "ravi.khanna@gmail.com", mobile: "9876543210", totalBookings: 18, totalSpend: 47500, lastBookingDate: "2026-06-20", signupDate: "2025-08-12", status: "active", city: "Mumbai" },
@@ -163,40 +168,6 @@ const INIT_USERS: AppUser[] = [
   { id: "u010", name: "Anita Desai", email: "anita.desai@yahoo.com", mobile: "9876012345", totalBookings: 11, totalSpend: 28900, lastBookingDate: "2026-06-17", signupDate: "2025-09-14", status: "active", city: "Bangalore" },
   { id: "u011", name: "Rohan Gupta", email: "rohan.gupta@gmail.com", mobile: "9818765432", totalBookings: 19, totalSpend: 52100, lastBookingDate: "2026-06-23", signupDate: "2025-07-01", status: "active", city: "New Delhi" },
   { id: "u012", name: "Kavitha Menon", email: "kavitha.menon@gmail.com", mobile: "9847890123", totalBookings: 8, totalSpend: 21000, lastBookingDate: "2026-06-14", signupDate: "2025-10-07", status: "active", city: "Kochi" },
-];
-
-const INIT_BOOKINGS: Booking[] = [
-  { id: "BK26061001", customerId: "u004", customerName: "Deepika Verma", customerMobile: "9811234567", customerEmail: "deepika.verma@gmail.com", vendorId: "v001", vendorName: "WorkHub Spaces", centerId: "c001", centerName: "WorkHub Lower Parel", city: "Mumbai", product: "Day Pass", date: "2026-06-23", time: "09:00", amount: 799, commission: 80, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "481923", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-23T07:45:00" },
-  { id: "BK26061002", customerId: "u011", customerName: "Rohan Gupta", customerMobile: "9818765432", customerEmail: "rohan.gupta@gmail.com", vendorId: "v004", vendorName: "StayEasy Business Hotels", centerId: "c007", centerName: "StayEasy Powai", city: "Mumbai", product: "Hotel Room", date: "2026-06-23", time: "14:00", amount: 3499, commission: 420, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "932741", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-23T09:12:00" },
-  { id: "BK26061003", customerId: "u001", customerName: "Ravi Khanna", customerMobile: "9876543210", customerEmail: "ravi.khanna@gmail.com", vendorId: "v001", vendorName: "WorkHub Spaces", centerId: "c002", centerName: "WorkHub BKC", city: "Mumbai", product: "Meeting Room", date: "2026-06-23", time: "11:00", amount: 1500, commission: 150, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "762134", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-23T08:30:00" },
-  { id: "BK26061004", customerId: "u007", customerName: "Mohit Sharma", customerMobile: "9813456789", customerEmail: "mohit.sharma@hotmail.com", vendorId: "v006", vendorName: "SmartStay Hotels Gurgaon", centerId: "c005", centerName: "SmartStay Central", city: "Gurgaon", product: "Full Day Stay", date: "2026-06-22", time: "08:00", amount: 2199, commission: 264, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "543219", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-22T06:15:00" },
-  { id: "BK26061005", customerId: "u002", customerName: "Meera Joshi", customerMobile: "9867412345", customerEmail: "meera.joshi@gmail.com", vendorId: "v002", vendorName: "The Desk Factory", centerId: "c004", centerName: "Desk Factory Koramangala", city: "Bangalore", product: "Monthly Pass", date: "2026-06-01", time: "09:00", amount: 8999, commission: 900, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "219843", invoiceGenerated: true, refundStatus: null, createdAt: "2026-05-28T14:00:00" },
-  { id: "BK26061006", customerId: "u009", customerName: "Farhan Sheikh", customerMobile: "9823456789", customerEmail: "farhan.sheikh@gmail.com", vendorId: "v001", vendorName: "WorkHub Spaces", centerId: "c001", centerName: "WorkHub Lower Parel", city: "Mumbai", product: "Day Pass", date: "2026-06-10", time: "09:00", amount: 799, commission: 80, paymentStatus: "refunded", bookingStatus: "cancelled", checkinOtp: "000000", invoiceGenerated: false, refundStatus: "processed", createdAt: "2026-06-09T18:00:00" },
-  { id: "BK26061007", customerId: "u003", customerName: "Suresh Nair", customerMobile: "9845671234", customerEmail: "suresh.nair@outlook.com", vendorId: "v005", vendorName: "Nexus Meeting Hub", centerId: "c008", centerName: "Nexus Hinjewadi", city: "Pune", product: "Meeting Room", date: "2026-06-20", time: "10:00", amount: 2400, commission: 240, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "381029", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-19T20:00:00" },
-  { id: "BK26061008", customerId: "u010", customerName: "Anita Desai", customerMobile: "9876012345", customerEmail: "anita.desai@yahoo.com", vendorId: "v002", vendorName: "The Desk Factory", centerId: "c005", centerName: "Desk Factory Indiranagar", city: "Bangalore", product: "Day Pass", date: "2026-06-17", time: "09:00", amount: 699, commission: 70, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "482910", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-16T22:30:00" },
-  { id: "BK26061009", customerId: "u004", customerName: "Deepika Verma", customerMobile: "9811234567", customerEmail: "deepika.verma@gmail.com", vendorId: "v003", vendorName: "IndiCowork Delhi", centerId: "c006", centerName: "IndiCowork Connaught Place", city: "New Delhi", product: "Virtual Office", date: "2026-06-01", time: "00:00", amount: 1999, commission: 200, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "000000", invoiceGenerated: true, refundStatus: null, createdAt: "2026-05-30T11:00:00" },
-  { id: "BK26061010", customerId: "u005", customerName: "Aakash Patel", customerMobile: "9820345678", customerEmail: "aakash.patel@gmail.com", vendorId: "v004", vendorName: "StayEasy Business Hotels", centerId: "c007", centerName: "StayEasy Powai", city: "Mumbai", product: "Hourly Stay", date: "2026-05-30", time: "13:00", amount: 999, commission: 120, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "671823", invoiceGenerated: true, refundStatus: null, createdAt: "2026-05-30T11:30:00" },
-  { id: "BK26061011", customerId: "u006", customerName: "Preethi Krishnan", customerMobile: "9884123456", customerEmail: "preethi.k@gmail.com", vendorId: "v004", vendorName: "StayEasy Business Hotels", centerId: "c007", centerName: "StayEasy Powai", city: "Mumbai", product: "Hotel Room", date: "2026-06-19", time: "12:00", amount: 3999, commission: 480, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "102938", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-18T16:00:00" },
-  { id: "BK26061012", customerId: "u012", customerName: "Kavitha Menon", customerMobile: "9847890123", customerEmail: "kavitha.menon@gmail.com", vendorId: "v005", vendorName: "Nexus Meeting Hub", centerId: "c008", centerName: "Nexus Hinjewadi", city: "Pune", product: "Meeting Room", date: "2026-06-14", time: "14:00", amount: 1800, commission: 180, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "738291", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-14T12:00:00" },
-  { id: "BK26061013", customerId: "u001", customerName: "Ravi Khanna", customerMobile: "9876543210", customerEmail: "ravi.khanna@gmail.com", vendorId: "v001", vendorName: "WorkHub Spaces", centerId: "c003", centerName: "WorkHub Powai", city: "Mumbai", product: "Day Pass", date: "2026-06-21", time: "09:00", amount: 799, commission: 80, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "291038", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-20T20:00:00" },
-  { id: "BK26061014", customerId: "u008", customerName: "Sunita Yadav", customerMobile: "9849234567", customerEmail: "sunita.yadav@gmail.com", vendorId: "v002", vendorName: "The Desk Factory", centerId: "c004", centerName: "Desk Factory Koramangala", city: "Bangalore", product: "Day Pass", date: "2026-04-12", time: "09:00", amount: 699, commission: 70, paymentStatus: "refunded", bookingStatus: "cancelled", checkinOtp: "000000", invoiceGenerated: false, refundStatus: "requested", createdAt: "2026-04-11T19:00:00" },
-  { id: "BK26061015", customerId: "u007", customerName: "Mohit Sharma", customerMobile: "9813456789", customerEmail: "mohit.sharma@hotmail.com", vendorId: "v003", vendorName: "IndiCowork Delhi", centerId: "c006", centerName: "IndiCowork Connaught Place", city: "New Delhi", product: "Day Pass", date: "2026-06-21", time: "09:00", amount: 899, commission: 90, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "481902", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-20T21:30:00" },
-  { id: "BK26061016", customerId: "u011", customerName: "Rohan Gupta", customerMobile: "9818765432", customerEmail: "rohan.gupta@gmail.com", vendorId: "v006", vendorName: "SmartStay Hotels Gurgaon", centerId: "c005", centerName: "SmartStay Central", city: "Gurgaon", product: "Hotel Room", date: "2026-06-22", time: "15:00", amount: 4299, commission: 516, paymentStatus: "pending", bookingStatus: "pending", checkinOtp: "000000", invoiceGenerated: false, refundStatus: null, createdAt: "2026-06-22T14:00:00" },
-  { id: "BK26061017", customerId: "u002", customerName: "Meera Joshi", customerMobile: "9867412345", customerEmail: "meera.joshi@gmail.com", vendorId: "v002", vendorName: "The Desk Factory", centerId: "c004", centerName: "Desk Factory Koramangala", city: "Bangalore", product: "Meeting Room", date: "2026-06-22", time: "10:00", amount: 2100, commission: 210, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "830192", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-21T22:00:00" },
-  { id: "BK26061018", customerId: "u004", customerName: "Deepika Verma", customerMobile: "9811234567", customerEmail: "deepika.verma@gmail.com", vendorId: "v001", vendorName: "WorkHub Spaces", centerId: "c001", centerName: "WorkHub Lower Parel", city: "Mumbai", product: "Monthly Pass", date: "2026-06-01", time: "09:00", amount: 9999, commission: 1000, paymentStatus: "paid", bookingStatus: "confirmed", checkinOtp: "100293", invoiceGenerated: true, refundStatus: null, createdAt: "2026-05-29T10:00:00" },
-  { id: "BK26061019", customerId: "u003", customerName: "Suresh Nair", customerMobile: "9845671234", customerEmail: "suresh.nair@outlook.com", vendorId: "v005", vendorName: "Nexus Meeting Hub", centerId: "c008", centerName: "Nexus Hinjewadi", city: "Pune", product: "Day Pass", date: "2026-06-15", time: "09:00", amount: 599, commission: 60, paymentStatus: "paid", bookingStatus: "completed", checkinOtp: "910284", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-14T18:00:00" },
-  { id: "BK26061020", customerId: "u010", customerName: "Anita Desai", customerMobile: "9876012345", customerEmail: "anita.desai@yahoo.com", vendorId: "v004", vendorName: "StayEasy Business Hotels", centerId: "c007", centerName: "StayEasy Powai", city: "Mumbai", product: "Hourly Stay", date: "2026-06-17", time: "11:00", amount: 1199, commission: 144, paymentStatus: "paid", bookingStatus: "no_show", checkinOtp: "839201", invoiceGenerated: true, refundStatus: null, createdAt: "2026-06-17T09:00:00" },
-];
-
-const INIT_SETTLEMENTS: Settlement[] = [
-  { id: "S001", vendorId: "v001", vendorName: "WorkHub Spaces", period: "May 2026", grossAmount: 218000, commission: 21800, gst: 3924, tds: 4360, netPayable: 187916, status: "paid", bankAccount: "XXXX9456", ifsc: "HDFC0001234", generatedAt: "2026-06-07", paidAt: "2026-06-08", bookingsCount: 145 },
-  { id: "S002", vendorId: "v002", vendorName: "The Desk Factory", period: "May 2026", grossAmount: 196000, commission: 19600, gst: 3528, tds: 3920, netPayable: 168952, status: "paid", bankAccount: "XXXX7823", ifsc: "ICIC0002345", generatedAt: "2026-06-07", paidAt: "2026-06-09", bookingsCount: 134 },
-  { id: "S003", vendorId: "v003", vendorName: "IndiCowork Delhi", period: "May 2026", grossAmount: 198000, commission: 19800, gst: 3564, tds: 3960, netPayable: 170676, status: "processing", bankAccount: "XXXX3312", ifsc: "AXIS0003456", generatedAt: "2026-06-07", bookingsCount: 143 },
-  { id: "S004", vendorId: "v004", vendorName: "StayEasy Business Hotels", period: "May 2026", grossAmount: 385000, commission: 46200, gst: 8316, tds: 7700, netPayable: 322784, status: "paid", bankAccount: "XXXX6671", ifsc: "KOTAK0004567", generatedAt: "2026-06-07", paidAt: "2026-06-10", bookingsCount: 210 },
-  { id: "S005", vendorId: "v005", vendorName: "Nexus Meeting Hub", period: "May 2026", grossAmount: 89000, commission: 8900, gst: 1602, tds: 1780, netPayable: 76718, status: "pending", bankAccount: "XXXX4490", ifsc: "SBI0005678", generatedAt: "2026-06-07", bookingsCount: 98 },
-  { id: "S006", vendorId: "v006", vendorName: "SmartStay Hotels Gurgaon", period: "May 2026", grossAmount: 156000, commission: 18720, gst: 3370, tds: 3120, netPayable: 130790, status: "pending", bankAccount: "XXXX8821", ifsc: "PNB0006789", generatedAt: "2026-06-07", bookingsCount: 84 },
-  { id: "S007", vendorId: "v001", vendorName: "WorkHub Spaces", period: "Apr 2026", grossAmount: 185000, commission: 18500, gst: 3330, tds: 3700, netPayable: 159470, status: "paid", bankAccount: "XXXX9456", ifsc: "HDFC0001234", generatedAt: "2026-05-07", paidAt: "2026-05-08", bookingsCount: 128 },
-  { id: "S008", vendorId: "v004", vendorName: "StayEasy Business Hotels", period: "Apr 2026", grossAmount: 342000, commission: 41040, gst: 7387, tds: 6840, netPayable: 286733, status: "paid", bankAccount: "XXXX6671", ifsc: "KOTAK0004567", generatedAt: "2026-05-07", paidAt: "2026-05-09", bookingsCount: 189 },
 ];
 
 const INIT_COUPONS: Coupon[] = [
@@ -232,42 +203,129 @@ const INIT_ACTIVITY: ActivityLog[] = [
   { id: "act010", type: "booking", description: "Monthly Pass purchased", meta: "BK26061018 · WorkHub Lower Parel · ₹9,999", timestamp: "2026-05-29T10:00:00" },
 ];
 
-export const MONTHLY_REVENUE: MonthlyPoint[] = [
-  { month: "Jul'25", value: 8.5 }, { month: "Aug'25", value: 9.8 }, { month: "Sep'25", value: 11.2 },
-  { month: "Oct'25", value: 13.5 }, { month: "Nov'25", value: 15.1 }, { month: "Dec'25", value: 16.8 },
-  { month: "Jan'26", value: 18.2 }, { month: "Feb'26", value: 21.5 }, { month: "Mar'26", value: 24.8 },
-  { month: "Apr'26", value: 28.1 }, { month: "May'26", value: 31.4 }, { month: "Jun'26", value: 34.8 },
-];
+// ─── Data normalization ───────────────────────────────────────────────────────
 
-export const MONTHLY_BOOKINGS: MonthlyPoint[] = [
-  { month: "Jul'25", value: 342 }, { month: "Aug'25", value: 421 }, { month: "Sep'25", value: 445 },
-  { month: "Oct'25", value: 532 }, { month: "Nov'25", value: 641 }, { month: "Dec'25", value: 752 },
-  { month: "Jan'26", value: 818 }, { month: "Feb'26", value: 924 }, { month: "Mar'26", value: 1034 },
-  { month: "Apr'26", value: 1182 }, { month: "May'26", value: 1341 }, { month: "Jun'26", value: 1489 },
-];
+function normalizeVendorStatus(s: string): VendorStatus {
+  if (s === "suspended") return "blocked";
+  if (s === "kyc_submitted") return "under_review";
+  const valid: VendorStatus[] = ["approved", "pending", "under_review", "rejected", "blocked", "draft"];
+  return valid.includes(s as VendorStatus) ? (s as VendorStatus) : "pending";
+}
 
-export const CATEGORY_REVENUE = [
-  { label: "Hotels", value: 38, color: "#2563EB" },
-  { label: "Coworking", value: 24, color: "#7C3AED" },
-  { label: "Meeting Rooms", value: 18, color: "#059669" },
-  { label: "Day Pass", value: 12, color: "#D97706" },
-  { label: "Virtual Office", value: 5, color: "#DC2626" },
-  { label: "Monthly Pass", value: 3, color: "#64748B" },
-];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeVendor(raw: any): Vendor {
+  return {
+    id: raw.id,
+    businessName: raw.business_name ?? "",
+    ownerName: raw.owner_name ?? "",
+    email: raw.email ?? "",
+    businessEmail: raw.email ?? "",
+    mobile: raw.phone ?? "",
+    businessType: raw.business_type ?? "",
+    city: raw.city ?? "",
+    state: raw.state ?? "",
+    gstin: raw.gstin ?? "",
+    centerType: "single",
+    status: normalizeVendorStatus(raw.status ?? "pending"),
+    kycStatus: (raw.kyc_status ?? "not_submitted") as KycStatus,
+    bankStatus: "not_submitted",
+    joinedAt: raw.created_at?.slice(0, 10) ?? "",
+    approvedAt: raw.approved_at?.slice(0, 10),
+    totalRevenue: 0,
+    totalBookings: 0,
+    totalCenters: 0,
+    commissionRate: 10,
+    notes: raw.rejection_reason ?? undefined,
+  };
+}
 
-export const CITY_BOOKINGS = [
-  { city: "Mumbai", pct: 34 },
-  { city: "Bangalore", pct: 28 },
-  { city: "New Delhi", pct: 18 },
-  { city: "Hyderabad", pct: 10 },
-  { city: "Pune", pct: 7 },
-  { city: "Others", pct: 3 },
-];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeBooking(raw: any): Booking {
+  const paise = typeof raw.total_paise === "string" ? parseInt(raw.total_paise, 10) : (raw.total_paise ?? 0);
+  const commPaise = typeof raw.commission_amount === "string" ? parseInt(raw.commission_amount, 10) : (raw.commission_amount ?? 0);
+  return {
+    id: raw.id,
+    customerId: raw.user_id ?? "",
+    customerName: raw.users?.full_name ?? "",
+    customerMobile: raw.users?.phone ?? "",
+    customerEmail: "",
+    vendorId: "",
+    vendorName: raw.centers?.vendors?.business_name ?? "",
+    centerId: raw.center_id ?? "",
+    centerName: raw.centers?.center_name ?? "",
+    city: "",
+    product: (raw.product_type ?? "Day Pass") as ProductType,
+    date: raw.created_at?.slice(0, 10) ?? "",
+    time: raw.created_at?.slice(11, 16) ?? "",
+    amount: paise ? Math.round(paise / 100) : 0,
+    commission: commPaise ? Math.round(commPaise / 100) : 0,
+    paymentStatus: (raw.payment_status ?? "pending") as PaymentStatus,
+    bookingStatus: (raw.status ?? "pending") as BookingStatus,
+    checkinOtp: raw.otp ?? "",
+    invoiceGenerated: false,
+    refundStatus: null,
+    createdAt: raw.created_at ?? "",
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeSettlement(raw: any): Settlement {
+  const toRupees = (v: unknown) => {
+    if (typeof v === "string") return Math.round(parseInt(v, 10) / 100);
+    if (typeof v === "number") return Math.round(v / 100);
+    return 0;
+  };
+  const period = raw.period ?? (raw.period_start ? String(raw.period_start).slice(0, 7) : "");
+  return {
+    id: raw.id,
+    vendorId: raw.vendor_id ?? "",
+    vendorName: raw.vendors?.business_name ?? "",
+    period,
+    grossAmount: toRupees(raw.gross_amount_paise),
+    commission: toRupees(raw.commission_paise),
+    gst: 0,
+    tds: 0,
+    netPayable: toRupees(raw.net_amount_paise),
+    status: (raw.status ?? "pending") as SettlementStatus,
+    bankAccount: "",
+    ifsc: "",
+    generatedAt: raw.created_at?.slice(0, 10) ?? "",
+    paidAt: raw.paid_at?.slice(0, 10),
+    bookingsCount: 0,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeCenter(raw: any): Center {
+  const approvalStatus = raw.approval_status ?? "";
+  const status: CenterStatus =
+    approvalStatus === "approved" ? "live" :
+    approvalStatus === "rejected" ? "rejected" :
+    approvalStatus === "pending" ? "pending_approval" : "inactive";
+  return {
+    id: raw.id,
+    vendorId: raw.vendor_id ?? "",
+    vendorName: raw.vendors?.business_name ?? "",
+    name: raw.center_name ?? "",
+    businessType: raw.categories?.name ?? "",
+    city: raw.city ?? "",
+    area: raw.area ?? "",
+    state: raw.state ?? "",
+    address: raw.address ?? "",
+    status,
+    services: [],
+    totalBookings: 0,
+    totalRevenue: 0,
+    rating: 0,
+    addedAt: raw.created_at?.slice(0, 10) ?? "",
+  };
+}
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface AdminContextType {
   admin: AdminUser | null;
+  dashboardStats: DashboardStats | null;
   vendors: Vendor[];
   centers: Center[];
   bookings: Booking[];
@@ -276,7 +334,7 @@ interface AdminContextType {
   coupons: Coupon[];
   tickets: SupportTicket[];
   activity: ActivityLog[];
-  login: (email: string, password: string, otp?: string) => { success: boolean; error?: string };
+  login: (email: string, password: string, otp?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   hasPermission: (section: string) => boolean;
   approveVendor: (id: string) => void;
@@ -303,28 +361,90 @@ const AdminContext = createContext<AdminContextType | null>(null);
 export function AdminProvider({ children }: { children: ReactNode }) {
   const stored = sessionStorage.getItem("bokko_admin");
   const [admin, setAdmin] = useState<AdminUser | null>(stored ? JSON.parse(stored) : null);
-  const [vendors, setVendors] = useState<Vendor[]>(INIT_VENDORS);
-  const [centers, setCenters] = useState<Center[]>(INIT_CENTERS);
-  const [bookings, setBookings] = useState<Booking[]>(INIT_BOOKINGS);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<AppUser[]>(INIT_USERS);
-  const [settlements, setSettlements] = useState<Settlement[]>(INIT_SETTLEMENTS);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>(INIT_COUPONS);
   const [tickets, setTickets] = useState<SupportTicket[]>(INIT_TICKETS);
   const [activity] = useState<ActivityLog[]>(INIT_ACTIVITY);
 
-  function login(email: string, password: string, otp?: string) {
-    const found = MOCK_ADMINS.find((a) => a.email === email && a.password === password);
-    if (!found) return { success: false, error: "Invalid email or password" };
-    if (otp && otp !== found.otp) return { success: false, error: "Invalid OTP code" };
-    const { password: _, otp: __, ...adminUser } = found;
-    setAdmin(adminUser);
-    sessionStorage.setItem("bokko_admin", JSON.stringify(adminUser));
-    return { success: true };
+  const ROLE_MAP: Record<string, AdminRole> = {
+    SUPER_ADMIN: "super_admin",
+    VENDOR_APPROVAL_TEAM: "operations_admin",
+    FINANCE_TEAM: "finance_admin",
+    SUPPORT_TEAM: "support_admin",
+    OPERATIONS_TEAM: "operations_admin",
+    CONTENT_MANAGER: "content_admin",
+    CITY_MANAGER: "content_admin",
+  };
+
+  // Fetch all admin data after login
+  useEffect(() => {
+    if (!admin) return;
+    const token = getAdminToken();
+    if (!token) return;
+
+    apiGet<DashboardStats>("/admin/dashboard", token)
+      .then(setDashboardStats)
+      .catch(console.error);
+
+    apiGet<{ vendors: unknown[] }>("/admin/vendors?limit=100", token)
+      .then(r => setVendors((r.vendors ?? []).map(normalizeVendor)))
+      .catch(console.error);
+
+    apiGet<unknown[]>("/admin/centers/pending", token)
+      .then(r => setCenters(Array.isArray(r) ? r.map(normalizeCenter) : []))
+      .catch(console.error);
+
+    apiGet<{ bookings: unknown[] }>("/admin/bookings?limit=50", token)
+      .then(r => setBookings((r.bookings ?? []).map(normalizeBooking)))
+      .catch(console.error);
+
+    apiGet<unknown[]>("/admin/settlements", token)
+      .then(r => setSettlements(Array.isArray(r) ? r.map(normalizeSettlement) : []))
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin?.id]);
+
+  async function login(email: string, password: string, _otp?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const data = await apiPost<{
+        admin: { id: string; name: string; email: string; role: string };
+        accessToken: string;
+        refreshToken: string;
+      }>("/auth/admin/login", { email, password });
+
+      const adminUser: AdminUser = {
+        id: data.admin.id,
+        name: data.admin.name,
+        email: data.admin.email,
+        role: ROLE_MAP[data.admin.role] ?? "support_admin",
+        joinedAt: new Date().toISOString().slice(0, 10),
+      };
+
+      setAdmin(adminUser);
+      sessionStorage.setItem("bokko_admin", JSON.stringify(adminUser));
+      sessionStorage.setItem("bokko_admin_token", data.accessToken);
+      sessionStorage.setItem("bokko_admin_refresh", data.refreshToken);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message ?? "Login failed" };
+    }
   }
 
   function logout() {
     setAdmin(null);
+    setDashboardStats(null);
+    setVendors([]);
+    setCenters([]);
+    setBookings([]);
+    setSettlements([]);
     sessionStorage.removeItem("bokko_admin");
+    sessionStorage.removeItem("bokko_admin_token");
+    sessionStorage.removeItem("bokko_admin_refresh");
   }
 
   function hasPermission(section: string) {
@@ -333,20 +453,28 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return perms.includes("*") || perms.includes(section);
   }
 
-  function approveVendor(id: string) {
-    setVendors((vs) => vs.map((v) => v.id === id ? { ...v, status: "approved", approvedAt: new Date().toISOString().slice(0, 10) } : v));
+  async function approveVendor(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/vendors/${id}/approve`, {}, token).catch(console.error);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "approved" as VendorStatus, approvedAt: new Date().toISOString().slice(0, 10) } : v));
   }
 
-  function rejectVendor(id: string, reason?: string) {
-    setVendors((vs) => vs.map((v) => v.id === id ? { ...v, status: "rejected", notes: reason ?? v.notes } : v));
+  async function rejectVendor(id: string, reason?: string) {
+    const token = getAdminToken();
+    if (token && reason) await apiPost(`/admin/vendors/${id}/reject`, { reason }, token).catch(console.error);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "rejected" as VendorStatus, notes: reason ?? v.notes } : v));
   }
 
-  function blockVendor(id: string) {
-    setVendors((vs) => vs.map((v) => v.id === id ? { ...v, status: "blocked" } : v));
+  async function blockVendor(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/vendors/${id}/block`, {}, token).catch(console.error);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "blocked" as VendorStatus } : v));
   }
 
-  function unblockVendor(id: string) {
-    setVendors((vs) => vs.map((v) => v.id === id ? { ...v, status: "approved" } : v));
+  async function unblockVendor(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/vendors/${id}/unblock`, {}, token).catch(console.error);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "approved" as VendorStatus } : v));
   }
 
   function addVendor(data: Partial<Vendor>): Vendor {
@@ -357,41 +485,47 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       joinedAt: new Date().toISOString().slice(0, 10), totalRevenue: 0, totalBookings: 0,
       totalCenters: 0, commissionRate: 10, ...data,
     };
-    setVendors((vs) => [v, ...vs]);
+    setVendors(vs => [v, ...vs]);
     return v;
   }
 
   function updateVendor(id: string, data: Partial<Vendor>) {
-    setVendors((vs) => vs.map((v) => v.id === id ? { ...v, ...data } : v));
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, ...data } : v));
   }
 
   function cancelBooking(id: string) {
-    setBookings((bs) => bs.map((b) => b.id === id ? { ...b, bookingStatus: "cancelled" } : b));
+    setBookings(bs => bs.map(b => b.id === id ? { ...b, bookingStatus: "cancelled" as BookingStatus } : b));
   }
 
   function refundBooking(id: string) {
-    setBookings((bs) => bs.map((b) => b.id === id ? { ...b, paymentStatus: "refunded", refundStatus: "processed" } : b));
+    setBookings(bs => bs.map(b => b.id === id ? { ...b, paymentStatus: "refunded" as PaymentStatus, refundStatus: "processed" } : b));
   }
 
-  function blockUser(id: string) { setUsers((us) => us.map((u) => u.id === id ? { ...u, status: "blocked" } : u)); }
-  function unblockUser(id: string) { setUsers((us) => us.map((u) => u.id === id ? { ...u, status: "active" } : u)); }
+  function blockUser(id: string) { setUsers(us => us.map(u => u.id === id ? { ...u, status: "blocked" as UserStatus } : u)); }
+  function unblockUser(id: string) { setUsers(us => us.map(u => u.id === id ? { ...u, status: "active" as UserStatus } : u)); }
 
-  function markSettlementPaid(id: string) {
-    setSettlements((ss) => ss.map((s) => s.id === id ? { ...s, status: "paid", paidAt: new Date().toISOString().slice(0, 10) } : s));
+  async function markSettlementPaid(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/settlements/${id}/approve`, {}, token).catch(console.error);
+    setSettlements(ss => ss.map(s => s.id === id ? { ...s, status: "paid" as SettlementStatus, paidAt: new Date().toISOString().slice(0, 10) } : s));
   }
 
   function createCoupon(data: Omit<Coupon, "id" | "usageCount" | "createdAt">) {
     const c: Coupon = { ...data, id: `cp${Date.now()}`, usageCount: 0, createdAt: new Date().toISOString().slice(0, 10) };
-    setCoupons((cs) => [c, ...cs]);
+    setCoupons(cs => [c, ...cs]);
   }
 
-  function disableCoupon(id: string) { setCoupons((cs) => cs.map((c) => c.id === id ? { ...c, active: false } : c)); }
+  function disableCoupon(id: string) { setCoupons(cs => cs.map(c => c.id === id ? { ...c, active: false } : c)); }
 
-  function closeTicket(id: string) { setTickets((ts) => ts.map((t) => t.id === id ? { ...t, status: "closed" } : t)); }
+  function closeTicket(id: string) { setTickets(ts => ts.map(t => t.id === id ? { ...t, status: "closed" as TicketStatus } : t)); }
 
-  function assignTicket(id: string, name: string) { setTickets((ts) => ts.map((t) => t.id === id ? { ...t, status: "in_progress", assignedTo: name } : t)); }
+  function assignTicket(id: string, name: string) { setTickets(ts => ts.map(t => t.id === id ? { ...t, status: "in_progress" as TicketStatus, assignedTo: name } : t)); }
 
-  function approveCenterLive(id: string) { setCenters((cs) => cs.map((c) => c.id === id ? { ...c, status: "live" } : c)); }
+  async function approveCenterLive(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/centers/${id}/approve`, {}, token).catch(console.error);
+    setCenters(cs => cs.map(c => c.id === id ? { ...c, status: "live" as CenterStatus } : c));
+  }
 
   function addCenter(data: Partial<Center>) {
     const c: Center = {
@@ -399,12 +533,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       city: "", area: "", state: "", address: "", status: "pending_approval", services: [],
       totalBookings: 0, totalRevenue: 0, rating: 0, addedAt: new Date().toISOString().slice(0, 10), ...data,
     };
-    setCenters((cs) => [c, ...cs]);
+    setCenters(cs => [c, ...cs]);
   }
 
   return (
     <AdminContext.Provider value={{
-      admin, vendors, centers, bookings, users, settlements, coupons, tickets, activity,
+      admin, dashboardStats, vendors, centers, bookings, users, settlements, coupons, tickets, activity,
       login, logout, hasPermission, approveVendor, rejectVendor, blockVendor, unblockVendor,
       addVendor, updateVendor, cancelBooking, refundBooking, blockUser, unblockUser,
       markSettlementPaid, createCoupon, disableCoupon, closeTicket, assignTicket,

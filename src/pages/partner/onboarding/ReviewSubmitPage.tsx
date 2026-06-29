@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Building2, FileText, Landmark, User } from "lucide-react";
 import { usePartner } from "../../../context/PartnerContext";
+import { apiPost, ApiError, getVendorToken } from "../../../lib/api";
 
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -45,16 +46,24 @@ export default function ReviewSubmitPage() {
   const uploadedDocs = kyc.filter((d) => d.status !== "pending");
   const requiredMissing = kyc.filter((d) => d.required && d.status === "pending");
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (!confirmed) { setError("Please confirm that all information is correct before submitting."); return; }
     if (requiredMissing.length > 0) { setError(`Missing required documents: ${requiredMissing.map((d) => d.label).join(", ")}`); return; }
+    const token = getVendorToken();
+    if (!token) { setError("Not authenticated — please sign in again"); return; }
     setSubmitting(true);
-    setTimeout(() => {
+    setError("");
+    try {
+      await apiPost("/vendor/submit-review", {}, token);
       submitForReview();
       markStepComplete(5);
       navigate("/partner/pending-review");
-    }, 1200);
+    } catch (err) {
+      setError((err as ApiError).message ?? "Submission failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const incompleteSteps = [];

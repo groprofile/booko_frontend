@@ -1,73 +1,73 @@
-import { useState } from "react";
-import { Plus, Eye, EyeOff, RefreshCw, ToggleLeft, ToggleRight, X, Check, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, X, Check, ChevronDown } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
+import { apiGet, apiPost, getVendorToken } from "../../../lib/api";
 
-type LoginStatus = "active" | "inactive" | "pending";
-
-interface CenterLogin {
+interface ApiStaff {
   id: string;
-  center: string;
-  city: string;
-  email: string | null;
-  lastLogin: string | null;
-  status: LoginStatus;
-  centerId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  status: string;
+  center_id: string;
+  created_at?: string;
+  centers?: { center_name?: string };
 }
 
-const LOGINS: CenterLogin[] = [
-  { id: "l1", center: "WeWork BKC", city: "Mumbai", email: "bkc@bokkopartner.com", lastLogin: "25 Jun 2024, 09:14 AM", status: "active", centerId: "c1" },
-  { id: "l2", center: "91Springboard HSR", city: "Bangalore", email: "hsr@bokkopartner.com", lastLogin: "24 Jun 2024, 02:30 PM", status: "active", centerId: "c2" },
-  { id: "l3", center: "Smartworks Cyber City", city: "Gurgaon", email: "cyber@bokkopartner.com", lastLogin: "23 Jun 2024, 11:05 AM", status: "inactive", centerId: "c3" },
-  { id: "l4", center: "The Hive Powai", city: "Mumbai", email: null, lastLogin: null, status: "pending", centerId: "c4" },
-];
+interface ApiCenter {
+  id: string;
+  center_name: string;
+  city?: string;
+}
 
-const STATUS_STYLES: Record<LoginStatus, string> = {
+const STATUS_STYLES: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   inactive: "bg-slate-100 text-slate-500",
   pending: "bg-amber-100 text-amber-700",
 };
 
-const STATUS_LABELS: Record<LoginStatus, string> = {
-  active: "Active",
-  inactive: "Inactive",
-  pending: "Pending Setup",
-};
-
-const FAKE_PASSWORD = "Center@2024";
-
-interface RowState {
-  passwordVisible: boolean;
-  resetSuccess: boolean;
-  enabled: boolean;
-}
-
 interface AddLoginModalProps {
+  centers: ApiCenter[];
   onClose: () => void;
+  onCreated: () => void;
 }
 
-function AddLoginModal({ onClose }: AddLoginModalProps) {
+function AddLoginModal({ centers, onClose, onCreated }: AddLoginModalProps) {
   const [selectedCenter, setSelectedCenter] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [autoGenerate, setAutoGenerate] = useState(true);
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  const CENTERS = [
-    { id: "c1", name: "WeWork BKC" },
-    { id: "c2", name: "91Springboard HSR" },
-    { id: "c3", name: "Smartworks Cyber City" },
-    { id: "c4", name: "The Hive Powai" },
-  ];
-
-  function handleCreate() {
-    if (!selectedCenter || !email.trim()) return;
-    setSuccess(true);
+  async function handleCreate() {
+    if (!selectedCenter || !name.trim() || !email.trim() || !password.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const token = getVendorToken() ?? undefined;
+      await apiPost(
+        "/vendor/staff",
+        { centreId: selectedCenter, name, email, phone: phone || undefined, password },
+        token,
+      );
+      setSuccess(true);
+      onCreated();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to create login");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-[#E2E8F0] px-6 py-4">
-          <h3 className="text-sm font-bold text-[#0F172A]">Add Center Login</h3>
+          <h3 className="text-sm font-bold text-[#0F172A]">Add Center Manager</h3>
           <button onClick={onClose} className="text-[#94A3B8] hover:text-[#0F172A] transition-colors">
             <X size={16} />
           </button>
@@ -78,16 +78,10 @@ function AddLoginModal({ onClose }: AddLoginModalProps) {
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
               <Check size={24} className="text-emerald-600" />
             </div>
-            <p className="text-sm font-bold text-[#0F172A]">Login Created!</p>
+            <p className="text-sm font-bold text-[#0F172A]">Manager Created!</p>
             <p className="text-xs text-[#64748B]">
-              Credentials have been sent to <span className="font-semibold text-[#0F172A]">{email}</span>
+              Login credentials set for <span className="font-semibold text-[#0F172A]">{email}</span>
             </p>
-            {autoGenerate && (
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3">
-                <p className="text-[10px] text-[#94A3B8]">Generated password</p>
-                <code className="font-mono text-sm font-bold text-[#0F172A]">{FAKE_PASSWORD}</code>
-              </div>
-            )}
             <button
               onClick={onClose}
               className="mt-2 rounded-xl bg-[#2563EB] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1D4ED8] transition-colors"
@@ -97,6 +91,10 @@ function AddLoginModal({ onClose }: AddLoginModalProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-4 p-6">
+            {error && (
+              <p className="rounded-xl bg-red-50 px-4 py-2.5 text-xs text-red-600">{error}</p>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-[#0F172A]">Select Center</label>
               <div className="relative">
@@ -105,13 +103,23 @@ function AddLoginModal({ onClose }: AddLoginModalProps) {
                   onChange={(e) => setSelectedCenter(e.target.value)}
                   className="w-full appearance-none bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl pl-4 pr-8 py-2.5 text-sm outline-none text-[#0F172A] cursor-pointer"
                 >
-                  <option value="">Choose a center...</option>
-                  {CENTERS.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                  <option value="">Choose a center…</option>
+                  {centers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.center_name}</option>
                   ))}
                 </select>
                 <ChevronDown size={12} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[#0F172A]">Manager Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full name"
+                className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -125,37 +133,34 @@ function AddLoginModal({ onClose }: AddLoginModalProps) {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={() => setAutoGenerate((v) => !v)}
-              className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-left transition-colors hover:border-[#2563EB]/30"
-            >
-              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${autoGenerate ? "border-[#2563EB] bg-[#2563EB]" : "border-[#E2E8F0] bg-white"}`}>
-                {autoGenerate && <Check size={10} className="text-white" />}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-[#0F172A]">Auto-generate password</p>
-                <p className="text-[10px] text-[#94A3B8]">A secure password will be generated and emailed</p>
-              </div>
-            </button>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[#0F172A]">Phone (optional)</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 XXXXX XXXXX"
+                type="tel"
+                className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+              />
+            </div>
 
-            {!autoGenerate && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-[#0F172A]">Set Password</label>
-                <input
-                  type="password"
-                  placeholder="Minimum 8 characters"
-                  className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[#0F172A]">Password</label>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimum 8 characters"
+                type="password"
+                className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+              />
+            </div>
 
             <button
               onClick={handleCreate}
-              disabled={!selectedCenter || !email.trim()}
+              disabled={!selectedCenter || !name.trim() || !email.trim() || !password.trim() || saving}
               className="w-full rounded-xl bg-[#2563EB] py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Login
+              {saving ? "Creating…" : "Create Login"}
             </button>
           </div>
         )}
@@ -165,215 +170,119 @@ function AddLoginModal({ onClose }: AddLoginModalProps) {
 }
 
 export default function SuperPartnerTeamPage() {
+  const [staff, setStaff] = useState<ApiStaff[]>([]);
+  const [centers, setCenters] = useState<ApiCenter[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [rowStates, setRowStates] = useState<Record<string, RowState>>(() =>
-    Object.fromEntries(
-      LOGINS.map((l) => [
-        l.id,
-        { passwordVisible: false, resetSuccess: false, enabled: l.status === "active" },
-      ])
-    )
-  );
 
-  function togglePassword(id: string) {
-    setRowStates((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], passwordVisible: !prev[id].passwordVisible },
-    }));
+  function load() {
+    const token = getVendorToken() ?? undefined;
+    setLoading(true);
+    Promise.all([
+      apiGet<ApiStaff[]>("/vendor/staff", token),
+      apiGet<ApiCenter[]>("/vendor/centers", token),
+    ])
+      .then(([s, c]) => {
+        setStaff(s ?? []);
+        setCenters(c ?? []);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }
 
-  function resetPassword(id: string) {
-    setRowStates((prev) => ({ ...prev, [id]: { ...prev[id], resetSuccess: true } }));
-    setTimeout(() => {
-      setRowStates((prev) => ({ ...prev, [id]: { ...prev[id], resetSuccess: false } }));
-    }, 3000);
-  }
-
-  function toggleEnabled(id: string) {
-    setRowStates((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], enabled: !prev[id].enabled },
-    }));
-  }
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <SuperPartnerLayout title="Team &amp; Center Access" subtitle="Manage login credentials for each center">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-[#0F172A]">Center Logins</h2>
+        <h2 className="text-sm font-semibold text-[#0F172A]">Center Managers</h2>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1D4ED8] transition-colors"
         >
           <Plus size={14} />
-          Add Center Login
+          Add Manager
         </button>
       </div>
 
-      {/* Info card */}
       <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
         <p className="text-xs font-semibold text-blue-800">Access Control</p>
         <p className="mt-0.5 text-xs text-blue-600">
-          Each center has its own login. Center managers can only see their own center's bookings, revenue, and data — they cannot access other centers or super-partner settings.
+          Each center has its own manager login. Managers can only see their assigned center's bookings and check-in data.
         </p>
       </div>
 
-      {/* Table */}
       <div className="mt-4 rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
-                <th className="px-5 py-3.5 text-left font-semibold text-[#64748B]">Center</th>
+                <th className="px-5 py-3.5 text-left font-semibold text-[#64748B]">Manager</th>
+                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Center</th>
                 <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Login Email</th>
-                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Password</th>
-                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Last Login</th>
+                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Phone</th>
+                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Created</th>
                 <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Status</th>
-                <th className="px-4 py-3.5 text-center font-semibold text-[#64748B]">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {LOGINS.map((login) => {
-                const state = rowStates[login.id];
-                const isPending = login.status === "pending";
-                const isDisabled = !state.enabled;
-
-                return (
-                  <tr
-                    key={login.id}
-                    className={`border-b border-[#F1F5F9] last:border-0 transition-colors ${isPending || isDisabled ? "opacity-60" : "hover:bg-[#F8FAFC]"}`}
-                  >
-                    {/* Center */}
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-sm text-[#94A3B8]">Loading…</td>
+                </tr>
+              ) : staff.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-sm text-[#94A3B8]">
+                    No managers yet. Add one to give center-level access.
+                  </td>
+                </tr>
+              ) : (
+                staff.map((s) => (
+                  <tr key={s.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC] transition-colors">
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-[#0F172A]">{login.center}</p>
-                      <p className="text-[10px] text-[#94A3B8]">{login.city}</p>
+                      <p className="font-semibold text-[#0F172A]">{s.name}</p>
+                      <p className="text-[10px] text-[#94A3B8] capitalize">{s.role.replace("_", " ")}</p>
                     </td>
-
-                    {/* Email */}
-                    <td className="px-4 py-4">
-                      {login.email ? (
-                        <code className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 font-mono text-[11px] text-[#0F172A]">
-                          {login.email}
-                        </code>
-                      ) : (
-                        <span className="text-[#94A3B8]">Not assigned</span>
-                      )}
+                    <td className="px-4 py-4 text-[#64748B]">
+                      {s.centers?.center_name ?? "—"}
                     </td>
-
-                    {/* Password */}
                     <td className="px-4 py-4">
-                      {login.email ? (
-                        <div className="flex items-center gap-2">
-                          <code className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 font-mono text-[11px] text-[#0F172A]">
-                            {state.passwordVisible ? FAKE_PASSWORD : "••••••••••"}
-                          </code>
-                          <button
-                            onClick={() => togglePassword(login.id)}
-                            className="text-[#94A3B8] hover:text-[#64748B] transition-colors"
-                            title={state.passwordVisible ? "Hide password" : "Show password"}
-                          >
-                            {state.passwordVisible ? <EyeOff size={13} /> : <Eye size={13} />}
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[#94A3B8]">—</span>
-                      )}
+                      <code className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 font-mono text-[11px] text-[#0F172A]">
+                        {s.email}
+                      </code>
                     </td>
-
-                    {/* Last Login */}
-                    <td className="px-4 py-4">
-                      {login.lastLogin ? (
-                        <span className="text-[#64748B]">{login.lastLogin}</span>
-                      ) : (
-                        <span className="text-[#94A3B8]">Never</span>
-                      )}
+                    <td className="px-4 py-4 text-[#64748B]">{s.phone ?? "—"}</td>
+                    <td className="px-4 py-4 text-[#64748B]">
+                      {s.created_at
+                        ? new Date(s.created_at).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
                     </td>
-
-                    {/* Status */}
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        isDisabled && !isPending
-                          ? "bg-slate-100 text-slate-500"
-                          : STATUS_STYLES[login.status]
-                      }`}>
-                        {isDisabled && !isPending ? "Disabled" : STATUS_LABELS[login.status]}
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[s.status] ?? "bg-slate-100 text-slate-500"}`}>
+                        {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                       </span>
                     </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-4">
-                      {isPending ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                            Pending Setup
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          {/* Reset password */}
-                          <button
-                            onClick={() => resetPassword(login.id)}
-                            title="Reset Password"
-                            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                              state.resetSuccess
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                : "border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB]"
-                            }`}
-                          >
-                            {state.resetSuccess ? (
-                              <>
-                                <Check size={11} />
-                                Sent
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw size={11} />
-                                Reset
-                              </>
-                            )}
-                          </button>
-
-                          {/* Disable toggle */}
-                          <button
-                            onClick={() => toggleEnabled(login.id)}
-                            title={state.enabled ? "Disable access" : "Enable access"}
-                            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                              state.enabled
-                                ? "border-[#E2E8F0] text-[#64748B] hover:border-red-200 hover:text-red-500"
-                                : "border-emerald-200 text-emerald-600 hover:border-emerald-300"
-                            }`}
-                          >
-                            {state.enabled ? (
-                              <>
-                                <ToggleRight size={14} className="text-emerald-500" />
-                                <span>On</span>
-                              </>
-                            ) : (
-                              <>
-                                <ToggleLeft size={14} className="text-slate-400" />
-                                <span>Off</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </td>
                   </tr>
-                );
-              })}
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Access Policy note */}
       <div className="mt-4 rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
         <h3 className="text-xs font-bold text-[#0F172A]">Access Policy</h3>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
-            { title: "Center Login", desc: "Can view only their center's bookings, revenue, and listings. Cannot edit super-partner settings." },
-            { title: "Super Partner", desc: "Full access across all centers. Can create/disable center logins and view consolidated reports." },
-            { title: "Password Reset", desc: "Sends a reset link to the center's registered email. Old password is invalidated immediately." },
+            { title: "Center Manager Login", desc: "Can view only their center's bookings and perform OTP check-ins. Cannot access other centers or super-partner settings." },
+            { title: "Super Partner", desc: "Full access across all centers. Can create center managers and view consolidated reports." },
+            { title: "Password Reset", desc: "Contact your admin to reset a manager's password via PATCH /vendor/staff/:id/credentials." },
           ].map((item) => (
             <div key={item.title} className="rounded-xl bg-[#F8FAFC] p-3">
               <p className="text-[11px] font-bold text-[#0F172A]">{item.title}</p>
@@ -383,7 +292,16 @@ export default function SuperPartnerTeamPage() {
         </div>
       </div>
 
-      {showModal && <AddLoginModal onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AddLoginModal
+          centers={centers}
+          onClose={() => setShowModal(false)}
+          onCreated={() => {
+            setShowModal(false);
+            load();
+          }}
+        />
+      )}
     </SuperPartnerLayout>
   );
 }

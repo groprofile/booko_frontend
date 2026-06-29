@@ -1,7 +1,8 @@
 import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, CheckCircle2, AlertCircle, RefreshCw, Shield, Eye } from "lucide-react";
+import { Upload, CheckCircle2, AlertCircle, RefreshCw, Shield, Eye, Loader2 } from "lucide-react";
 import { usePartner, type KycDocumentRecord } from "../../../context/PartnerContext";
+import { apiUploadFile, apiPost, ApiError, getVendorToken } from "../../../lib/api";
 
 const STATUS_STYLES: Record<KycDocumentRecord["status"], { bg: string; text: string; label: string }> = {
   pending: { bg: "bg-[#F1F5F9]", text: "text-[#64748B]", label: "Pending" },
@@ -10,16 +11,26 @@ const STATUS_STYLES: Record<KycDocumentRecord["status"], { bg: string; text: str
   rejected: { bg: "bg-[#FEE2E2]", text: "text-red-600", label: "Rejected" },
 };
 
-function DocCard({ doc, onUpload }: { doc: KycDocumentRecord; onUpload: (d: KycDocumentRecord) => void }) {
+function DocCard({
+  doc,
+  onUpload,
+  onRemove,
+  uploading,
+}: {
+  doc: KycDocumentRecord;
+  onUpload: (file: File, doc: KycDocumentRecord) => Promise<void>;
+  onRemove: (doc: KycDocumentRecord) => void;
+  uploading: boolean;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const st = STATUS_STYLES[doc.status];
   const uploaded = doc.status === "uploaded" || doc.status === "verified";
 
-  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5MB allowed."); return; }
-    onUpload({ ...doc, fileName: file.name, status: "uploaded" });
+    await onUpload(file, doc);
     e.target.value = "";
   }
 
@@ -46,10 +57,11 @@ function DocCard({ doc, onUpload }: { doc: KycDocumentRecord; onUpload: (d: KycD
           )}
         </div>
         <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold ${st.bg} ${st.text}`}>
-          {doc.status === "uploaded" && <CheckCircle2 size={11} />}
-          {doc.status === "verified" && <CheckCircle2 size={11} />}
-          {doc.status === "rejected" && <AlertCircle size={11} />}
-          {st.label}
+          {uploading ? <Loader2 size={11} className="animate-spin" /> : null}
+          {!uploading && doc.status === "uploaded" && <CheckCircle2 size={11} />}
+          {!uploading && doc.status === "verified" && <CheckCircle2 size={11} />}
+          {!uploading && doc.status === "rejected" && <AlertCircle size={11} />}
+          {uploading ? "Uploading…" : st.label}
         </span>
       </div>
 
@@ -57,7 +69,8 @@ function DocCard({ doc, onUpload }: { doc: KycDocumentRecord; onUpload: (d: KycD
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
+          disabled={uploading}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${
             uploaded
               ? "border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB]"
               : "border-[#2563EB] bg-[#2563EB] text-white hover:bg-[#1d4ed8]"
@@ -67,7 +80,7 @@ function DocCard({ doc, onUpload }: { doc: KycDocumentRecord; onUpload: (d: KycD
           {uploaded ? "Replace" : "Upload"}
         </button>
         {uploaded && (
-          <button type="button" onClick={() => onUpload({ ...doc, fileName: "", status: "pending" })}
+          <button type="button" onClick={() => onRemove(doc)}
             className="rounded-xl border border-[#E2E8F0] px-3 text-[#94A3B8] hover:border-red-300 hover:text-red-500">
             ×
           </button>
@@ -84,10 +97,39 @@ export default function KycDocumentsPage() {
   const navigate = useNavigate();
   const [docs, setDocs] = useState<KycDocumentRecord[]>(partner?.kyc ?? []);
   const [error, setError] = useState("");
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function updateDoc(updated: KycDocumentRecord) {
-    setDocs((prev) => prev.map((d) => d.docType === updated.docType ? updated : d));
+  async function handleUpload(file: File, doc: KycDocumentRecord) {
+    const token = getVendorToken();
+    if (!token) { setError("Not authenticated — please sign in again"); return; }
+    setUploadingDocType(doc.docType);
     setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("docType", doc.docType);
+      const result = await apiUploadFile<{ key: string }>("/vendor/kyc/upload", fd, token);
+      setDocs((prev) =>
+        prev.map((d) =>
+          d.docType === doc.docType
+            ? { ...d, fileName: file.name, fileKey: result.key, status: "uploaded" }
+            : d,
+        ),
+      );
+    } catch (err) {
+      setError((err as ApiError).message ?? "Upload failed");
+    } finally {
+      setUploadingDocType(null);
+    }
+  }
+
+  function handleRemove(doc: KycDocumentRecord) {
+    setDocs((prev) =>
+      prev.map((d) =>
+        d.docType === doc.docType ? { ...d, fileName: "", fileKey: undefined, status: "pending" } : d,
+      ),
+    );
   }
 
   function validate() {
@@ -99,12 +141,29 @@ export default function KycDocumentsPage() {
     return true;
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (!validate()) return;
-    updatePartner({ kyc: docs });
-    markStepComplete(3);
-    navigate("/partner/onboarding/bank");
+    const token = getVendorToken();
+    if (!token) { setError("Not authenticated — please sign in again"); return; }
+
+    const documents: Record<string, string> = {};
+    for (const d of docs) {
+      if (d.fileKey) documents[d.docType] = d.fileKey;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await apiPost("/vendor/kyc", { documents }, token);
+      updatePartner({ kyc: docs });
+      markStepComplete(3);
+      navigate("/partner/onboarding/bank");
+    } catch (err) {
+      setError((err as ApiError).message ?? "Failed to save documents");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const requiredDocs = docs.filter((d) => d.required);
@@ -142,7 +201,13 @@ export default function KycDocumentsPage() {
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#334155]">Required Documents</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {requiredDocs.map((doc) => (
-              <DocCard key={doc.docType} doc={doc} onUpload={updateDoc} />
+              <DocCard
+                key={doc.docType}
+                doc={doc}
+                onUpload={handleUpload}
+                onRemove={handleRemove}
+                uploading={uploadingDocType === doc.docType}
+              />
             ))}
           </div>
         </section>
@@ -152,7 +217,13 @@ export default function KycDocumentsPage() {
           <p className="mb-3 text-xs text-[#94A3B8]">Upload if applicable to your business type</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {optionalDocs.map((doc) => (
-              <DocCard key={doc.docType} doc={doc} onUpload={updateDoc} />
+              <DocCard
+                key={doc.docType}
+                doc={doc}
+                onUpload={handleUpload}
+                onRemove={handleRemove}
+                uploading={uploadingDocType === doc.docType}
+              />
             ))}
           </div>
         </section>
@@ -162,9 +233,9 @@ export default function KycDocumentsPage() {
             className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]">
             ← Back
           </button>
-          <button type="submit"
-            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">
-            Save &amp; Continue →
+          <button type="submit" disabled={submitting || uploadingDocType !== null}
+            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60">
+            {submitting ? "Saving…" : "Save & Continue →"}
           </button>
         </div>
       </form>

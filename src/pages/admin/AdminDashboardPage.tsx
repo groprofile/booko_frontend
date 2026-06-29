@@ -31,25 +31,26 @@ function timeAgo(ts: string) {
 }
 
 export default function AdminDashboardPage() {
-  const { vendors, bookings, users, settlements, activity, tickets } = useAdmin();
+  const { admin, dashboardStats, vendors, bookings, users, settlements, activity, tickets } = useAdmin();
 
-  const totalRevenue = bookings.filter((b) => b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
-  const todayBookings = bookings.filter((b) => b.date === "2026-06-23").length;
-  const todayRevenue = bookings.filter((b) => b.date === "2026-06-23" && b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const totalRevenue = dashboardStats?.totalRevenue ?? bookings.filter((b) => b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
+  const todayBookings = dashboardStats?.todayBookings ?? bookings.filter((b) => b.date === todayStr).length;
   const activeVendors = vendors.filter((v) => v.status === "approved").length;
-  const pendingVendors = vendors.filter((v) => v.status === "pending" || v.status === "under_review").length;
-  const activeCenters = 8;
+  const pendingVendors = dashboardStats?.pendingKyc ?? vendors.filter((v) => v.status === "pending" || v.status === "under_review").length;
+  const activeCenters = dashboardStats?.totalCenters ?? 0;
   const newUsers = users.filter((u) => u.signupDate >= "2026-06-01").length;
   const cancelledBookings = bookings.filter((b) => b.bookingStatus === "cancelled").length;
   const refundRequests = bookings.filter((b) => b.refundStatus === "requested").length;
   const pendingSettlements = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.netPayable, 0);
   const openTickets = tickets.filter((t) => t.status === "open").length;
+  const monthlyBookings = dashboardStats?.monthlyBookings ?? bookings.length;
 
   const METRICS = [
-    { label: "Total Bookings",       value: bookings.length.toString(),     sub: `${todayBookings} today`,            trend: 12,  icon: CalendarDays, iconColor: "#2563EB", iconBg: "#EFF6FF",   accent: "#2563EB" },
-    { label: "Total Revenue",        value: fmt(totalRevenue),              sub: `${fmt(todayRevenue)} today`,         trend: 18,  icon: TrendingUp,   iconColor: "#16A34A", iconBg: "#DCFCE7",   accent: "#16A34A" },
+    { label: "Total Bookings",       value: monthlyBookings.toString(),     sub: `${todayBookings} today`,            trend: 12,  icon: CalendarDays, iconColor: "#2563EB", iconBg: "#EFF6FF",   accent: "#2563EB" },
+    { label: "Total Revenue",        value: fmt(totalRevenue),              sub: `${monthlyBookings} bookings this month`, trend: 18,  icon: TrendingUp,   iconColor: "#16A34A", iconBg: "#DCFCE7",   accent: "#16A34A" },
     { label: "Active Vendors",       value: activeVendors.toString(),       sub: `${pendingVendors} pending review`,   trend: 8,   icon: Building2,    iconColor: "#7C3AED", iconBg: "#F3E8FF",   accent: "#7C3AED" },
-    { label: "Active Centers",       value: activeCenters.toString(),       sub: "1 pending approval",                 trend: 5,   icon: MapPin,       iconColor: "#0891B2", iconBg: "#E0F2FE",   accent: "#0891B2" },
+    { label: "Active Centers",       value: activeCenters.toString(),       sub: `${dashboardStats?.totalVendors ?? vendors.length} total vendors`, trend: 5,   icon: MapPin,       iconColor: "#0891B2", iconBg: "#E0F2FE",   accent: "#0891B2" },
     { label: "New Users (Jun)",      value: newUsers.toString(),            sub: `${users.length} total users`,        trend: 22,  icon: UserPlus,     iconColor: "#D97706", iconBg: "#FEF3C7",   accent: "#D97706" },
     { label: "Open Tickets",         value: openTickets.toString(),         sub: `${tickets.length} total tickets`,    trend: -5,  icon: AlertCircle,  iconColor: "#DC2626", iconBg: "#FEE2E2",   accent: "#DC2626" },
     { label: "Cancelled Bookings",   value: cancelledBookings.toString(),   sub: `${refundRequests} refund pending`,   trend: -3,  icon: XCircle,      iconColor: "#64748B", iconBg: "#F1F5F9",   accent: "#64748B" },
@@ -57,7 +58,7 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <AdminLayout title="Dashboard" subtitle={`Good morning, Arjun · ${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}`}>
+    <AdminLayout title="Dashboard" subtitle={`Good morning, ${admin?.name ?? "Admin"} · ${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}`}>
       {/* Alert banner */}
       {pendingVendors > 0 && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3">

@@ -111,12 +111,12 @@ export default function PartnerSignupPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     const errs = validateStep2();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSubmitting(true); setApiError("");
-    const result = signup(
+    const result = await signup(
       { name: form.name.trim(), email: form.email.toLowerCase(), mobile: form.mobile,
         businessEmail: form.businessEmail.toLowerCase(), businessName: form.businessName.trim(),
         city: form.city.trim(), state: form.state, businessType: form.businessType,

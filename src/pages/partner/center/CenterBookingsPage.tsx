@@ -1,50 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   CalendarDays,
   IndianRupee,
   Eye,
-  UserCheck,
-  UserX,
-  LogOut,
 } from "lucide-react";
 import CenterLayout from "../../../components/partner/CenterLayout";
+import { apiGet, getVendorToken } from "../../../lib/api";
 
-interface Booking {
+interface ApiBooking {
   id: string;
-  guest: string;
-  mobile: string;
-  type: "Day Pass" | "Meeting Room";
-  checkIn: string;
-  checkOut: string;
-  duration: string;
-  status: "checked_in" | "upcoming" | "confirmed" | "cancelled" | "completed";
-  seat?: string;
-  room?: string;
-  guests?: number;
-  amount: number;
-  avatar: string;
-  special: string;
+  status: string;
+  checkin_status: boolean;
+  slot_date: string;
+  start_time: string;
+  end_time: string;
+  total_paise: number;
+  center_id: string;
+  users: { full_name: string; phone: string };
+  centers: { center_name: string };
 }
 
-const TODAY_BOOKINGS: Booking[] = [
-  { id: "BK8823", guest: "Rahul Sharma", mobile: "+91 98765 43210", type: "Day Pass", checkIn: "09:00", checkOut: "18:00", duration: "Full Day", status: "checked_in", seat: "A-12", amount: 799, avatar: "R", special: "" },
-  { id: "BK8824", guest: "Priya Mehta", mobile: "+91 87654 32109", type: "Meeting Room", checkIn: "10:00", checkOut: "12:00", duration: "2 hrs", status: "upcoming", room: "Boardroom A", guests: 6, amount: 1999, avatar: "P", special: "Need projector + whiteboard setup" },
-  { id: "BK8825", guest: "Arjun Kapoor", mobile: "+91 76543 21098", type: "Day Pass", checkIn: "10:30", checkOut: "15:00", duration: "Half Day", status: "upcoming", seat: "B-07", amount: 499, avatar: "A", special: "" },
-  { id: "BK8826", guest: "Neha Singh", mobile: "+91 65432 10987", type: "Meeting Room", checkIn: "11:00", checkOut: "12:00", duration: "1 hr", status: "confirmed", room: "Focus Room 1", guests: 3, amount: 799, avatar: "N", special: "Please arrange 3 chairs" },
-  { id: "BK8827", guest: "Vikram Patel", mobile: "+91 54321 09876", type: "Day Pass", checkIn: "09:00", checkOut: "18:00", duration: "Full Day", status: "checked_in", seat: "C-03", amount: 799, avatar: "V", special: "" },
-  { id: "BK8828", guest: "Sneha Gupta", mobile: "+91 43210 98765", type: "Day Pass", checkIn: "11:30", checkOut: "18:00", duration: "Half Day", status: "confirmed", seat: "D-15", amount: 499, avatar: "S", special: "" },
-  { id: "BK8829", guest: "Rohit Kumar", mobile: "+91 32109 87654", type: "Meeting Room", checkIn: "14:00", checkOut: "16:00", duration: "2 hrs", status: "confirmed", room: "Boardroom B", guests: 8, amount: 1999, avatar: "R", special: "Team lunch — need extra chairs" },
-  { id: "BK8830", guest: "Anjali Nair", mobile: "+91 21098 76543", type: "Day Pass", checkIn: "08:00", checkOut: "13:00", duration: "Half Day", status: "checked_in", seat: "E-22", amount: 499, avatar: "A", special: "" },
-];
-
-type StatusFilter = "all" | "confirmed" | "checked_in" | "upcoming" | "completed" | "cancelled";
-type TypeFilter = "all" | "Day Pass" | "Meeting Room" | "Virtual Office";
+type StatusFilter = "all" | "confirmed" | "paid" | "checked_in" | "completed" | "cancelled";
 
 const STATUS_STYLES: Record<string, string> = {
   checked_in: "bg-emerald-100 text-emerald-700",
   confirmed: "bg-blue-100 text-blue-700",
-  upcoming: "bg-amber-100 text-amber-700",
+  paid: "bg-amber-100 text-amber-700",
   cancelled: "bg-red-100 text-red-600",
   completed: "bg-slate-100 text-slate-600",
 };
@@ -52,7 +34,7 @@ const STATUS_STYLES: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   checked_in: "Checked In",
   confirmed: "Confirmed",
-  upcoming: "Upcoming",
+  paid: "Paid",
   cancelled: "Cancelled",
   completed: "Completed",
 };
@@ -60,64 +42,84 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "confirmed", label: "Confirmed" },
-  { value: "checked_in", label: "Checked In" },
-  { value: "upcoming", label: "Upcoming" },
+  { value: "paid", label: "Paid" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmt(t?: string) { return t ? String(t).slice(0, 5) : '—'; }
+function avatarChar(name: string) { return (name ?? '?')[0].toUpperCase(); }
+
+function effectiveStatus(b: ApiBooking): string {
+  if (b.checkin_status) return 'checked_in';
+  return b.status;
+}
+
 export default function CenterBookingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [dateFilter, setDateFilter] = useState("2026-06-25");
-  const [bookingStatuses, setBookingStatuses] = useState<Record<string, Booking["status"]>>(
-    Object.fromEntries(TODAY_BOOKINGS.map((b) => [b.id, b.status]))
-  );
+  const [dateFilter, setDateFilter] = useState(todayIso());
+  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const totalRevenue = TODAY_BOOKINGS.reduce((s, b) => s + b.amount, 0);
+  const fetchBookings = useCallback((date: string) => {
+    const token = getVendorToken();
+    if (!token) return;
+    setLoading(true);
+    apiGet<{ data: ApiBooking[]; total: number }>(
+      `/vendor/bookings?date=${date}&limit=100`,
+      token,
+    )
+      .then((res) => {
+        setBookings(res.data ?? []);
+        setTotal(res.total ?? 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = TODAY_BOOKINGS.filter((b) => {
-    const effectiveStatus = bookingStatuses[b.id] ?? b.status;
-    const matchStatus = statusFilter === "all" || effectiveStatus === statusFilter;
-    const matchType = typeFilter === "all" || b.type === typeFilter;
+  useEffect(() => {
+    fetchBookings(dateFilter);
+  }, [dateFilter, fetchBookings]);
+
+  const filtered = bookings.filter((b) => {
+    const es = effectiveStatus(b);
+    const matchStatus = statusFilter === "all" || es === statusFilter || b.status === statusFilter;
     const matchSearch =
       searchQuery.trim() === "" ||
-      b.guest.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.users?.full_name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchStatus && matchType && matchSearch;
+    return matchStatus && matchSearch;
   });
 
-  function handleCheckIn(id: string) {
-    setBookingStatuses((prev) => ({ ...prev, [id]: "checked_in" }));
-  }
-
-  function handleCheckOut(id: string) {
-    setBookingStatuses((prev) => ({ ...prev, [id]: "completed" }));
-  }
-
-  function handleCancel(id: string) {
-    setBookingStatuses((prev) => ({ ...prev, [id]: "cancelled" }));
-  }
+  const totalRevenue = bookings.reduce((s, b) => s + Math.round((b.total_paise ?? 0) / 100), 0);
+  const pendingCount = bookings.filter((b) => b.status === 'confirmed' || b.status === 'paid').length;
 
   return (
     <CenterLayout title="Bookings" subtitle="Manage all reservations for your center">
       {/* KPI Summary */}
       <div className="mb-5 grid grid-cols-4 gap-3">
         <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs text-[#64748B]">Today</p>
-          <p className="mt-0.5 text-xl font-bold text-[#0F172A]">8</p>
+          <p className="text-xs text-[#64748B]">Selected Date</p>
+          <p className="mt-0.5 text-xl font-bold text-[#0F172A]">{total}</p>
           <p className="text-[10px] text-[#94A3B8]">bookings</p>
         </div>
         <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs text-[#64748B]">This Week</p>
-          <p className="mt-0.5 text-xl font-bold text-[#0F172A]">42</p>
-          <p className="text-[10px] text-[#94A3B8]">bookings</p>
+          <p className="text-xs text-[#64748B]">Checked In</p>
+          <p className="mt-0.5 text-xl font-bold text-emerald-600">
+            {bookings.filter((b) => b.checkin_status).length}
+          </p>
+          <p className="text-[10px] text-[#94A3B8]">guests</p>
         </div>
         <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm">
           <p className="text-xs text-[#64748B]">Pending</p>
-          <p className="mt-0.5 text-xl font-bold text-amber-500">4</p>
-          <p className="text-[10px] text-[#94A3B8]">need action</p>
+          <p className="mt-0.5 text-xl font-bold text-amber-500">{pendingCount}</p>
+          <p className="text-[10px] text-[#94A3B8]">not yet arrived</p>
         </div>
         <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 shadow-sm">
           <div className="flex items-center gap-1">
@@ -127,7 +129,7 @@ export default function CenterBookingsPage() {
           <p className="mt-0.5 text-xl font-bold text-[#0F172A]">
             &#8377;{totalRevenue.toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-[#94A3B8]">today</p>
+          <p className="text-[10px] text-[#94A3B8]">selected date</p>
         </div>
       </div>
 
@@ -144,18 +146,6 @@ export default function CenterBookingsPage() {
               className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2 text-sm text-[#0F172A] outline-none"
             />
           </div>
-
-          {/* Type */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2 text-sm text-[#0F172A] outline-none"
-          >
-            <option value="all">All Space Types</option>
-            <option value="Day Pass">Day Pass</option>
-            <option value="Meeting Room">Meeting Room</option>
-            <option value="Virtual Office">Virtual Office</option>
-          </select>
 
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
@@ -190,162 +180,115 @@ export default function CenterBookingsPage() {
 
       {/* Table */}
       <div className="rounded-2xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Booking ID</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Guest</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Space Type</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Time</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Duration</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Seat / Room</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Amount</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Status</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F1F5F9]">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#94A3B8]">
-                    No bookings found matching your filters.
-                  </td>
+        {loading ? (
+          <div className="py-16 text-center text-sm text-[#94A3B8]">Loading bookings…</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Booking ID</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Guest</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Center</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Time</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Date</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Amount</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Actions</th>
                 </tr>
-              ) : (
-                filtered.map((booking) => {
-                  const effectiveStatus = bookingStatuses[booking.id] ?? booking.status;
-                  const canCheckIn = effectiveStatus === "upcoming" || effectiveStatus === "confirmed";
-                  const isCheckedIn = effectiveStatus === "checked_in";
-                  const canCancel = effectiveStatus === "confirmed" || effectiveStatus === "upcoming";
+              </thead>
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#94A3B8]">
+                      No bookings found for the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((booking) => {
+                    const es = effectiveStatus(booking);
+                    return (
+                      <tr key={booking.id} className="transition-colors hover:bg-[#F8FAFC]">
+                        {/* ID */}
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs font-semibold text-[#2563EB]">
+                            {booking.id.slice(0, 8)}…
+                          </span>
+                        </td>
 
-                  return (
-                    <tr
-                      key={booking.id}
-                      className="transition-colors hover:bg-[#F8FAFC]"
-                    >
-                      {/* ID */}
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-semibold text-[#2563EB]">{booking.id}</span>
-                      </td>
-
-                      {/* Guest */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2563EB]/10 text-xs font-bold text-[#2563EB]">
-                            {booking.avatar}
+                        {/* Guest */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2563EB]/10 text-xs font-bold text-[#2563EB]">
+                              {avatarChar(booking.users?.full_name ?? 'G')}
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-[#0F172A]">{booking.users?.full_name ?? '—'}</p>
+                              <p className="text-[10px] text-[#94A3B8]">{booking.users?.phone ?? '—'}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-semibold text-[#0F172A]">{booking.guest}</p>
-                            <p className="text-[10px] text-[#94A3B8]">{booking.mobile}</p>
+                        </td>
+
+                        {/* Center */}
+                        <td className="px-4 py-3">
+                          <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-600">
+                            {booking.centers?.center_name ?? '—'}
+                          </span>
+                        </td>
+
+                        {/* Time */}
+                        <td className="px-4 py-3">
+                          <p className="text-xs font-medium text-[#0F172A]">
+                            {fmt(booking.start_time)} – {fmt(booking.end_time)}
+                          </p>
+                        </td>
+
+                        {/* Date */}
+                        <td className="px-4 py-3">
+                          <p className="text-xs text-[#64748B]">{booking.slot_date?.slice(0, 10) ?? '—'}</p>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="px-4 py-3">
+                          <p className="text-xs font-semibold text-[#0F172A]">
+                            &#8377;{Math.round((booking.total_paise ?? 0) / 100).toLocaleString("en-IN")}
+                          </p>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[es] ?? 'bg-slate-100 text-slate-600'}`}>
+                            {STATUS_LABELS[es] ?? es}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              title="View Details"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] transition-colors hover:bg-[#F1F5F9]"
+                            >
+                              <Eye size={12} />
+                            </button>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* Type */}
-                      <td className="px-4 py-3">
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                          booking.type === "Day Pass"
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-purple-50 text-purple-600"
-                        }`}>
-                          {booking.type}
-                        </span>
-                      </td>
-
-                      {/* Time */}
-                      <td className="px-4 py-3">
-                        <p className="text-xs font-medium text-[#0F172A]">{booking.checkIn} – {booking.checkOut}</p>
-                        <p className="text-[10px] text-[#94A3B8]">25 Jun 2026</p>
-                      </td>
-
-                      {/* Duration */}
-                      <td className="px-4 py-3">
-                        <p className="text-xs text-[#64748B]">{booking.duration}</p>
-                      </td>
-
-                      {/* Seat/Room */}
-                      <td className="px-4 py-3">
-                        <p className="text-xs font-medium text-[#0F172A]">
-                          {booking.seat ?? booking.room}
-                        </p>
-                        {booking.guests && (
-                          <p className="text-[10px] text-[#94A3B8]">{booking.guests} guests</p>
-                        )}
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-4 py-3">
-                        <p className="text-xs font-semibold text-[#0F172A]">
-                          &#8377;{booking.amount.toLocaleString("en-IN")}
-                        </p>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3">
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[effectiveStatus]}`}>
-                          {STATUS_LABELS[effectiveStatus]}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            title="View Details"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B] transition-colors hover:bg-[#F1F5F9]"
-                          >
-                            <Eye size={12} />
-                          </button>
-
-                          {canCheckIn && (
-                            <button
-                              onClick={() => handleCheckIn(booking.id)}
-                              title="Check In"
-                              className="flex h-7 items-center gap-1 rounded-lg bg-emerald-100 px-2 text-[10px] font-bold text-emerald-700 transition-colors hover:bg-emerald-200"
-                            >
-                              <UserCheck size={11} />
-                              Check In
-                            </button>
-                          )}
-
-                          {isCheckedIn && (
-                            <button
-                              onClick={() => handleCheckOut(booking.id)}
-                              title="Check Out"
-                              className="flex h-7 items-center gap-1 rounded-lg bg-slate-100 px-2 text-[10px] font-bold text-slate-600 transition-colors hover:bg-slate-200"
-                            >
-                              <LogOut size={11} />
-                              Check Out
-                            </button>
-                          )}
-
-                          {canCancel && (
-                            <button
-                              onClick={() => handleCancel(booking.id)}
-                              title="Cancel Booking"
-                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 text-red-400 transition-colors hover:bg-red-50"
-                            >
-                              <UserX size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="border-t border-[#E2E8F0] px-5 py-3 flex items-center justify-between bg-[#F8FAFC]">
           <p className="text-xs text-[#94A3B8]">
-            Showing {filtered.length} of {TODAY_BOOKINGS.length} bookings
+            Showing {filtered.length} of {total} bookings
           </p>
           <p className="text-xs text-[#94A3B8]">
-            Note: On mobile, some columns are hidden for better readability.
+            Date: {dateFilter}
           </p>
         </div>
       </div>

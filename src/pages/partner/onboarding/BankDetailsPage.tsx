@@ -2,6 +2,7 @@ import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, Upload, CheckCircle2, ShieldCheck } from "lucide-react";
 import { usePartner } from "../../../context/PartnerContext";
+import { apiPost, apiPatch, ApiError, getVendorToken } from "../../../lib/api";
 
 const STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana",
@@ -57,6 +58,8 @@ export default function BankDetailsPage() {
     cancelledChequeName: gb.cancelledChequeName ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -91,12 +94,37 @@ export default function BankDetailsPage() {
     e.target.value = "";
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (!validate()) return;
-    updatePartner({ gstBank: { ...form, gstin: form.gstin.toUpperCase(), ifscCode: form.ifscCode.toUpperCase() } });
-    markStepComplete(4);
-    navigate("/partner/onboarding/review");
+    const token = getVendorToken();
+    if (!token) { setApiError("Not authenticated — please sign in again"); return; }
+    setSubmitting(true);
+    setApiError("");
+    try {
+      await Promise.all([
+        apiPatch("/vendor/profile", {
+          gstin: form.gstin.toUpperCase(),
+          gstLegalName: form.legalBusinessName,
+          gstAddress: form.gstAddress,
+          gstState: form.gstState,
+        }, token),
+        apiPost("/vendor/bank-accounts", {
+          accountHolder: form.accountHolderName,
+          accountNumber: form.accountNumber,
+          ifscCode: form.ifscCode.toUpperCase(),
+          bankName: form.bankName,
+          branchName: form.branch,
+        }, token),
+      ]);
+      updatePartner({ gstBank: { ...form, gstin: form.gstin.toUpperCase(), ifscCode: form.ifscCode.toUpperCase() } });
+      markStepComplete(4);
+      navigate("/partner/onboarding/review");
+    } catch (err) {
+      setApiError((err as ApiError).message ?? "Save failed");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -110,6 +138,13 @@ export default function BankDetailsPage() {
         <ShieldCheck size={20} className="shrink-0 text-[#16A34A]" />
         <p className="text-sm text-[#334155]">Your bank details are encrypted and only used for payout processing. We never share them with third parties.</p>
       </div>
+
+      {apiError && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {apiError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
         {/* GST */}
@@ -204,9 +239,9 @@ export default function BankDetailsPage() {
             className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]">
             ← Back
           </button>
-          <button type="submit"
-            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">
-            Save &amp; Continue →
+          <button type="submit" disabled={submitting}
+            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60">
+            {submitting ? "Saving…" : "Save & Continue →"}
           </button>
         </div>
       </form>
