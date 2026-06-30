@@ -1,6 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { CheckCircle2, Clock, FileSearch, Building2, ShieldCheck, LayoutDashboard, Mail, Phone, ArrowRight } from "lucide-react";
 import { usePartner } from "../../context/PartnerContext";
+import { apiGet, getVendorToken } from "../../lib/api";
 
 const timeline = [
   { icon: CheckCircle2, label: "Submitted", desc: "Your application has been received.", done: true },
@@ -11,7 +13,40 @@ const timeline = [
 ];
 
 export default function PartnerPendingReviewPage() {
-  const { partner } = usePartner();
+  const { partner, updatePartner } = usePartner();
+  const navigate = useNavigate();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const token = getVendorToken();
+    if (!token) return;
+
+    async function checkStatus() {
+      try {
+        const data = await apiGet<{ status: string; centerType: "single" | "multiple" }>(
+          "/vendor/status",
+          getVendorToken() ?? undefined,
+        );
+        if (data.status === "approved") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          updatePartner({ status: "approved", centerType: data.centerType });
+          if (data.centerType === "multiple") {
+            navigate("/partner/dashboard");
+          } else {
+            navigate("/partner/center/overview");
+          }
+        }
+      } catch {
+        // network hiccup — silently retry on next tick
+      }
+    }
+
+    checkStatus();
+    intervalRef.current = setInterval(checkStatus, 10_000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">

@@ -14,6 +14,10 @@ import AdminCentersPage from "./pages/admin/AdminCentersPage";
 import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
 import AdminSupportPage from "./pages/admin/AdminSupportPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminRefundsPage from "./pages/admin/AdminRefundsPage";
+import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage";
+import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
+import AdminAuditLogsPage from "./pages/admin/AdminAuditLogsPage";
 import HomePage from "./pages/HomePage";
 import DayPassListingPage from "./pages/DayPassListingPage";
 import DayPassDetailsPage from "./pages/DayPassDetailsPage";
@@ -55,6 +59,9 @@ import SuperPartnerCentersPage from "./pages/partner/dashboard/SuperPartnerCente
 import SuperPartnerBookingsPage from "./pages/partner/dashboard/SuperPartnerBookingsPage";
 import SuperPartnerRevenuePage from "./pages/partner/dashboard/SuperPartnerRevenuePage";
 import SuperPartnerTeamPage from "./pages/partner/dashboard/SuperPartnerTeamPage";
+import CenterManagePage from "./pages/partner/dashboard/CenterManagePage";
+import SuperPartnerSettlementsPage from "./pages/partner/dashboard/SuperPartnerSettlementsPage";
+import SuperPartnerCouponsPage from "./pages/partner/dashboard/SuperPartnerCouponsPage";
 // Partner — Center (Vendor) dashboard
 import CenterOverviewPage from "./pages/partner/center/CenterOverviewPage";
 import CenterBookingsPage from "./pages/partner/center/CenterBookingsPage";
@@ -126,6 +133,10 @@ function App() {
         <Route path="/admin/coupons" element={<AdminCouponsPage />} />
         <Route path="/admin/support" element={<AdminSupportPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/refunds" element={<AdminRefundsPage />} />
+        <Route path="/admin/employees" element={<AdminEmployeesPage />} />
+        <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+        <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
       </Route>
       {/* Partner auth & onboarding */}
       <Route path="/partner/signup" element={<PartnerSignupPage />} />
@@ -147,6 +158,9 @@ function App() {
         <Route path="/partner/centers" element={<SuperPartnerCentersPage />} />
         <Route path="/partner/bookings" element={<SuperPartnerBookingsPage />} />
         <Route path="/partner/revenue" element={<SuperPartnerRevenuePage />} />
+        <Route path="/partner/settlements" element={<SuperPartnerSettlementsPage />} />
+        <Route path="/partner/coupons" element={<SuperPartnerCouponsPage />} />
+        <Route path="/partner/centers/:id" element={<CenterManagePage />} />
         <Route path="/partner/team" element={<SuperPartnerTeamPage />} />
         {/* Center / Vendor (single center) */}
         <Route path="/partner/center/overview" element={<CenterOverviewPage />} />

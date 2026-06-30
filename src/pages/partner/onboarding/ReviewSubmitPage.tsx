@@ -55,7 +55,7 @@ export default function ReviewSubmitPage() {
     setSubmitting(true);
     setError("");
     try {
-      await apiPost("/vendor/submit-review", {}, token);
+      await apiPost("/vendor/submit-review", { centers: partner?.centers ?? [] }, token);
       submitForReview();
       markStepComplete(5);
       navigate("/partner/pending-review");

@@ -130,7 +130,7 @@ interface PartnerCtx {
   partner: PartnerDraft | null;
   isAuthenticated: boolean;
   signup: (data: SignupData, password: string) => Promise<{ success: boolean; error?: string }>;
-  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus }>;
+  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus; centerType?: "single" | "multiple" }>;
   signout: () => void;
   updatePartner: (updates: Partial<PartnerDraft>) => void;
   verifyEmail: () => void;
@@ -163,6 +163,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         phone: data.mobile,
         password,
         category: data.businessType,
+        centerType: data.centerType,
       });
 
       const draft: PartnerDraft = {
@@ -208,7 +209,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
   async function signin(email: string, password: string) {
     try {
       const data = await apiPost<{
-        vendor: { id: string; ownerName: string; businessName: string; status: string; dashboardLocked: boolean };
+        vendor: { id: string; ownerName: string; businessName: string; status: string; dashboardLocked: boolean; centerType: "single" | "multiple" };
         accessToken: string;
         refreshToken: string;
       }>('/auth/vendor/login', { email, password });
@@ -222,6 +223,8 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
       };
       const status: PartnerStatus = STATUS_MAP[data.vendor.status] ?? 'onboarding_started';
 
+      const centerType = data.vendor.centerType ?? 'single';
+
       const draft: PartnerDraft = {
         id: data.vendor.id,
         name: data.vendor.ownerName,
@@ -232,7 +235,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         city: '',
         state: '',
         businessType: '',
-        centerType: 'single',
+        centerType,
         status,
         emailVerified: true,
         completedSteps: [],
@@ -246,7 +249,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
       setPartner(draft);
       sessionStorage.setItem(TOKEN_KEY, data.accessToken);
       sessionStorage.setItem(REFRESH_KEY, data.refreshToken);
-      return { success: true, status };
+      return { success: true, status, centerType };
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
         return { success: true as const, status: 'email_unverified' as PartnerStatus };

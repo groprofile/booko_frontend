@@ -3,17 +3,20 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, CalendarDays, TrendingUp,
   Users, Settings, LogOut, ChevronRight, Bell, Crown,
+  Banknote, Tag,
 } from "lucide-react";
 import Logo from "../Logo";
 import { usePartner } from "../../context/PartnerContext";
 
 const NAV = [
-  { href: "/partner/dashboard",  label: "Overview",     icon: LayoutDashboard },
-  { href: "/partner/centers",    label: "Centers",      icon: Building2       },
-  { href: "/partner/bookings",   label: "All Bookings", icon: CalendarDays    },
-  { href: "/partner/revenue",    label: "Revenue",      icon: TrendingUp      },
-  { href: "/partner/team",       label: "Team Access",  icon: Users           },
-  { href: "/partner/settings",   label: "Settings",     icon: Settings        },
+  { href: "/partner/dashboard",    label: "Overview",     icon: LayoutDashboard },
+  { href: "/partner/centers",      label: "Centers",      icon: Building2       },
+  { href: "/partner/bookings",     label: "All Bookings", icon: CalendarDays    },
+  { href: "/partner/revenue",      label: "Revenue",      icon: TrendingUp      },
+  { href: "/partner/settlements",  label: "Settlements",  icon: Banknote        },
+  { href: "/partner/coupons",      label: "Coupons",      icon: Tag             },
+  { href: "/partner/team",         label: "Team Access",  icon: Users           },
+  { href: "/partner/settings",     label: "Settings",     icon: Settings        },
 ];
 
 interface Props { children: ReactNode; title?: string; subtitle?: string; }

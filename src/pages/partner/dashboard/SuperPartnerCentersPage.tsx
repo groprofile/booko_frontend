@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Check, X, Building2, Clock, MapPin } from "lucide-react";
+import { Plus, Check, X, Building2, Clock, MapPin, ArrowRight, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import { apiGet, apiPost, getVendorToken } from "../../../lib/api";
 
@@ -350,78 +351,85 @@ function AddCenterModal({ onClose, onCreated }: AddCenterModalProps) {
 interface CenterCardProps {
   center: ApiCenter;
   managerEmail?: string;
+  onManage: () => void;
 }
 
-function CenterCard({ center, managerEmail }: CenterCardProps) {
+function CenterCard({ center, managerEmail, onManage }: CenterCardProps) {
   const isActive = center.approval_status === "approved" && center.is_active;
   const isPending = center.approval_status === "pending";
   const coverPhoto = center.center_photos?.find((p) => p.is_cover)?.image_url;
 
-  return (
-    <div className="rounded-2xl border border-[#E2E8F0] bg-white shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col">
-      {coverPhoto ? (
-        <img src={coverPhoto} alt={center.center_name} className="h-32 w-full object-cover" />
-      ) : (
-        <div className="h-32 w-full bg-gradient-to-br from-[#0F172A] to-[#1E3A5F] flex items-center justify-center">
-          <Building2 size={32} className="text-white/30" />
-        </div>
-      )}
+  const headerColor = isActive ? "bg-gradient-to-br from-[#2563EB] to-[#1D4ED8]"
+    : isPending ? "bg-gradient-to-br from-[#D97706] to-[#B45309]"
+    : "bg-gradient-to-br from-slate-500 to-slate-600";
 
-      <div className={`px-5 pt-4 pb-3 ${isActive ? "bg-[#2563EB]" : isPending ? "bg-[#D97706]" : "bg-slate-500"}`}>
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white">{center.center_name}</h3>
+  return (
+    <div className="rounded-2xl border border-[#E2E8F0] bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col group">
+      {/* Cover Photo */}
+      <div className="relative h-36 w-full overflow-hidden">
+        {coverPhoto ? (
+          <img src={coverPhoto} alt={center.center_name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-[#0F172A] to-[#1E3A5F] flex items-center justify-center">
+            <Building2 size={36} className="text-white/20" />
+          </div>
+        )}
+        {/* Status pill floating */}
+        <span className={`absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ${
+          isActive ? "bg-emerald-500/90 text-white" : isPending ? "bg-amber-500/90 text-white" : "bg-slate-500/90 text-white"
+        }`}>
+          {isActive ? "Active" : isPending ? "Pending" : center.approval_status}
+        </span>
+        {isActive && center.rating != null && (
+          <span className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-[#0F172A]">
+            <Star size={9} className="fill-amber-400 text-amber-400" />
+            {center.rating.toFixed(1)}
+          </span>
+        )}
+      </div>
+
+      {/* Colored header bar */}
+      <div className={`${headerColor} px-5 pt-4 pb-3`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-bold text-white">{center.center_name}</h3>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-white/70">
-              <MapPin size={10} />
-              {center.locality ?? center.address ?? "—"}, {center.city}
+              <MapPin size={10} className="shrink-0" />
+              <span className="truncate">{center.locality ?? center.address ?? "—"}, {center.city}</span>
             </p>
           </div>
-          <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold text-white">
+          <span className="shrink-0 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold text-white">
             {center.categories?.name ?? "Workspace"}
           </span>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              isActive
-                ? "bg-emerald-100 text-emerald-700"
-                : isPending
-                ? "bg-amber-100 text-amber-700"
-                : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            {isActive ? "Active" : isPending ? "Pending Approval" : center.approval_status}
-          </span>
-        </div>
-
-        {isActive && center.rating != null && (
-          <div className="rounded-xl bg-[#F8FAFC] p-3 text-center">
-            <p className="text-sm font-bold text-[#0F172A]">⭐ {center.rating.toFixed(1)}</p>
-            <p className="text-[10px] text-[#94A3B8]">Rating</p>
-          </div>
-        )}
-
-        {!isActive && (
-          <div className="rounded-xl border border-dashed border-[#E2E8F0] p-3 text-center">
-            <p className="text-xs text-[#94A3B8]">
-              {isPending ? "Awaiting admin approval." : "Center not active."}
-            </p>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">Manager Login</p>
+      {/* Body */}
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        {/* Manager */}
+        <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">Manager</p>
           {managerEmail ? (
-            <code className="block truncate rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 font-mono text-[11px] text-[#0F172A]">
-              {managerEmail}
-            </code>
+            <code className="block truncate font-mono text-[11px] text-[#0F172A]">{managerEmail}</code>
           ) : (
-            <p className="text-xs text-[#94A3B8]">No manager assigned — add one from Team tab.</p>
+            <p className="text-xs text-[#94A3B8]">No manager assigned</p>
           )}
         </div>
+
+        {isPending && (
+          <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-center">
+            <p className="text-xs text-amber-700">Awaiting admin approval to go live</p>
+          </div>
+        )}
+
+        {/* Manage button */}
+        <button
+          onClick={onManage}
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] transition-colors"
+        >
+          Manage Center
+          <ArrowRight size={14} />
+        </button>
       </div>
     </div>
   );
@@ -431,11 +439,14 @@ export default function SuperPartnerCentersPage() {
   const [centers, setCenters] = useState<ApiCenter[]>([]);
   const [staff, setStaff] = useState<ApiStaff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   function load() {
     const token = getVendorToken() ?? undefined;
     setLoading(true);
+    setError(null);
     Promise.all([
       apiGet<ApiCenter[]>("/vendor/centers", token),
       apiGet<ApiStaff[]>("/vendor/staff", token),
@@ -444,7 +455,7 @@ export default function SuperPartnerCentersPage() {
         setCenters(c ?? []);
         setStaff(s ?? []);
       })
-      .catch(console.error)
+      .catch((err) => setError((err as Error).message ?? "Failed to load centers"))
       .finally(() => setLoading(false));
   }
 
@@ -489,8 +500,23 @@ export default function SuperPartnerCentersPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+      )}
+
       {loading ? (
-        <div className="mt-10 text-center text-sm text-[#94A3B8]">Loading centers…</div>
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl border border-[#E2E8F0] bg-white overflow-hidden">
+              <div className="h-36 bg-[#E2E8F0]" />
+              <div className="h-16 bg-[#F1F5F9]" />
+              <div className="p-5 space-y-3">
+                <div className="h-10 rounded-xl bg-[#F1F5F9]" />
+                <div className="h-10 rounded-xl bg-[#2563EB]/10" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : centers.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-[#E2E8F0] p-10 text-center">
           <Building2 size={32} className="mx-auto text-[#E2E8F0]" />
@@ -507,7 +533,12 @@ export default function SuperPartnerCentersPage() {
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           {centers.map((c) => (
-            <CenterCard key={c.id} center={c} managerEmail={managerByCenterId[c.id]} />
+            <CenterCard
+              key={c.id}
+              center={c}
+              managerEmail={managerByCenterId[c.id]}
+              onManage={() => navigate(`/partner/centers/${c.id}`)}
+            />
           ))}
         </div>
       )}

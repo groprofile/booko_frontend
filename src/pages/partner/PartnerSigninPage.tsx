@@ -51,9 +51,7 @@ export default function PartnerSigninPage() {
     if (status === "email_unverified") navigate("/partner/verify-email");
     else if (status === "submitted_for_review" || status === "under_review") navigate("/partner/pending-review");
     else if (status === "approved") {
-      const raw = localStorage.getItem("bokko_partner_v1");
-      const p = raw ? JSON.parse(raw) : null;
-      if (p?.centerType === "multiple") navigate("/partner/dashboard");
+      if (result.centerType === "multiple") navigate("/partner/dashboard");
       else navigate("/partner/center/overview");
     } else navigate("/partner/onboarding");
   }
