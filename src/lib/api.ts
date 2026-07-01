@@ -20,26 +20,35 @@ export class ApiError extends Error {
   }
 }
 
-// Attempts to refresh whichever session the expired token belongs to.
-// Returns the new access token on success, null if refresh is not possible.
-async function attemptTokenRefresh(usedToken: string): Promise<string | null> {
-  const adminToken = sessionStorage.getItem('bokko_admin_token');
-  const vendorToken = sessionStorage.getItem('bokko_vendor_token');
+// The backend rotates (single-use) refresh tokens: each successful refresh
+// deletes the old session. If several requests 401 at once with the same
+// expired access token, they must NOT each fire their own refresh — only the
+// first would succeed and the rest would fail with "unauthorized". So we
+// de-duplicate concurrent refreshes per session and remember the replacement
+// for any request that 401s just after the refresh already completed.
 
-  let refreshKey: string;
-  let accessKey: string;
+type Session = { accessKey: string; refreshKey: string };
 
-  if (usedToken === adminToken) {
-    refreshKey = 'bokko_admin_refresh';
-    accessKey = 'bokko_admin_token';
-  } else if (usedToken === vendorToken) {
-    refreshKey = 'bokko_vendor_refresh';
-    accessKey = 'bokko_vendor_token';
-  } else {
-    return null;
+function sessionForToken(token: string): Session | null {
+  if (token === sessionStorage.getItem('bokko_admin_token')) {
+    return { accessKey: 'bokko_admin_token', refreshKey: 'bokko_admin_refresh' };
   }
+  if (token === sessionStorage.getItem('bokko_vendor_token')) {
+    return { accessKey: 'bokko_vendor_token', refreshKey: 'bokko_vendor_refresh' };
+  }
+  return null;
+}
 
-  const refreshToken = sessionStorage.getItem(refreshKey);
+// One in-flight refresh per session (keyed by accessKey) so concurrent 401s
+// share a single network refresh instead of racing the one-time refresh token.
+const inFlightRefresh: Record<string, Promise<string | null> | undefined> = {};
+
+// Maps an expired access token to the access token that replaced it, so a
+// request that 401s slightly after another already refreshed can still recover.
+const tokenReplacements = new Map<string, string>();
+
+async function doRefresh(session: Session, usedToken: string): Promise<string | null> {
+  const refreshToken = sessionStorage.getItem(session.refreshKey);
   if (!refreshToken) return null;
 
   try {
@@ -51,12 +60,35 @@ async function attemptTokenRefresh(usedToken: string): Promise<string | null> {
     if (!res.ok) return null;
     const json = await res.json();
     const data = unwrap<{ accessToken: string; refreshToken?: string }>(json);
-    sessionStorage.setItem(accessKey, data.accessToken);
-    if (data.refreshToken) sessionStorage.setItem(refreshKey, data.refreshToken);
+    sessionStorage.setItem(session.accessKey, data.accessToken);
+    if (data.refreshToken) sessionStorage.setItem(session.refreshKey, data.refreshToken);
+    if (tokenReplacements.size > 20) tokenReplacements.clear();
+    tokenReplacements.set(usedToken, data.accessToken);
     return data.accessToken;
   } catch {
     return null;
   }
+}
+
+// Attempts to refresh whichever session the expired token belongs to.
+// Returns the new access token on success, null if refresh is not possible.
+async function attemptTokenRefresh(usedToken: string): Promise<string | null> {
+  // A concurrent request already refreshed this exact token — reuse the result.
+  const replaced = tokenReplacements.get(usedToken);
+  if (replaced) return replaced;
+
+  const session = sessionForToken(usedToken);
+  if (!session) return null;
+
+  // Share a single refresh across all callers racing on the same session.
+  const existing = inFlightRefresh[session.accessKey];
+  if (existing) return existing;
+
+  const p = doRefresh(session, usedToken).finally(() => {
+    delete inFlightRefresh[session.accessKey];
+  });
+  inFlightRefresh[session.accessKey] = p;
+  return p;
 }
 
 export async function apiPost<T>(path: string, body: unknown, token?: string): Promise<T> {

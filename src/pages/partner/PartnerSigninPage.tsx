@@ -12,7 +12,7 @@ const INPUT_ERROR = `${INPUT} border-red-400 focus:border-red-400 focus:ring-red
 type Tab = "vendor" | "manager";
 
 export default function PartnerSigninPage() {
-  const { signin } = usePartner();
+  const { signin, signinManager } = usePartner();
   const navigate = useNavigate();
 
   const [tab, setTab] = useState<Tab>("vendor");
@@ -71,6 +71,7 @@ export default function PartnerSigninPage() {
       sessionStorage.setItem('bokko_vendor_token', data.accessToken);
       sessionStorage.setItem('bokko_vendor_refresh', data.refreshToken);
       if (data.user?.centreId) setCentreId(data.user.centreId);
+      signinManager(data.user);
       navigate("/partner/center/overview");
     } catch (err) {
       setApiError((err as Error).message ?? "Sign in failed");

@@ -84,6 +84,9 @@ export interface PartnerDraft {
   kyc: KycDocumentRecord[];
   gstBank: Partial<GstBankDetails>;
   createdAt: string;
+  // True when the session belongs to a Center Manager (VENDOR_ADMIN), not the
+  // owner. Managers have no vendor profile and are scoped to a single centre.
+  isManager?: boolean;
 }
 
 export const ONBOARDING_STEPS = [
@@ -140,6 +143,7 @@ interface PartnerCtx {
   isAuthenticated: boolean;
   signup: (data: SignupData, password: string) => Promise<{ success: boolean; error?: string }>;
   signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus; centerType?: "single" | "multiple" }>;
+  signinManager: (user: { id: string; name: string; email: string; centreId?: string }) => void;
   signout: () => void;
   updatePartner: (updates: Partial<PartnerDraft>) => void;
   verifyEmail: () => void;
@@ -261,10 +265,38 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Center Manager (VENDOR_ADMIN) sign-in. Managers have no vendor onboarding
+  // profile, so we seed a minimal approved session that satisfies the route
+  // guard and lets the centre UI render, scoped to their single centre.
+  function signinManager(user: { id: string; name: string; email: string; centreId?: string }) {
+    setPartner({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: '',
+      businessEmail: user.email,
+      businessName: '',
+      city: '',
+      state: '',
+      businessType: '',
+      centerType: 'single',
+      status: 'approved',
+      emailVerified: true,
+      completedSteps: [],
+      business: {},
+      centers: [],
+      kyc: [],
+      gstBank: {},
+      createdAt: new Date().toISOString(),
+      isManager: true,
+    });
+  }
+
   function signout() {
     setPartner(null);
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(REFRESH_KEY);
+    sessionStorage.removeItem('bokko_centre_id');
   }
 
   function updatePartner(updates: Partial<PartnerDraft>) {
@@ -292,6 +324,8 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
   async function refreshStatus(): Promise<PartnerStatus | null> {
     const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) return null;
+    // Managers have no /vendor/profile (owner-only, 403) — nothing to refresh.
+    if (partner?.isManager) return partner.status;
     try {
       const vendor = await apiGet<{
         status: string;
@@ -331,7 +365,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signout, updatePartner, verifyEmail, markStepComplete, submitForReview, refreshStatus }}>
+    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signinManager, signout, updatePartner, verifyEmail, markStepComplete, submitForReview, refreshStatus }}>
       {children}
     </PartnerContext.Provider>
   );
