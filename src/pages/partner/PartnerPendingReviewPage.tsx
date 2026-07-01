@@ -1,8 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
-import { CheckCircle2, Clock, FileSearch, Building2, ShieldCheck, LayoutDashboard, Mail, Phone, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Clock, FileSearch, Building2, ShieldCheck, LayoutDashboard, Mail, Phone, ArrowRight, RefreshCw } from "lucide-react";
 import { usePartner } from "../../context/PartnerContext";
-import { apiGet, getVendorToken } from "../../lib/api";
 
 const timeline = [
   { icon: CheckCircle2, label: "Submitted", desc: "Your application has been received.", done: true },
@@ -13,40 +12,29 @@ const timeline = [
 ];
 
 export default function PartnerPendingReviewPage() {
-  const { partner, updatePartner } = usePartner();
+  const { partner, refreshStatus } = usePartner();
   const navigate = useNavigate();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [checking, setChecking] = useState(false);
 
+  // Once approved, send the vendor straight to the dashboard.
   useEffect(() => {
-    const token = getVendorToken();
-    if (!token) return;
+    if (partner?.status === "approved") navigate("/partner/dashboard", { replace: true });
+  }, [partner?.status, navigate]);
 
-    async function checkStatus() {
-      try {
-        const data = await apiGet<{ status: string; centerType: "single" | "multiple" }>(
-          "/vendor/status",
-          getVendorToken() ?? undefined,
-        );
-        if (data.status === "approved") {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          updatePartner({ status: "approved", centerType: data.centerType });
-          if (data.centerType === "multiple") {
-            navigate("/partner/dashboard");
-          } else {
-            navigate("/partner/center/overview");
-          }
-        }
-      } catch {
-        // network hiccup — silently retry on next tick
-      }
-    }
+  // Poll the backend periodically so approval reflects without a manual refresh.
+  useEffect(() => {
+    const id = setInterval(() => { refreshStatus(); }, 15000);
+    return () => clearInterval(id);
+  }, [refreshStatus]);
 
-    checkStatus();
-    intervalRef.current = setInterval(checkStatus, 10_000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+  async function handleCheckNow() {
+    setChecking(true);
+    const status = await refreshStatus();
+    setChecking(false);
+    if (status === "approved") navigate("/partner/dashboard", { replace: true });
+  }
+
+  const isRejected = partner?.status === "rejected";
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -98,6 +86,23 @@ export default function PartnerPendingReviewPage() {
               <p className="text-xs font-semibold text-[#D97706]">⏱ Typical review time: 24–48 hours</p>
               <p className="mt-0.5 text-xs text-[#92400E]">You'll receive an email notification at your business email once approved.</p>
             </div>
+
+            {isRejected && (
+              <div className="mt-4 rounded-xl bg-[#FEF2F2] px-4 py-3 text-left">
+                <p className="text-xs font-semibold text-[#DC2626]">Your application was not approved.</p>
+                <p className="mt-0.5 text-xs text-[#991B1B]">Please contact our partner team for details on the next steps.</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleCheckNow}
+              disabled={checking}
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1D4ED8] disabled:opacity-60"
+            >
+              <RefreshCw size={15} className={checking ? "animate-spin" : ""} />
+              {checking ? "Checking…" : "Check approval status"}
+            </button>
+            <p className="mt-2 text-[11px] text-[#94A3B8]">Status refreshes automatically every 15 seconds.</p>
           </div>
 
           {/* Timeline */}

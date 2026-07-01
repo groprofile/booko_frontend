@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, ChevronDown, ChevronUp, AlertCircle, Building2 } from "lucide-react";
-import { usePartner, type CenterData } from "../../../context/PartnerContext";
+import { usePartner, type CenterData, type BusinessDetails } from "../../../context/PartnerContext";
 
 const CENTER_TYPES = ["Coworking Space","Hotel","Meeting Room","Virtual Office","Managed Office","Event Space","Training Room","Board Room"];
 const SERVICES = ["Day Pass","Meeting Rooms","Monthly Pass","Virtual Office","Hotel Rooms","Hourly Stay","Full Day Stay","Private Cabin","Managed Office"];
@@ -17,10 +17,23 @@ const BASE = "w-full rounded-xl border px-4 py-3 text-sm text-[#0F172A] placehol
 const NORMAL = `${BASE} border-[#E2E8F0] focus:border-[#2563EB] focus:ring-[#2563EB]/15`;
 const ERR = `${BASE} border-red-400 focus:border-red-400 focus:ring-red-400/15`;
 
-function makeCenter(): CenterData {
+// Pre-fill what we already collected in Business Details so vendors don't retype it.
+// `fullAddress` also copies the registered address (used for the first / single center,
+// which is typically at the business address); additional centers only inherit the
+// vendor-level contact person + phone, since their location differs.
+function makeCenter(
+  business: Partial<BusinessDetails> = {},
+  opts: { fullAddress?: boolean } = {},
+): CenterData {
   return {
-    id: `ctr_${Date.now()}`, name: "", type: "", address: "", city: "", state: "",
-    locality: "", landmark: "", googleMapUrl: "", contactPerson: "", phone: "",
+    id: `ctr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    name: "", type: "",
+    address: opts.fullAddress ? (business.registeredAddress ?? "") : "",
+    city: opts.fullAddress ? (business.city ?? "") : "",
+    state: opts.fullAddress ? (business.state ?? "") : "",
+    locality: "", landmark: "", googleMapUrl: "",
+    contactPerson: business.contactPerson ?? "",
+    phone: business.mobile ?? "",
     services: [], amenities: [], photoNames: [],
   };
 }
@@ -208,8 +221,9 @@ export default function CenterSetupPage() {
   const { partner, updatePartner, markStepComplete } = usePartner();
   const navigate = useNavigate();
 
+  const business = partner?.business ?? {};
   const [centers, setCenters] = useState<CenterData[]>(
-    partner?.centers?.length ? partner.centers : [makeCenter()]
+    partner?.centers?.length ? partner.centers : [makeCenter(business, { fullAddress: true })]
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isMultiple = partner?.centerType === "multiple";
@@ -265,7 +279,7 @@ export default function CenterSetupPage() {
         ))}
 
         {isMultiple && (
-          <button type="button" onClick={() => setCenters((prev) => [...prev, makeCenter()])}
+          <button type="button" onClick={() => setCenters((prev) => [...prev, makeCenter(business, { fullAddress: false })])}
             className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#E2E8F0] py-4 text-sm font-semibold text-[#2563EB] hover:border-[#2563EB] hover:bg-[#EFF6FF] transition-colors">
             <Plus size={16} />
             Add Another Center

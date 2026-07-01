@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { apiPost, ApiError } from "../lib/api";
+import { apiPost, apiGet, ApiError } from "../lib/api";
 
 export type PartnerStatus =
   | "email_unverified"
@@ -98,6 +98,15 @@ const STORAGE_KEY = "bokko_partner_v1";
 const TOKEN_KEY = "bokko_vendor_token";
 const REFRESH_KEY = "bokko_vendor_refresh";
 
+// Maps the backend vendor.status to the frontend PartnerStatus.
+const STATUS_MAP: Record<string, PartnerStatus> = {
+  pending:        'onboarding_started',
+  kyc_submitted:  'submitted_for_review',
+  under_review:   'under_review',
+  approved:       'approved',
+  rejected:       'rejected',
+};
+
 export function defaultKycDocs(): KycDocumentRecord[] {
   return [
     { docType: "company_pan", label: "Company PAN", fileName: "", status: "pending", required: true },
@@ -136,6 +145,7 @@ interface PartnerCtx {
   verifyEmail: () => void;
   markStepComplete: (step: number) => void;
   submitForReview: () => void;
+  refreshStatus: () => Promise<PartnerStatus | null>;
 }
 
 const PartnerContext = createContext<PartnerCtx | null>(null);
@@ -214,13 +224,6 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         refreshToken: string;
       }>('/auth/vendor/login', { email, password });
 
-      const STATUS_MAP: Record<string, PartnerStatus> = {
-        pending:        'onboarding_started',
-        kyc_submitted:  'submitted_for_review',
-        under_review:   'under_review',
-        approved:       'approved',
-        rejected:       'rejected',
-      };
       const status: PartnerStatus = STATUS_MAP[data.vendor.status] ?? 'onboarding_started';
 
       const centerType = data.vendor.centerType ?? 'single';
@@ -284,8 +287,51 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
     setPartner((prev) => prev ? { ...prev, status: "submitted_for_review" } : prev);
   }
 
+  // Re-fetch the vendor's live status from the backend and sync it into state.
+  // Returns the resolved PartnerStatus, or null if there's no active session.
+  async function refreshStatus(): Promise<PartnerStatus | null> {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+    try {
+      const vendor = await apiGet<{
+        status: string;
+        business_name?: string;
+        owner_name?: string;
+      }>('/vendor/profile', token);
+      const status: PartnerStatus = STATUS_MAP[vendor.status] ?? 'onboarding_started';
+      setPartner((prev) =>
+        prev
+          ? {
+              ...prev,
+              status,
+              businessName: vendor.business_name ?? prev.businessName,
+              name: vendor.owner_name ?? prev.name,
+            }
+          : prev,
+      );
+      return status;
+    } catch (err) {
+      // If the session is no longer valid (e.g. vendor deleted/blocked), drop it
+      // so the UI doesn't keep showing a stale "approved" state.
+      if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+        signout();
+      }
+      return null;
+    }
+  }
+
+  // On load (and whenever the tab regains focus), sync the live status so an
+  // admin approval/rejection reflects without forcing the vendor to re-login.
+  useEffect(() => {
+    refreshStatus();
+    const onFocus = () => refreshStatus();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signout, updatePartner, verifyEmail, markStepComplete, submitForReview }}>
+    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signout, updatePartner, verifyEmail, markStepComplete, submitForReview, refreshStatus }}>
       {children}
     </PartnerContext.Provider>
   );
