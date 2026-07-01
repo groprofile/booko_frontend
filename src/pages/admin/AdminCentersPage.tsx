@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw } from "lucide-react";
+import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { apiGet, apiPost, getAdminToken, ApiError } from "../../lib/api";
 
@@ -103,6 +103,190 @@ function RejectModal({
   );
 }
 
+interface VendorOption {
+  id: string;
+  business_name: string;
+  owner_name: string;
+  city?: string;
+}
+
+function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    vendorId: "", centerName: "", address: "", city: "", state: "",
+    locality: "", pincode: "", contactName: "", contactPhone: "",
+    openingTime: "", closingTime: "", description: "", googleMapUrl: "",
+  });
+
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ vendors: VendorOption[] }>("/admin/vendors?status=approved&limit=200", token)
+      .then((r) => setVendors(r.vendors ?? []))
+      .catch(() => setVendors([]))
+      .finally(() => setLoadingVendors(false));
+  }, []);
+
+  function set(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit() {
+    if (!form.vendorId) { setError("Please select a vendor"); return; }
+    if (!form.centerName.trim()) { setError("Center name is required"); return; }
+    if (!form.address.trim()) { setError("Address is required"); return; }
+    if (!form.city.trim()) { setError("City is required"); return; }
+    if (!form.state.trim()) { setError("State is required"); return; }
+
+    const token = getAdminToken();
+    if (!token) return;
+    setSaving(true);
+    setError("");
+    try {
+      await apiPost("/admin/centers", {
+        vendorId: form.vendorId,
+        centerName: form.centerName.trim(),
+        description: form.description.trim() || undefined,
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        locality: form.locality.trim() || undefined,
+        pincode: form.pincode.trim() || undefined,
+        contactName: form.contactName.trim() || undefined,
+        contactPhone: form.contactPhone.trim() || undefined,
+        openingTime: form.openingTime || undefined,
+        closingTime: form.closingTime || undefined,
+        googleMapUrl: form.googleMapUrl.trim() || undefined,
+      }, token);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to create center");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inp = "w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/15";
+  const lbl = "mb-1 block text-xs font-semibold text-[#0F172A]";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-2xl border border-[#E2E8F0] bg-white shadow-xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4 shrink-0">
+          <p className="text-sm font-bold text-[#0F172A]">Add Center for Vendor</p>
+          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#0F172A] transition-colors">
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto p-5 flex flex-col gap-4">
+          {/* Vendor */}
+          <div>
+            <label className={lbl}>Vendor <span className="text-red-500">*</span></label>
+            {loadingVendors ? (
+              <p className="text-xs text-[#94A3B8]">Loading vendors…</p>
+            ) : (
+              <select value={form.vendorId} onChange={(e) => set("vendorId", e.target.value)} className={inp}>
+                <option value="">Select approved vendor…</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.business_name} — {v.owner_name}{v.city ? ` (${v.city})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Center name */}
+          <div>
+            <label className={lbl}>Center Name <span className="text-red-500">*</span></label>
+            <input className={inp} placeholder="e.g. Bokko Andheri East" value={form.centerName} onChange={(e) => set("centerName", e.target.value)} />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className={lbl}>Address <span className="text-red-500">*</span></label>
+            <input className={inp} placeholder="Street / Building / Floor" value={form.address} onChange={(e) => set("address", e.target.value)} />
+          </div>
+
+          {/* City / State / Locality / Pincode */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>City <span className="text-red-500">*</span></label>
+              <input className={inp} placeholder="Mumbai" value={form.city} onChange={(e) => set("city", e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>State <span className="text-red-500">*</span></label>
+              <input className={inp} placeholder="Maharashtra" value={form.state} onChange={(e) => set("state", e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Locality</label>
+              <input className={inp} placeholder="Andheri East" value={form.locality} onChange={(e) => set("locality", e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Pincode</label>
+              <input className={inp} placeholder="400069" value={form.pincode} onChange={(e) => set("pincode", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Contact Name</label>
+              <input className={inp} placeholder="Manager name" value={form.contactName} onChange={(e) => set("contactName", e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Contact Phone</label>
+              <input className={inp} placeholder="9XXXXXXXXX" value={form.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Timings */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Opening Time</label>
+              <input type="time" className={inp} value={form.openingTime} onChange={(e) => set("openingTime", e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Closing Time</label>
+              <input type="time" className={inp} value={form.closingTime} onChange={(e) => set("closingTime", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className={lbl}>Description</label>
+            <textarea className={`${inp} resize-none`} rows={2} placeholder="Optional center description" value={form.description} onChange={(e) => set("description", e.target.value)} />
+          </div>
+
+          {/* Google Map URL */}
+          <div>
+            <label className={lbl}>Google Maps URL</label>
+            <input className={inp} placeholder="https://maps.google.com/…" value={form.googleMapUrl} onChange={(e) => set("googleMapUrl", e.target.value)} />
+          </div>
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 border-t border-[#E2E8F0] px-5 py-4 shrink-0">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={saving} className="flex-1 rounded-xl bg-[#2563EB] py-2.5 text-sm font-bold text-white hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors">
+            {saving ? "Creating…" : "Create Center"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCentersPage() {
   const [centers, setCenters] = useState<ApiCenter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +295,7 @@ export default function AdminCentersPage() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiCenter | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const load = useCallback(() => {
     const token = getAdminToken();
@@ -186,6 +371,12 @@ export default function AdminCentersPage() {
           className="flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs text-[#64748B] hover:border-[#0F172A] transition-colors"
         >
           <RefreshCw size={12} /> Refresh
+        </button>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1D4ED8] transition-colors"
+        >
+          <Plus size={13} /> Add Center
         </button>
       </div>
 
@@ -305,6 +496,16 @@ export default function AdminCentersPage() {
           onClose={() => setRejectTarget(null)}
           onRejected={() => {
             setRejectTarget(null);
+            load();
+          }}
+        />
+      )}
+
+      {showAddModal && (
+        <AddCenterModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={() => {
+            setShowAddModal(false);
             load();
           }}
         />
