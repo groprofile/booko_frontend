@@ -47,8 +47,11 @@ export default function AdminAuditLogsPage() {
 
   useEffect(() => {
     const token = getAdminToken() ?? undefined;
-    apiGet<AuditLog[]>("/admin/audit-logs", token)
-      .then((data) => setLogs(data ?? []))
+    apiGet<{ logs: AuditLog[] } | AuditLog[]>("/admin/audit-logs", token)
+      .then((data) => {
+        if (Array.isArray(data)) setLogs(data);
+        else setLogs((data as { logs: AuditLog[] }).logs ?? []);
+      })
       .catch((err) => setError((err as Error).message ?? "Failed to load audit logs"))
       .finally(() => setLoading(false));
   }, []);

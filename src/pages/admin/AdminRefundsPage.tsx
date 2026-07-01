@@ -111,8 +111,11 @@ export default function AdminRefundsPage() {
 
   function load() {
     const token = getAdminToken() ?? undefined;
-    apiGet<Refund[]>("/admin/refunds", token)
-      .then((data) => setRefunds(data ?? []))
+    apiGet<{ refunds: Refund[] } | Refund[]>("/admin/refunds", token)
+      .then((data) => {
+        if (Array.isArray(data)) setRefunds(data);
+        else setRefunds((data as { refunds: Refund[] }).refunds ?? []);
+      })
       .catch((err) => setError((err as Error).message ?? "Failed to load refunds"))
       .finally(() => setLoading(false));
   }

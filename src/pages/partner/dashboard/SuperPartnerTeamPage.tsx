@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Check, ChevronDown } from "lucide-react";
+import { Plus, X, Check, ChevronDown, Pencil } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
-import { apiGet, apiPost, getVendorToken } from "../../../lib/api";
+import { apiGet, apiPost, apiPatch, getVendorToken } from "../../../lib/api";
 
 interface ApiStaff {
   id: string;
@@ -26,6 +26,8 @@ const STATUS_STYLES: Record<string, string> = {
   inactive: "bg-slate-100 text-slate-500",
   pending: "bg-amber-100 text-amber-700",
 };
+
+// ── Add Manager Modal ─────────────────────────────────────────────────────────
 
 interface AddLoginModalProps {
   centers: ApiCenter[];
@@ -93,6 +95,12 @@ function AddLoginModal({ centers, onClose, onCreated }: AddLoginModalProps) {
           <div className="flex flex-col gap-4 p-6">
             {error && (
               <p className="rounded-xl bg-red-50 px-4 py-2.5 text-xs text-red-600">{error}</p>
+            )}
+
+            {centers.length === 0 && (
+              <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+                No centers found. Add a center first before assigning a manager.
+              </p>
             )}
 
             <div className="flex flex-col gap-1.5">
@@ -169,25 +177,146 @@ function AddLoginModal({ centers, onClose, onCreated }: AddLoginModalProps) {
   );
 }
 
+// ── Edit Manager Modal ────────────────────────────────────────────────────────
+
+interface EditManagerModalProps {
+  manager: ApiStaff;
+  centers: ApiCenter[];
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+function EditManagerModal({ manager, centers, onClose, onUpdated }: EditManagerModalProps) {
+  const [name, setName] = useState(manager.name);
+  const [centreId, setCentreId] = useState(manager.center_id ?? "");
+  const [status, setStatus] = useState(manager.status);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    try {
+      const token = getVendorToken() ?? undefined;
+      await apiPatch(
+        `/vendor/staff/${manager.id}`,
+        {
+          name: name.trim() || undefined,
+          centreId: centreId || undefined,
+          status,
+        },
+        token,
+      );
+      onUpdated();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to update manager");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#E2E8F0] px-6 py-4">
+          <h3 className="text-sm font-bold text-[#0F172A]">Edit Manager</h3>
+          <button onClick={onClose} className="text-[#94A3B8] hover:text-[#0F172A] transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 p-6">
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-2.5 text-xs text-red-600">{error}</p>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-[#0F172A]">Manager Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full name"
+              className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-[#0F172A]">Assigned Center</label>
+            <div className="relative">
+              <select
+                value={centreId}
+                onChange={(e) => setCentreId(e.target.value)}
+                className="w-full appearance-none bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl pl-4 pr-8 py-2.5 text-sm outline-none text-[#0F172A] cursor-pointer"
+              >
+                <option value="">Choose a center…</option>
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.center_name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-[#0F172A]">Status</label>
+            <div className="relative">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full appearance-none bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl pl-4 pr-8 py-2.5 text-sm outline-none text-[#0F172A] cursor-pointer"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!name.trim() || saving}
+              className="flex-1 rounded-xl bg-[#2563EB] py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function SuperPartnerTeamPage() {
   const [staff, setStaff] = useState<ApiStaff[]>([]);
   const [centers, setCenters] = useState<ApiCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingManager, setEditingManager] = useState<ApiStaff | null>(null);
 
   function load() {
     const token = getVendorToken() ?? undefined;
     setLoading(true);
-    Promise.all([
-      apiGet<ApiStaff[]>("/vendor/staff", token),
-      apiGet<ApiCenter[]>("/vendor/centers", token),
-    ])
-      .then(([s, c]) => {
-        setStaff(s ?? []);
-        setCenters(c ?? []);
-      })
+    let pending = 2;
+    const done = () => { if (--pending === 0) setLoading(false); };
+
+    apiGet<ApiStaff[]>("/vendor/staff", token)
+      .then((s) => setStaff(s ?? []))
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(done);
+
+    apiGet<ApiCenter[]>("/vendor/centers", token)
+      .then((c) => setCenters(c ?? []))
+      .catch(console.error)
+      .finally(done);
   }
 
   useEffect(() => {
@@ -225,16 +354,17 @@ export default function SuperPartnerTeamPage() {
                 <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Phone</th>
                 <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Created</th>
                 <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Status</th>
+                <th className="px-4 py-3.5 text-left font-semibold text-[#64748B]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-sm text-[#94A3B8]">Loading…</td>
+                  <td colSpan={7} className="py-10 text-center text-sm text-[#94A3B8]">Loading…</td>
                 </tr>
               ) : staff.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-sm text-[#94A3B8]">
+                  <td colSpan={7} className="py-10 text-center text-sm text-[#94A3B8]">
                     No managers yet. Add one to give center-level access.
                   </td>
                 </tr>
@@ -268,6 +398,15 @@ export default function SuperPartnerTeamPage() {
                         {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                       </span>
                     </td>
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={() => setEditingManager(s)}
+                        className="flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-semibold text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+                      >
+                        <Pencil size={11} />
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -298,6 +437,18 @@ export default function SuperPartnerTeamPage() {
           onClose={() => setShowModal(false)}
           onCreated={() => {
             setShowModal(false);
+            load();
+          }}
+        />
+      )}
+
+      {editingManager && (
+        <EditManagerModal
+          manager={editingManager}
+          centers={centers}
+          onClose={() => setEditingManager(null)}
+          onUpdated={() => {
+            setEditingManager(null);
             load();
           }}
         />

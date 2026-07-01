@@ -383,7 +383,7 @@ function CenterCard({ center, managerEmail, onManage }: CenterCardProps) {
         {isActive && center.rating != null && (
           <span className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-[#0F172A]">
             <Star size={9} className="fill-amber-400 text-amber-400" />
-            {center.rating.toFixed(1)}
+            {Number(center.rating).toFixed(1)}
           </span>
         )}
       </div>
