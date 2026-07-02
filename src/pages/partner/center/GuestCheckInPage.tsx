@@ -12,7 +12,7 @@ import { apiGet, apiPost, getVendorToken } from "../../../lib/api";
 interface ApiBooking {
   id: string;
   status: string;
-  checkin_status: boolean;
+  checkin_status: string; // 'pending' | 'checked_in'
   slot_date: string;
   start_time: string;
   end_time: string;
@@ -43,7 +43,7 @@ export default function GuestCheckInPage() {
       .then((res) => {
         setBookings(res.data ?? []);
         const init: Record<string, boolean> = {};
-        (res.data ?? []).forEach((b) => { init[b.id] = b.checkin_status; });
+        (res.data ?? []).forEach((b) => { init[b.id] = b.checkin_status === 'checked_in'; });
         setCheckinStatus(init);
       })
       .catch(() => {})
