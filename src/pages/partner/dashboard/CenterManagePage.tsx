@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Building2, MapPin, Clock, Camera, Calendar,
-  Ban, Check, X, Upload, Loader2, Plus, Trash2,
+  Ban, Check, X, Upload, Loader2, Plus, Trash2, BedDouble,
 } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import { apiGet, apiPost, apiPut, apiUploadFile, getVendorToken } from "../../../lib/api";
+import RoomsPricingTab from "./RoomsPricingTab";
 
 interface CenterDetail {
   id: string;
@@ -36,7 +37,7 @@ interface Holiday {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const INPUT_CLS = "bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8] w-full";
 
-type Tab = "details" | "photos" | "schedule";
+type Tab = "details" | "rooms" | "photos" | "schedule";
 
 export default function CenterManagePage() {
   const { id } = useParams<{ id: string }>();
@@ -248,6 +249,7 @@ export default function CenterManagePage() {
           <div className="mb-5 flex gap-1 rounded-xl border border-[#E2E8F0] bg-white p-1 shadow-sm w-fit">
             {([
               { key: "details", label: "Details", icon: Building2 },
+              { key: "rooms",   label: "Rooms & Pricing", icon: BedDouble },
               { key: "photos",  label: "Photos",  icon: Camera },
               { key: "schedule", label: "Schedule", icon: Calendar },
             ] as { key: Tab; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
@@ -358,6 +360,11 @@ export default function CenterManagePage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* ── ROOMS & PRICING TAB ── */}
+          {tab === "rooms" && (
+            <RoomsPricingTab centerId={center.id} categoryName={center.categories?.name} />
           )}
 
           {/* ── PHOTOS TAB ── */}

@@ -167,6 +167,25 @@ export async function apiPut<T>(path: string, body: unknown, token?: string): Pr
   return unwrap<T>(await res.json());
 }
 
+export async function apiDelete<T>(path: string, token?: string): Promise<T> {
+  const makeRequest = async (t?: string) => {
+    const headers: Record<string, string> = {};
+    if (t) headers['Authorization'] = `Bearer ${t}`;
+    return fetch(`${BASE}${path}`, { method: 'DELETE', headers });
+  };
+
+  let res = await makeRequest(token);
+  if (res.status === 401 && token) {
+    const newToken = await attemptTokenRefresh(token);
+    if (newToken) res = await makeRequest(newToken);
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
+    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
+  }
+  return unwrap<T>(await res.json());
+}
+
 export async function apiUploadFile<T>(path: string, formData: FormData, token?: string): Promise<T> {
   const makeRequest = async (t?: string) => {
     const headers: Record<string, string> = {};
