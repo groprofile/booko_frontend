@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { apiPost, apiGet, ApiError } from "../lib/api";
+import { apiPost, apiGet, apiPatch, ApiError } from "../lib/api";
 
 export type PartnerStatus =
   | "email_unverified"
@@ -150,6 +150,15 @@ interface PartnerCtx {
   markStepComplete: (step: number) => void;
   submitForReview: () => void;
   refreshStatus: () => Promise<PartnerStatus | null>;
+  // Field names match UpdateProfileDto on the backend exactly — this is the
+  // real, currently-supported set of self-service-editable fields. Owner
+  // name/email are intentionally not here — the backend has no path to
+  // change them outside the KYC/support flow.
+  updateProfile: (updates: {
+    businessName?: string; businessType?: string; phone?: string; contactPerson?: string;
+    registeredAddress?: string; city?: string; state?: string; pincode?: string;
+    website?: string; instagram?: string; linkedin?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 }
 
 const PartnerContext = createContext<PartnerCtx | null>(null);
@@ -256,6 +265,10 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
       setPartner(draft);
       sessionStorage.setItem(TOKEN_KEY, data.accessToken);
       sessionStorage.setItem(REFRESH_KEY, data.refreshToken);
+      // Populate GST/bank/center details immediately rather than waiting for
+      // the next mount or tab focus — refreshStatus's functional setPartner
+      // update safely picks up `draft` above once it lands.
+      await refreshStatus();
       return { success: true, status, centerType };
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
@@ -331,8 +344,29 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         status: string;
         business_name?: string;
         owner_name?: string;
+        business_type?: string;
+        phone?: string;
+        contact_person?: string;
+        registered_address?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        website?: string;
+        instagram?: string;
+        linkedin?: string;
+        gstin?: string;
+        gst_legal_name?: string;
+        gst_address?: string;
+        gst_state?: string;
+        vendor_bank_accounts?: Array<{
+          account_holder_name?: string;
+          account_number?: string;
+          ifsc_code?: string;
+          bank_name?: string;
+        }>;
       }>('/vendor/profile', token);
       const status: PartnerStatus = STATUS_MAP[vendor.status] ?? 'onboarding_started';
+      const bank = vendor.vendor_bank_accounts?.[0];
       setPartner((prev) =>
         prev
           ? {
@@ -340,6 +374,35 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
               status,
               businessName: vendor.business_name ?? prev.businessName,
               name: vendor.owner_name ?? prev.name,
+              mobile: vendor.phone ?? prev.mobile,
+              city: vendor.city ?? prev.city,
+              state: vendor.state ?? prev.state,
+              businessType: vendor.business_type ?? prev.businessType,
+              business: {
+                ...prev.business,
+                businessName: vendor.business_name ?? prev.business.businessName,
+                businessType: vendor.business_type ?? prev.business.businessType,
+                contactPerson: vendor.contact_person ?? prev.business.contactPerson,
+                mobile: vendor.phone ?? prev.business.mobile,
+                registeredAddress: vendor.registered_address ?? prev.business.registeredAddress,
+                city: vendor.city ?? prev.business.city,
+                state: vendor.state ?? prev.business.state,
+                pincode: vendor.pincode ?? prev.business.pincode,
+                website: vendor.website ?? prev.business.website,
+                instagram: vendor.instagram ?? prev.business.instagram,
+                linkedin: vendor.linkedin ?? prev.business.linkedin,
+              },
+              gstBank: {
+                ...prev.gstBank,
+                gstin: vendor.gstin ?? prev.gstBank.gstin,
+                legalBusinessName: vendor.gst_legal_name ?? prev.gstBank.legalBusinessName,
+                gstAddress: vendor.gst_address ?? prev.gstBank.gstAddress,
+                gstState: vendor.gst_state ?? prev.gstBank.gstState,
+                accountHolderName: bank?.account_holder_name ?? prev.gstBank.accountHolderName,
+                bankName: bank?.bank_name ?? prev.gstBank.bankName,
+                accountNumber: bank?.account_number ?? prev.gstBank.accountNumber,
+                ifscCode: bank?.ifsc_code ?? prev.gstBank.ifscCode,
+              },
             }
           : prev,
       );
@@ -354,6 +417,22 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function updateProfile(updates: {
+    businessName?: string; businessType?: string; phone?: string; contactPerson?: string;
+    registeredAddress?: string; city?: string; state?: string; pincode?: string;
+    website?: string; instagram?: string; linkedin?: string;
+  }) {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if (!token) return { success: false, error: "Not signed in" };
+    try {
+      await apiPatch("/vendor/profile", updates, token);
+      await refreshStatus();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof ApiError ? err.message : "Failed to save changes" };
+    }
+  }
+
   // On load (and whenever the tab regains focus), sync the live status so an
   // admin approval/rejection reflects without forcing the vendor to re-login.
   useEffect(() => {
@@ -365,7 +444,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signinManager, signout, updatePartner, verifyEmail, markStepComplete, submitForReview, refreshStatus }}>
+    <PartnerContext.Provider value={{ partner, isAuthenticated: !!partner, signup, signin, signinManager, signout, updatePartner, verifyEmail, markStepComplete, submitForReview, refreshStatus, updateProfile }}>
       {children}
     </PartnerContext.Provider>
   );

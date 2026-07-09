@@ -5,6 +5,7 @@ import {
   Phone,
   Clock,
   KeyRound,
+  RefreshCw,
 } from "lucide-react";
 import CenterLayout from "../../../components/partner/CenterLayout";
 import { apiGet, apiPost, getVendorToken } from "../../../lib/api";
@@ -35,6 +36,8 @@ export default function GuestCheckInPage() {
   const [otpErrors, setOtpErrors] = useState<Record<string, string>>({});
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [resendLoading, setResendLoading] = useState<Record<string, boolean>>({});
+  const [resendMessages, setResendMessages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const token = getVendorToken();
@@ -74,6 +77,22 @@ export default function GuestCheckInPage() {
       setOtpErrors((p) => ({ ...p, [booking.id]: (err as Error).message ?? 'Invalid OTP' }));
     } finally {
       setOtpLoading((p) => ({ ...p, [booking.id]: false }));
+    }
+  }
+
+  async function handleResendOtp(booking: ApiBooking) {
+    setResendLoading((p) => ({ ...p, [booking.id]: true }));
+    setResendMessages((p) => ({ ...p, [booking.id]: '' }));
+    try {
+      await apiPost('/vendor/checkin/resend-otp', {
+        centreId: booking.center_id,
+        bookingId: booking.id,
+      }, getVendorToken() ?? undefined);
+      setResendMessages((p) => ({ ...p, [booking.id]: 'OTP resent' }));
+    } catch (err) {
+      setResendMessages((p) => ({ ...p, [booking.id]: (err as Error).message ?? 'Failed to resend OTP' }));
+    } finally {
+      setResendLoading((p) => ({ ...p, [booking.id]: false }));
     }
   }
 
@@ -184,6 +203,17 @@ export default function GuestCheckInPage() {
                               {otpErrors[b.id] && (
                                 <p className="mt-1 text-[10px] text-red-500">{otpErrors[b.id]}</p>
                               )}
+                              <button
+                                onClick={() => handleResendOtp(b)}
+                                disabled={resendLoading[b.id]}
+                                className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] hover:underline disabled:opacity-60"
+                              >
+                                <RefreshCw size={10} className={resendLoading[b.id] ? 'animate-spin' : ''} />
+                                {resendLoading[b.id] ? 'Resending…' : "Didn't get it? Resend OTP"}
+                              </button>
+                              {resendMessages[b.id] && (
+                                <p className="mt-0.5 text-[10px] text-[#64748B]">{resendMessages[b.id]}</p>
+                              )}
                             </div>
                           ) : (
                             <button
@@ -271,6 +301,17 @@ export default function GuestCheckInPage() {
                             </div>
                             {otpErrors[searchResult.id] && (
                               <p className="mt-1 text-xs text-red-500">{otpErrors[searchResult.id]}</p>
+                            )}
+                            <button
+                              onClick={() => handleResendOtp(searchResult)}
+                              disabled={resendLoading[searchResult.id]}
+                              className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] hover:underline disabled:opacity-60"
+                            >
+                              <RefreshCw size={10} className={resendLoading[searchResult.id] ? 'animate-spin' : ''} />
+                              {resendLoading[searchResult.id] ? 'Resending…' : "Didn't get it? Resend OTP"}
+                            </button>
+                            {resendMessages[searchResult.id] && (
+                              <p className="mt-0.5 text-[10px] text-[#64748B]">{resendMessages[searchResult.id]}</p>
                             )}
                           </div>
                         ) : (

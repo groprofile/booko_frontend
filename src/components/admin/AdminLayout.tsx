@@ -2,6 +2,7 @@ import { useState } from "react";
 import { type ReactNode } from "react";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import ToastContainer from "./Toast";
 
 interface Props {
   children: ReactNode;
@@ -21,6 +22,7 @@ export default function AdminLayout({ children, title, subtitle }: Props) {
           {children}
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

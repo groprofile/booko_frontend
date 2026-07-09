@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, User, Bell, Building2, CreditCard, Shield } from "lucide-react";
 import SuperPartnerLayout from "../../components/partner/SuperPartnerLayout";
 import CenterLayout from "../../components/partner/CenterLayout";
@@ -16,9 +16,11 @@ const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
 
 const inputCls =
   "h-10 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 placeholder:text-[#94A3B8]";
+const readOnlyCls =
+  "h-10 w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 text-sm text-[#94A3B8] outline-none";
 
 function SettingsContent() {
-  const { partner } = usePartner();
+  const { partner, updateProfile } = usePartner();
   const [tab, setTab] = useState<Tab>("profile");
   const [notif, setNotif] = useState({
     newBooking: true,
@@ -29,9 +31,70 @@ function SettingsContent() {
   });
   const [saved, setSaved] = useState(false);
 
+  // Mobile is the only Profile-tab field the backend actually supports
+  // editing (UpdateProfileDto has no owner-name/email fields) — Full Name
+  // and both emails stay read-only rather than pretending to save.
+  const [mobile, setMobile] = useState(partner?.mobile ?? "");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
+  const [centerForm, setCenterForm] = useState({
+    businessName: partner?.businessName ?? "",
+    businessType: partner?.businessType ?? "",
+    city: partner?.city ?? "",
+    state: partner?.state ?? "",
+    registeredAddress: partner?.business?.registeredAddress ?? "",
+    website: partner?.business?.website ?? "",
+    instagram: partner?.business?.instagram ?? "",
+  });
+  const [centerSaving, setCenterSaving] = useState(false);
+  const [centerError, setCenterError] = useState("");
+
+  // Re-sync local form state once real profile data arrives (refreshStatus
+  // resolves asynchronously after this page has already mounted).
+  useEffect(() => {
+    setMobile(partner?.mobile ?? "");
+    setCenterForm({
+      businessName: partner?.businessName ?? "",
+      businessType: partner?.businessType ?? "",
+      city: partner?.city ?? "",
+      state: partner?.state ?? "",
+      registeredAddress: partner?.business?.registeredAddress ?? "",
+      website: partner?.business?.website ?? "",
+      instagram: partner?.business?.instagram ?? "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partner?.mobile, partner?.businessName, partner?.businessType, partner?.city, partner?.state, partner?.business]);
+
   function handleSave() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleSaveProfile() {
+    setProfileSaving(true);
+    setProfileError("");
+    const result = await updateProfile({ phone: mobile });
+    setProfileSaving(false);
+    if (result.success) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } else {
+      setProfileError(result.error ?? "Failed to save changes");
+    }
+  }
+
+  async function handleSaveCenterInfo() {
+    setCenterSaving(true);
+    setCenterError("");
+    const result = await updateProfile(centerForm);
+    setCenterSaving(false);
+    if (result.success) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } else {
+      setCenterError(result.error ?? "Failed to save changes");
+    }
   }
 
   return (
@@ -70,21 +133,28 @@ function SettingsContent() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { label: "Full Name", value: partner?.name ?? "", placeholder: "Your full name" },
-                { label: "Mobile", value: partner?.mobile ?? "", placeholder: "+91 XXXXX XXXXX" },
-                { label: "Personal Email", value: partner?.email ?? "", placeholder: "your@email.com" },
-                { label: "Business Email", value: partner?.businessEmail ?? "", placeholder: "business@company.com" },
-              ].map((f) => (
-                <div key={f.label}>
-                  <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">{f.label}</label>
-                  <input type="text" defaultValue={f.value} placeholder={f.placeholder} className={inputCls} />
-                </div>
-              ))}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Full Name</label>
+                <input type="text" value={partner?.name ?? ""} readOnly className={readOnlyCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Mobile</label>
+                <input type="text" value={mobile} onChange={(e) => setMobile(e.target.value)}
+                  placeholder="+91 XXXXX XXXXX" className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Personal Email</label>
+                <input type="text" value={partner?.email ?? ""} readOnly className={readOnlyCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Business Email</label>
+                <input type="text" value={partner?.businessEmail ?? ""} readOnly className={readOnlyCls} />
+              </div>
             </div>
-            <button onClick={handleSave}
-              className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8]">
-              <Save size={13} /> {saved ? "Saved!" : "Save Changes"}
+            {profileError && <p className="mt-3 text-xs text-red-600">{profileError}</p>}
+            <button onClick={handleSaveProfile} disabled={profileSaving}
+              className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60">
+              <Save size={13} /> {profileSaving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
             </button>
           </div>
         )}
@@ -94,33 +164,49 @@ function SettingsContent() {
           <div>
             <h3 className="mb-5 text-sm font-bold text-[#0F172A]">Center Information</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { label: "Business Name", value: partner?.businessName ?? "" },
-                { label: "Business Type", value: partner?.businessType ?? "" },
-                { label: "City", value: partner?.city ?? "" },
-                { label: "State", value: partner?.state ?? "" },
-              ].map((f) => (
-                <div key={f.label}>
-                  <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">{f.label}</label>
-                  <input type="text" defaultValue={f.value} className={inputCls} />
-                </div>
-              ))}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Business Name</label>
+                <input type="text" value={centerForm.businessName}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, businessName: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Business Type</label>
+                <input type="text" value={centerForm.businessType}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, businessType: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">City</label>
+                <input type="text" value={centerForm.city}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, city: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">State</label>
+                <input type="text" value={centerForm.state}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, state: e.target.value }))} className={inputCls} />
+              </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Registered Address</label>
-                <input type="text" defaultValue={partner?.business?.registeredAddress ?? ""} placeholder="Full registered address" className={inputCls} />
+                <input type="text" value={centerForm.registeredAddress}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, registeredAddress: e.target.value }))}
+                  placeholder="Full registered address" className={inputCls} />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Website</label>
-                <input type="url" defaultValue={partner?.business?.website ?? ""} placeholder="https://yourwebsite.com" className={inputCls} />
+                <input type="url" value={centerForm.website}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, website: e.target.value }))}
+                  placeholder="https://yourwebsite.com" className={inputCls} />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-[#1E293B]">Instagram</label>
-                <input type="text" defaultValue={partner?.business?.instagram ?? ""} placeholder="@yourhandle" className={inputCls} />
+                <input type="text" value={centerForm.instagram}
+                  onChange={(e) => setCenterForm((p) => ({ ...p, instagram: e.target.value }))}
+                  placeholder="@yourhandle" className={inputCls} />
               </div>
             </div>
-            <button onClick={handleSave}
-              className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8]">
-              <Save size={13} /> {saved ? "Saved!" : "Save Changes"}
+            {centerError && <p className="mt-3 text-xs text-red-600">{centerError}</p>}
+            <button onClick={handleSaveCenterInfo} disabled={centerSaving}
+              className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60">
+              <Save size={13} /> {centerSaving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
             </button>
           </div>
         )}

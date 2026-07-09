@@ -23,7 +23,7 @@ export interface Vendor {
   kycStatus: KycStatus; bankStatus: BankStatus;
   joinedAt: string; approvedAt?: string;
   totalRevenue: number; totalBookings: number; totalCenters: number;
-  commissionRate: number; notes?: string;
+  notes?: string;
 }
 
 export type CenterStatus = "live" | "inactive" | "pending_approval" | "rejected";
@@ -108,7 +108,7 @@ export interface DashboardStats {
 export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
   super_admin: ["*"],
   operations_admin: ["dashboard", "vendors", "vendor_approvals", "centers", "bookings"],
-  finance_admin: ["dashboard", "revenue", "settlements", "bookings"],
+  finance_admin: ["dashboard", "revenue", "settlements", "bookings", "commissions"],
   support_admin: ["dashboard", "users", "bookings", "support"],
   sales_admin: ["dashboard", "vendors", "vendor_approvals"],
   content_admin: ["dashboard", "centers", "coupons"],
@@ -154,21 +154,6 @@ export const CITY_BOOKINGS = [
 ];
 
 // ─── Mock data for sections without backend endpoints ─────────────────────────
-
-const INIT_USERS: AppUser[] = [
-  { id: "u001", name: "Ravi Khanna", email: "ravi.khanna@gmail.com", mobile: "9876543210", totalBookings: 18, totalSpend: 47500, lastBookingDate: "2026-06-20", signupDate: "2025-08-12", status: "active", city: "Mumbai" },
-  { id: "u002", name: "Meera Joshi", email: "meera.joshi@gmail.com", mobile: "9867412345", totalBookings: 12, totalSpend: 31200, lastBookingDate: "2026-06-22", signupDate: "2025-09-05", status: "active", city: "Bangalore" },
-  { id: "u003", name: "Suresh Nair", email: "suresh.nair@outlook.com", mobile: "9845671234", totalBookings: 7, totalSpend: 18900, lastBookingDate: "2026-06-15", signupDate: "2025-10-18", status: "active", city: "Pune" },
-  { id: "u004", name: "Deepika Verma", email: "deepika.verma@gmail.com", mobile: "9811234567", totalBookings: 24, totalSpend: 64300, lastBookingDate: "2026-06-23", signupDate: "2025-07-22", status: "active", city: "New Delhi" },
-  { id: "u005", name: "Aakash Patel", email: "aakash.patel@gmail.com", mobile: "9820345678", totalBookings: 3, totalSpend: 7800, lastBookingDate: "2026-05-30", signupDate: "2026-02-14", status: "active", city: "Mumbai" },
-  { id: "u006", name: "Preethi Krishnan", email: "preethi.k@gmail.com", mobile: "9884123456", totalBookings: 9, totalSpend: 23400, lastBookingDate: "2026-06-19", signupDate: "2025-11-03", status: "active", city: "Chennai" },
-  { id: "u007", name: "Mohit Sharma", email: "mohit.sharma@hotmail.com", mobile: "9813456789", totalBookings: 15, totalSpend: 39800, lastBookingDate: "2026-06-21", signupDate: "2025-08-30", status: "active", city: "Gurgaon" },
-  { id: "u008", name: "Sunita Yadav", email: "sunita.yadav@gmail.com", mobile: "9849234567", totalBookings: 2, totalSpend: 4500, lastBookingDate: "2026-04-12", signupDate: "2026-03-25", status: "active", city: "Hyderabad" },
-  { id: "u009", name: "Farhan Sheikh", email: "farhan.sheikh@gmail.com", mobile: "9823456789", totalBookings: 6, totalSpend: 15600, lastBookingDate: "2026-06-10", signupDate: "2025-12-18", status: "blocked", city: "Mumbai" },
-  { id: "u010", name: "Anita Desai", email: "anita.desai@yahoo.com", mobile: "9876012345", totalBookings: 11, totalSpend: 28900, lastBookingDate: "2026-06-17", signupDate: "2025-09-14", status: "active", city: "Bangalore" },
-  { id: "u011", name: "Rohan Gupta", email: "rohan.gupta@gmail.com", mobile: "9818765432", totalBookings: 19, totalSpend: 52100, lastBookingDate: "2026-06-23", signupDate: "2025-07-01", status: "active", city: "New Delhi" },
-  { id: "u012", name: "Kavitha Menon", email: "kavitha.menon@gmail.com", mobile: "9847890123", totalBookings: 8, totalSpend: 21000, lastBookingDate: "2026-06-14", signupDate: "2025-10-07", status: "active", city: "Kochi" },
-];
 
 const INIT_COUPONS: Coupon[] = [
   { id: "cp001", code: "BOKKO20", discountType: "percentage", value: 20, maxDiscount: 200, minBooking: 500, startDate: "2026-06-01", endDate: "2026-06-30", usageLimit: 500, usageCount: 312, active: true, createdAt: "2026-05-28" },
@@ -234,8 +219,24 @@ function normalizeVendor(raw: any): Vendor {
     totalRevenue: 0,
     totalBookings: 0,
     totalCenters: 0,
-    commissionRate: 10,
     notes: raw.rejection_reason ?? undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeUser(raw: any): AppUser {
+  const spendPaise = typeof raw.total_spend_paise === "string" ? parseInt(raw.total_spend_paise, 10) : (raw.total_spend_paise ?? 0);
+  return {
+    id: raw.id,
+    name: raw.full_name ?? "",
+    email: raw.email ?? "",
+    mobile: raw.phone ?? "",
+    totalBookings: raw.total_bookings ?? 0,
+    totalSpend: Math.round(spendPaise / 100),
+    lastBookingDate: undefined,
+    signupDate: raw.created_at?.slice(0, 10) ?? "",
+    status: (raw.status === "blocked" ? "blocked" : "active") as UserStatus,
+    city: raw.location_label ?? "—",
   };
 }
 
@@ -330,6 +331,7 @@ interface AdminContextType {
   centers: Center[];
   bookings: Booking[];
   users: AppUser[];
+  usersLoading: boolean;
   settlements: Settlement[];
   coupons: Coupon[];
   tickets: SupportTicket[];
@@ -365,7 +367,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [users, setUsers] = useState<AppUser[]>(INIT_USERS);
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>(INIT_COUPONS);
   const [tickets, setTickets] = useState<SupportTicket[]>(INIT_TICKETS);
@@ -406,6 +409,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     apiGet<unknown[]>("/admin/settlements", token)
       .then(r => setSettlements(Array.isArray(r) ? r.map(normalizeSettlement) : []))
       .catch(console.error);
+
+    setUsersLoading(true);
+    apiGet<{ users: unknown[] }>("/admin/users?limit=100", token)
+      .then(r => setUsers((r.users ?? []).map(normalizeUser)))
+      .catch(console.error)
+      .finally(() => setUsersLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [admin?.id]);
 
@@ -442,6 +451,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setCenters([]);
     setBookings([]);
     setSettlements([]);
+    setUsers([]);
     sessionStorage.removeItem("bokko_admin");
     sessionStorage.removeItem("bokko_admin_token");
     sessionStorage.removeItem("bokko_admin_refresh");
@@ -483,7 +493,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       mobile: "", businessType: "", city: "", state: "", gstin: "",
       centerType: "single", status: "draft", kycStatus: "not_submitted", bankStatus: "not_submitted",
       joinedAt: new Date().toISOString().slice(0, 10), totalRevenue: 0, totalBookings: 0,
-      totalCenters: 0, commissionRate: 10, ...data,
+      totalCenters: 0, ...data,
     };
     setVendors(vs => [v, ...vs]);
     return v;
@@ -501,8 +511,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setBookings(bs => bs.map(b => b.id === id ? { ...b, paymentStatus: "refunded" as PaymentStatus, refundStatus: "processed" } : b));
   }
 
-  function blockUser(id: string) { setUsers(us => us.map(u => u.id === id ? { ...u, status: "blocked" as UserStatus } : u)); }
-  function unblockUser(id: string) { setUsers(us => us.map(u => u.id === id ? { ...u, status: "active" as UserStatus } : u)); }
+  async function blockUser(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/users/${id}/block`, {}, token);
+    setUsers(us => us.map(u => u.id === id ? { ...u, status: "blocked" as UserStatus } : u));
+  }
+
+  async function unblockUser(id: string) {
+    const token = getAdminToken();
+    if (token) await apiPost(`/admin/users/${id}/unblock`, {}, token);
+    setUsers(us => us.map(u => u.id === id ? { ...u, status: "active" as UserStatus } : u));
+  }
 
   async function markSettlementPaid(id: string) {
     const token = getAdminToken();
@@ -538,7 +557,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   return (
     <AdminContext.Provider value={{
-      admin, dashboardStats, vendors, centers, bookings, users, settlements, coupons, tickets, activity,
+      admin, dashboardStats, vendors, centers, bookings, users, usersLoading, settlements, coupons, tickets, activity,
       login, logout, hasPermission, approveVendor, rejectVendor, blockVendor, unblockVendor,
       addVendor, updateVendor, cancelBooking, refundBooking, blockUser, unblockUser,
       markSettlementPaid, createCoupon, disableCoupon, closeTicket, assignTicket,

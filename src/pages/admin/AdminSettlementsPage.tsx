@@ -1,14 +1,33 @@
-import { useState } from "react";
-import { Download, CheckCircle, Clock, Banknote, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Download, CheckCircle, Clock, Banknote, AlertCircle, ArrowRight } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import { useAdmin } from "../../context/AdminContext";
+import { apiGet, getAdminToken } from "../../lib/api";
 
 const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(2)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
+
+interface CommissionCategory {
+  id: string;
+  name: string;
+  commission_percent: string | number | null;
+}
 
 export default function AdminSettlementsPage() {
   const { settlements, markSettlementPaid } = useAdmin();
   const [filter, setFilter] = useState<"all" | "pending" | "processing" | "paid">("all");
+  const [categories, setCategories] = useState<CommissionCategory[]>([]);
+  const [globalRate, setGlobalRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<CommissionCategory[]>("/admin/categories", token).then(setCategories).catch(console.error);
+    apiGet<{ rate_percent: string }>("/admin/commission-config", token)
+      .then((r) => setGlobalRate(Number(r.rate_percent)))
+      .catch(console.error);
+  }, []);
 
   const filtered = settlements.filter((s) => filter === "all" || s.status === filter);
   const totalPending = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.netPayable, 0);
@@ -117,7 +136,20 @@ export default function AdminSettlementsPage() {
           </div>
           <div className="rounded-xl bg-[#F8FAFC] p-3">
             <p className="font-bold text-[#0F172A]">Commission Structure</p>
-            <p className="mt-1">Coworking/Meeting Rooms: 10% + 18% GST. Hotels: 12% + 18% GST. Virtual Office: 8% + 18% GST.</p>
+            {categories.length === 0 ? (
+              <p className="mt-1">Loading current rates…</p>
+            ) : (
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {categories.map((c) => (
+                  <li key={c.id}>
+                    {c.name}: {c.commission_percent != null ? `${c.commission_percent}%` : `${globalRate ?? "—"}% (platform default)`} + 18% GST
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/admin/commissions" className="mt-1.5 inline-flex items-center gap-1 font-semibold text-[#2563EB] hover:underline">
+              Manage rates <ArrowRight size={10} />
+            </Link>
           </div>
           <div className="rounded-xl bg-[#F8FAFC] p-3">
             <p className="font-bold text-[#0F172A]">TDS Deduction</p>

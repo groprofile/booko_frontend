@@ -5,6 +5,8 @@ import {
   Ban, Check, X, Upload, Loader2, Plus, Trash2, BedDouble,
 } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
+import CenterLayout from "../../../components/partner/CenterLayout";
+import { usePartner } from "../../../context/PartnerContext";
 import { apiGet, apiPost, apiPut, apiUploadFile, getVendorToken } from "../../../lib/api";
 import RoomsPricingTab from "./RoomsPricingTab";
 

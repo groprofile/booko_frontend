@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, User, Shield, Bell, Database, Globe } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
+import { showToast } from "../../components/admin/Toast";
+import { apiGet, apiPatch, getAdminToken, ApiError } from "../../lib/api";
 import { useAdmin, ROLE_LABELS } from "../../context/AdminContext";
 
 const ADMIN_USERS = [
@@ -29,6 +31,40 @@ export default function AdminSettingsPage() {
   });
 
   const isSuperAdmin = admin?.role === "super_admin";
+
+  const [globalCommission, setGlobalCommission] = useState("");
+  const [commissionSaving, setCommissionSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ rate_percent: string }>("/admin/commission-config", token)
+      .then((r) => setGlobalCommission(String(r.rate_percent)))
+      .catch(console.error);
+  }, [isSuperAdmin]);
+
+  async function handleSaveCommission() {
+    const token = getAdminToken();
+    if (!token) return;
+    const rate = Number(globalCommission);
+    if (isNaN(rate) || rate < 0 || rate > 100) {
+      showToast("Enter a commission rate between 0 and 100", "error");
+      return;
+    }
+    setCommissionSaving(true);
+    try {
+      // apiPatch matches the backend's real HTTP verb for this route
+      // (PATCH /admin/commission-config) — the rest of this app uses apiPost
+      // for mutations, but this one is genuinely idempotent.
+      await apiPatch("/admin/commission-config", { ratePercent: rate }, token);
+      showToast("Platform commission rate updated", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to update commission rate", "error");
+    } finally {
+      setCommissionSaving(false);
+    }
+  }
 
   const tabs = [
     { id: "profile" as const, label: "My Profile", icon: User },
@@ -197,7 +233,20 @@ export default function AdminSettingsPage() {
                   { label: "Company Legal Name", value: "Grofeed Technology India Pvt Ltd" },
                   { label: "Support Email", value: "Hello@bokkoapp.com" },
                   { label: "Support Phone", value: "+91 83690 29490" },
-                  { label: "Default Commission Rate", value: "10%" },
+                ].map((f) => (
+                  <div key={f.label} className="flex items-center gap-4">
+                    <label className="w-56 shrink-0 text-sm font-medium text-[#64748B]">{f.label}</label>
+                    <input type="text" defaultValue={f.value}
+                      className="h-9 flex-1 rounded-xl border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />
+                  </div>
+                ))}
+                <div className="flex items-center gap-4">
+                  <label className="w-56 shrink-0 text-sm font-medium text-[#64748B]">Default Commission Rate (%)</label>
+                  <input type="number" min="0" max="100" value={globalCommission}
+                    onChange={(e) => setGlobalCommission(e.target.value)}
+                    className="h-9 flex-1 rounded-xl border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />
+                </div>
+                {[
                   { label: "Settlement Window (days)", value: "7" },
                   { label: "GST Rate on Commission", value: "18%" },
                   { label: "TDS Rate", value: "2%" },
@@ -209,8 +258,9 @@ export default function AdminSettingsPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1d4ed8]">
-                <Save size={14} /> Save Platform Settings
+              <button onClick={handleSaveCommission} disabled={commissionSaving}
+                className="mt-5 flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1d4ed8] disabled:opacity-60">
+                <Save size={14} /> {commissionSaving ? "Saving…" : "Save Platform Settings"}
               </button>
             </div>
           )}

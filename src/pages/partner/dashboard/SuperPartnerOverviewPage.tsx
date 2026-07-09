@@ -19,7 +19,7 @@ interface ApiBooking {
   status: string;
   checkin_status?: string;
   slot_date?: string;
-  total_paise?: number;
+  vendor_amount_paise?: number;
   users?: { full_name?: string };
   centers?: { center_name?: string };
 }
@@ -188,8 +188,8 @@ export default function SuperPartnerOverviewPage() {
                       </td>
                       <td className="px-4 py-2.5 text-[#64748B]">{b.slot_date ?? "—"}</td>
                       <td className="px-4 py-2.5 text-right font-semibold text-[#0F172A]">
-                        {b.total_paise != null
-                          ? `₹${(b.total_paise / 100).toLocaleString("en-IN")}`
+                        {b.vendor_amount_paise != null
+                          ? `₹${(b.vendor_amount_paise / 100).toLocaleString("en-IN")}`
                           : "—"}
                       </td>
                       <td className="px-4 py-2.5">

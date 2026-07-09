@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Building2, ClipboardCheck, MapPin, CalendarDays,
   Users, TrendingUp, Banknote, Tag, Headphones, Settings,
   ChevronLeft, ChevronRight, LogOut, ShieldCheck,
-  RotateCcw, UserCog, CreditCard, ScrollText,
+  RotateCcw, UserCog, CreditCard, ScrollText, Percent, Megaphone,
 } from "lucide-react";
 import { useAdmin, ROLE_LABELS, type AdminRole } from "../../context/AdminContext";
 import Logo from "../Logo";
@@ -33,12 +33,14 @@ const NAV: NavItem[] = [
   { label: "Users",             to: "/admin/users",             icon: Users,            permission: "users" },
   { label: "Revenue",           to: "/admin/revenue",           icon: TrendingUp,       permission: "revenue" },
   { label: "Settlements",       to: "/admin/settlements",       icon: Banknote,         permission: "settlements" },
+  { label: "Commissions",       to: "/admin/commissions",       icon: Percent,          permission: "commissions" },
   { label: "Coupons",           to: "/admin/coupons",           icon: Tag,              permission: "coupons" },
   { label: "Refunds",           to: "/admin/refunds",           icon: RotateCcw,        permission: "refunds" },
   { label: "Employees",         to: "/admin/employees",         icon: UserCog,          permission: "employees" },
   { label: "Payments",          to: "/admin/payments",          icon: CreditCard,       permission: "payments" },
   { label: "Audit Logs",        to: "/admin/audit-logs",        icon: ScrollText,       permission: "audit_logs" },
   { label: "Support",           to: "/admin/support",           icon: Headphones,       permission: "support" },
+  { label: "Announcements",     to: "/admin/announcements",     icon: Megaphone,        permission: "announcements" },
   { label: "Settings",          to: "/admin/settings",          icon: Settings,         permission: "settings" },
 ];
 

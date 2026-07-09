@@ -5,17 +5,13 @@ import { apiGet, getVendorToken } from "../../../lib/api";
 
 interface Settlement {
   id: string;
+  gross_amount_paise: number;
+  net_amount_paise: number;
   period_start: string;
   period_end: string;
-  gross_amount_paise: number;
-  commission_paise: number;
-  gst_paise: number;
-  tds_paise: number;
-  net_payable_paise: number;
-  status: "pending" | "processing" | "paid";
+  status: "pending" | "paid";
+  created_at: string;
   paid_at?: string;
-  bookings_count: number;
-  utr_number?: string;
 }
 
 const fmt = (paise: number) => {
@@ -25,11 +21,10 @@ const fmt = (paise: number) => {
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700",
-  processing: "bg-blue-100 text-blue-700",
   paid: "bg-emerald-100 text-emerald-700",
 };
 
-type Filter = "all" | "pending" | "processing" | "paid";
+type Filter = "all" | "pending" | "paid";
 
 export default function SuperPartnerSettlementsPage() {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -39,15 +34,15 @@ export default function SuperPartnerSettlementsPage() {
 
   useEffect(() => {
     const token = getVendorToken() ?? undefined;
-    apiGet<Settlement[]>("/settlements", token)
-      .then((data) => setSettlements(data ?? []))
+    apiGet<{ data: Settlement[] }>("/vendor/settlements?limit=50", token)
+      .then((res) => setSettlements(res.data ?? []))
       .catch((err) => setError((err as Error).message ?? "Failed to load settlements"))
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = filter === "all" ? settlements : settlements.filter((s) => s.status === filter);
-  const totalPending = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.net_payable_paise, 0);
-  const totalPaid = settlements.filter((s) => s.status === "paid").reduce((a, s) => a + s.net_payable_paise, 0);
+  const totalPending = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.net_amount_paise, 0);
+  const totalPaid = settlements.filter((s) => s.status === "paid").reduce((a, s) => a + s.net_amount_paise, 0);
 
   const metrics = [
     { label: "Total Settlements", value: settlements.length.toString(), icon: Banknote, color: "#2563EB", bg: "#EFF6FF" },
@@ -75,7 +70,7 @@ export default function SuperPartnerSettlementsPage() {
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(["all", "pending", "processing", "paid"] as Filter[]).map((s) => (
+        {(["all", "pending", "paid"] as Filter[]).map((s) => (
           <button key={s} onClick={() => setFilter(s)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
               filter === s ? "bg-[#2563EB] text-white" : "border border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#2563EB]"
@@ -100,10 +95,10 @@ export default function SuperPartnerSettlementsPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-sm">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
-                  {["ID", "Period", "Bookings", "Gross", "Commission", "GST", "TDS", "Net Payable", "Status", "UTR"].map((h) => (
+                  {["ID", "Period", "Gross Amount", "Net Payable", "Status", "Paid Date"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#64748B]">{h}</th>
                   ))}
                 </tr>
@@ -111,7 +106,7 @@ export default function SuperPartnerSettlementsPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-16 text-center text-sm text-[#94A3B8]">No settlements found</td>
+                    <td colSpan={6} className="py-16 text-center text-sm text-[#94A3B8]">No settlements found</td>
                   </tr>
                 ) : (
                   filtered.map((s) => (
@@ -120,19 +115,15 @@ export default function SuperPartnerSettlementsPage() {
                       <td className="px-4 py-3 text-xs text-[#64748B]">
                         {s.period_start} → {s.period_end}
                       </td>
-                      <td className="px-4 py-3 text-center text-xs font-semibold text-[#0F172A]">{s.bookings_count}</td>
                       <td className="px-4 py-3 text-xs font-bold text-[#0F172A]">{fmt(s.gross_amount_paise)}</td>
-                      <td className="px-4 py-3 text-xs text-[#7C3AED]">-{fmt(s.commission_paise)}</td>
-                      <td className="px-4 py-3 text-xs text-[#0891B2]">-{fmt(s.gst_paise)}</td>
-                      <td className="px-4 py-3 text-xs text-[#D97706]">-{fmt(s.tds_paise)}</td>
-                      <td className="px-4 py-3 text-xs font-extrabold text-[#16A34A]">{fmt(s.net_payable_paise)}</td>
+                      <td className="px-4 py-3 text-xs font-extrabold text-[#16A34A]">{fmt(s.net_amount_paise)}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}>
                           {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] text-[#64748B]">
-                        {s.utr_number ?? (s.status === "paid" ? "—" : "Pending")}
+                        {s.paid_at ? new Date(s.paid_at).toLocaleDateString("en-IN") : "—"}
                       </td>
                     </tr>
                   ))
@@ -146,18 +137,14 @@ export default function SuperPartnerSettlementsPage() {
       {/* Policy info */}
       <div className="mt-5 rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
         <p className="mb-3 text-sm font-bold text-[#0F172A]">Settlement Policy</p>
-        <div className="grid gap-4 text-xs text-[#64748B] sm:grid-cols-3">
+        <div className="grid gap-4 text-xs text-[#64748B] sm:grid-cols-2">
           <div className="rounded-xl bg-[#F8FAFC] p-3">
             <p className="font-bold text-[#0F172A]">Settlement Window</p>
-            <p className="mt-1">7 days after booking completion. Settlements are generated every Monday for the previous week.</p>
+            <p className="mt-1">Settlements are created per booking once confirmed. Net Payable already reflects your final payout amount.</p>
           </div>
           <div className="rounded-xl bg-[#F8FAFC] p-3">
-            <p className="font-bold text-[#0F172A]">Commission Structure</p>
-            <p className="mt-1">Coworking: 10% + GST. Meeting Rooms: 10% + GST. Hotels: 12% + GST. Virtual Office: 8% + GST.</p>
-          </div>
-          <div className="rounded-xl bg-[#F8FAFC] p-3">
-            <p className="font-bold text-[#0F172A]">TDS Deduction</p>
-            <p className="mt-1">2% TDS deducted for annual earnings above ₹30,000 as per Section 194C.</p>
+            <p className="font-bold text-[#0F172A]">Payout Status</p>
+            <p className="mt-1">Pending settlements are awaiting admin processing. Paid settlements show the date they were disbursed.</p>
           </div>
         </div>
       </div>

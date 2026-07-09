@@ -3,16 +3,29 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, CalendarDays, ScanLine, MessageSquare,
   CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store,
+  Building2,
 } from "lucide-react";
 import Logo from "../Logo";
 import { usePartner } from "../../context/PartnerContext";
 
-const NAV = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
+  badgeColor?: string;
+  ownerOnly?: boolean;
+}
+
+const NAV: NavItem[] = [
   { href: "/partner/center/overview",  label: "Dashboard",       icon: LayoutDashboard },
   { href: "/partner/center/bookings",  label: "Bookings",        icon: CalendarDays,  badge: "12" },
   { href: "/partner/center/checkin",   label: "Guest Check-in",  icon: ScanLine,      badge: "4", badgeColor: "emerald" },
   { href: "/partner/center/requests",  label: "Special Requests",icon: MessageSquare, badge: "2", badgeColor: "amber" },
   { href: "/partner/center/calendar",  label: "Calendar",        icon: CalendarRange  },
+  // Center editing (details/pricing/photos/schedule) is VENDOR_SUPER_ADMIN-only
+  // on the backend — hide it from center-manager (staff) sessions.
+  { href: "/partner/center/manage",    label: "Manage Center",   icon: Building2, ownerOnly: true },
   { href: "/partner/settings",         label: "Settings",        icon: Settings2      },
 ];
 
@@ -61,7 +74,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
 
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
-          {NAV.map((item) => {
+          {NAV.filter((item) => !item.ownerOnly || !partner?.isManager).map((item) => {
             const active = pathname === item.href;
             const badgeStyle = item.badgeColor ? BADGE_COLORS[item.badgeColor] : BADGE_COLORS.blue;
             return (

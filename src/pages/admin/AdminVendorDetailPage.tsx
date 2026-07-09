@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   ArrowLeft, Building2, MapPin, Phone, Mail, CreditCard,
   CheckCircle, XCircle, ShieldOff, Shield, FileText,
-  Eye, Loader2, X, ChevronLeft, ChevronRight,
+  Eye, Loader2, X, ChevronLeft, ChevronRight, Users,
 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
@@ -41,6 +41,36 @@ interface VendorDocument {
   doc_type: string;
   file_key: string;
   status: string;
+}
+
+interface CenterManager {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  center_name: string | null;
+  created_at: string;
+}
+
+interface RealCenter {
+  id: string;
+  center_name: string;
+  approval_status: string;
+  is_active: boolean;
+  city: string | null;
+  locality: string | null;
+  address: string | null;
+  commission_percent: string | number | null;
+  categories?: { name?: string };
+}
+
+interface BankDetail {
+  account_holder_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
+  bank_name?: string;
+  verification_status?: string;
 }
 
 interface ViewerState {
@@ -155,9 +185,12 @@ function DocViewer({
 export default function AdminVendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
-  const { vendors, centers, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor } = useAdmin();
+  const { vendors, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor } = useAdmin();
 
   const [vendorDocs, setVendorDocs] = useState<VendorDocument[]>([]);
+  const [staff, setStaff] = useState<CenterManager[]>([]);
+  const [realCenters, setRealCenters] = useState<RealCenter[]>([]);
+  const [bank, setBank] = useState<BankDetail | null>(null);
   const [loadingViewKey, setLoadingViewKey] = useState<string | null>(null);
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
@@ -170,6 +203,30 @@ export default function AdminVendorDetailPage() {
     if (!token) return;
     apiGet<VendorDocument[]>(`/admin/vendors/${vendorId}/documents`, token)
       .then(setVendorDocs)
+      .catch(() => {});
+  }, [vendorId]);
+
+  useEffect(() => {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<CenterManager[]>(`/admin/vendors/${vendorId}/staff`, token)
+      .then(setStaff)
+      .catch(() => {});
+  }, [vendorId]);
+
+  // Real, complete data (all centers regardless of approval status, and real
+  // bank details) — the vendor list-derived `centers` in AdminContext only
+  // ever holds PENDING centers, and there's no bank data there at all.
+  useEffect(() => {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ centers: RealCenter[]; bank: BankDetail | null }>(`/admin/vendors/${vendorId}`, token)
+      .then((r) => {
+        setRealCenters(r.centers ?? []);
+        setBank(r.bank ?? null);
+      })
       .catch(() => {});
   }, [vendorId]);
 
@@ -215,7 +272,6 @@ export default function AdminVendorDetailPage() {
     </AdminLayout>
   );
 
-  const vCenters = centers.filter((c) => c.vendorId === vendorId);
   const vBookings = bookings.filter((b) => b.vendorId === vendorId);
   const vRevenue = vBookings.filter((b) => b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
 
@@ -282,12 +338,11 @@ export default function AdminVendorDetailPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
               { label: "Total Revenue", value: fmt(vRevenue) },
               { label: "Total Bookings", value: vBookings.length.toString() },
-              { label: "Centers", value: vCenters.length.toString() },
-              { label: "Commission Rate", value: `${vendor.commissionRate}%` },
+              { label: "Centers", value: realCenters.length.toString() },
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-[#F8FAFC] p-3 text-center">
                 <p className="text-lg font-extrabold text-[#0F172A]">{m.value}</p>
@@ -374,16 +429,15 @@ export default function AdminVendorDetailPage() {
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <p className="font-bold text-[#0F172A]">Bank Details</p>
-              <StatusBadge status={vendor.bankStatus} />
+              <StatusBadge status={bank ? (bank.verification_status ?? "submitted") : "not_submitted"} />
             </div>
-            {vendor.bankStatus !== "not_submitted" ? (
+            {bank ? (
               <div className="flex flex-col gap-3">
                 {[
-                  { label: "Account Holder", value: vendor.ownerName },
-                  { label: "Account Number", value: "XXXX XXXX 9456" },
-                  { label: "IFSC Code", value: "HDFC0001234" },
-                  { label: "Bank Name", value: "HDFC Bank" },
-                  { label: "Branch", value: "Andheri West, Mumbai" },
+                  { label: "Account Holder", value: bank.account_holder_name ?? "—" },
+                  { label: "Account Number", value: bank.account_number ? `••••${bank.account_number.slice(-4)}` : "—" },
+                  { label: "IFSC Code", value: bank.ifsc_code ?? "—" },
+                  { label: "Bank Name", value: bank.bank_name ?? "—" },
                 ].map((r) => (
                   <div key={r.label} className="flex items-center justify-between border-b border-[#F8FAFC] pb-3 last:border-0 last:pb-0">
                     <span className="text-xs text-[#64748B]">{r.label}</span>
@@ -401,23 +455,49 @@ export default function AdminVendorDetailPage() {
 
           {/* Centers */}
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-            <p className="mb-4 font-bold text-[#0F172A]">Centers ({vCenters.length})</p>
-            {vCenters.length === 0 ? (
+            <p className="mb-4 font-bold text-[#0F172A]">Centers ({realCenters.length})</p>
+            {realCenters.length === 0 ? (
               <p className="py-6 text-center text-sm text-[#94A3B8]">No centers added yet.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {vCenters.map((c) => (
+                {realCenters.map((c) => (
                   <div key={c.id} className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] p-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF]">
                       <Building2 size={14} className="text-[#2563EB]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-semibold text-[#0F172A]">{c.name}</p>
+                      <p className="truncate text-xs font-semibold text-[#0F172A]">{c.center_name}</p>
                       <p className="flex items-center gap-1 text-[11px] text-[#94A3B8]">
-                        <MapPin size={9} />{c.area}, {c.city}
+                        <MapPin size={9} />{c.locality ? `${c.locality}, ` : ""}{c.city ?? "—"}
+                        {c.categories?.name ? ` · ${c.categories.name}` : ""}
                       </p>
                     </div>
-                    <StatusBadge status={c.status} size="sm" />
+                    <StatusBadge status={c.approval_status} size="sm" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Team / Center Managers */}
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+            <p className="mb-4 font-bold text-[#0F172A]">Center Managers ({staff.length})</p>
+            {staff.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[#94A3B8]">No center managers added yet.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {staff.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF]">
+                      <Users size={14} className="text-[#2563EB]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-xs font-semibold text-[#0F172A]">{s.name}</p>
+                      <p className="truncate text-[11px] text-[#94A3B8]">
+                        {s.center_name ?? "—"} · {s.email}{s.phone ? ` · ${s.phone}` : ""}
+                      </p>
+                    </div>
+                    <StatusBadge status={s.status} size="sm" />
                   </div>
                 ))}
               </div>

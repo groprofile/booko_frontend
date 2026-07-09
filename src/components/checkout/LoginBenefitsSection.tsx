@@ -6,7 +6,6 @@ const benefits = [
   { icon: Sparkles, label: "Manage Bookings" },
   { icon: Zap, label: "Faster Checkout" },
   { icon: Gift, label: "Exclusive Offers" },
-  { icon: Sparkles, label: "Loyalty Rewards" },
 ];
 
 interface LoginBenefitsSectionProps {
@@ -29,7 +28,7 @@ export default function LoginBenefitsSection({ onSignIn }: LoginBenefitsSectionP
           </button>
         }
       />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {benefits.map(({ icon: Icon, label }) => (
           <div key={label} className="flex flex-col items-center gap-2 text-center">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">

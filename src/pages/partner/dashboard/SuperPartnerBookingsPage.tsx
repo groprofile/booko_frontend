@@ -14,7 +14,7 @@ interface ApiBooking {
   start_time?: string;
   end_time?: string;
   member_count?: number;
-  total_paise?: number;
+  vendor_amount_paise?: number;
   created_at?: string;
   users?: { full_name?: string; phone?: string };
   centers?: { center_name?: string };
@@ -233,8 +233,8 @@ export default function SuperPartnerBookingsPage() {
                       </td>
                       <td className="px-4 py-3 text-[#64748B]">{b.member_count ?? "—"}</td>
                       <td className="px-4 py-3 text-right font-semibold text-[#0F172A]">
-                        {b.total_paise != null
-                          ? `₹${(b.total_paise / 100).toLocaleString("en-IN")}`
+                        {b.vendor_amount_paise != null
+                          ? `₹${(b.vendor_amount_paise / 100).toLocaleString("en-IN")}`
                           : "—"}
                       </td>
                       <td className="px-4 py-3">

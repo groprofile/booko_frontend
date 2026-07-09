@@ -10,6 +10,8 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminRevenuePage from "./pages/admin/AdminRevenuePage";
 import AdminSettlementsPage from "./pages/admin/AdminSettlementsPage";
+import AdminCommissionsPage from "./pages/admin/AdminCommissionsPage";
+import AdminAnnouncementsPage from "./pages/admin/AdminAnnouncementsPage";
 import AdminCentersPage from "./pages/admin/AdminCentersPage";
 import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
 import AdminSupportPage from "./pages/admin/AdminSupportPage";
@@ -68,6 +70,7 @@ import CenterBookingsPage from "./pages/partner/center/CenterBookingsPage";
 import GuestCheckInPage from "./pages/partner/center/GuestCheckInPage";
 import SpecialRequestsPage from "./pages/partner/center/SpecialRequestsPage";
 import CenterCalendarPage from "./pages/partner/center/CenterCalendarPage";
+import CenterManageRedirect from "./pages/partner/center/CenterManageRedirect";
 // Partner — shared settings
 import PartnerSettingsPage from "./pages/partner/PartnerSettingsPage";
 
@@ -129,6 +132,8 @@ function App() {
         <Route path="/admin/bookings" element={<AdminBookingsPage />} />
         <Route path="/admin/revenue" element={<AdminRevenuePage />} />
         <Route path="/admin/settlements" element={<AdminSettlementsPage />} />
+        <Route path="/admin/commissions" element={<AdminCommissionsPage />} />
+        <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
         <Route path="/admin/centers" element={<AdminCentersPage />} />
         <Route path="/admin/coupons" element={<AdminCouponsPage />} />
         <Route path="/admin/support" element={<AdminSupportPage />} />
@@ -168,6 +173,7 @@ function App() {
         <Route path="/partner/center/checkin" element={<GuestCheckInPage />} />
         <Route path="/partner/center/requests" element={<SpecialRequestsPage />} />
         <Route path="/partner/center/calendar" element={<CenterCalendarPage />} />
+        <Route path="/partner/center/manage" element={<CenterManageRedirect />} />
         {/* Shared */}
         <Route path="/partner/settings" element={<PartnerSettingsPage />} />
       </Route>

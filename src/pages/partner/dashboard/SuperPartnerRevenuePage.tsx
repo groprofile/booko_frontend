@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Wallet, Clock, IndianRupee } from "lucide-react";
+import { TrendingUp, Wallet, Clock } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import { apiGet, getVendorToken } from "../../../lib/api";
 
@@ -84,29 +84,19 @@ export default function SuperPartnerRevenuePage() {
   }
 
   const totalRevenue = earnings?.totalRevenue ?? 0;
-  const commission = Math.round(totalRevenue * 0.1);
   const pendingSettlement = earnings?.pendingSettlement ?? 0;
   const paidSettlement = earnings?.paidSettlement ?? 0;
-  const netPayout = totalRevenue - commission;
 
   return (
     <SuperPartnerLayout title="Revenue" subtitle="Earnings, payouts and tax summary">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
             <TrendingUp size={18} className="text-[#2563EB]" />
           </div>
           <p className="mt-3 text-xl font-bold text-[#0F172A]">{formatINRFull(totalRevenue)}</p>
           <p className="mt-0.5 text-xs text-[#64748B]">Total Revenue</p>
-        </div>
-
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
-            <IndianRupee size={18} className="text-violet-600" />
-          </div>
-          <p className="mt-3 text-xl font-bold text-[#0F172A]">{formatINRFull(commission)}</p>
-          <p className="mt-0.5 text-xs text-[#64748B]">Platform Commission <span className="text-[#94A3B8]">(~10%)</span></p>
         </div>
 
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
@@ -134,9 +124,7 @@ export default function SuperPartnerRevenuePage() {
           <p className="text-xs text-[#94A3B8]">Approximate breakdown</p>
           <div className="mt-4 flex flex-col gap-3">
             {[
-              { label: "Total Gross Revenue", value: formatINRFull(totalRevenue), highlight: false },
-              { label: "Platform Commission (~10%)", value: formatINRFull(commission), highlight: false },
-              { label: "Estimated Net Revenue", value: formatINRFull(netPayout), highlight: true },
+              { label: "Total Revenue", value: formatINRFull(totalRevenue), highlight: true },
               { label: "Paid Out", value: formatINRFull(paidSettlement), highlight: false },
               { label: "Pending Settlement", value: formatINRFull(pendingSettlement), highlight: false },
             ].map((row) => (
