@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Building2, MapPin, Clock, Camera, Calendar,
-  Ban, Check, X, Upload, Loader2, Plus, Trash2, BedDouble,
+  ArrowLeft, Building2, Clock, Camera, Calendar,
+  Ban, Check, X, Upload, Loader2, Plus, BedDouble,
 } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import CenterLayout from "../../../components/partner/CenterLayout";
@@ -44,6 +44,11 @@ type Tab = "details" | "rooms" | "photos" | "schedule";
 export default function CenterManagePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { partner } = usePartner();
+  // Single-center vendors reach this page from CenterLayout's "Manage Center"
+  // nav — keep them in that layout instead of the multi-center one.
+  const isMulti = partner?.centerType === "multiple";
+  const Layout = isMulti ? SuperPartnerLayout : CenterLayout;
 
   const [center, setCenter] = useState<CenterDetail | null>(null);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -215,17 +220,17 @@ export default function CenterManagePage() {
     : "bg-slate-100 text-slate-500";
 
   return (
-    <SuperPartnerLayout
+    <Layout
       title={center?.center_name ?? "Manage Center"}
       subtitle={center ? `${center.city} · ${center.categories?.name ?? "Workspace"}` : ""}
     >
       {/* Back + status bar */}
       <div className="mb-5 flex items-center gap-4">
         <button
-          onClick={() => navigate("/partner/centers")}
+          onClick={() => navigate(isMulti ? "/partner/centers" : "/partner/center/overview")}
           className="flex items-center gap-1.5 text-sm font-medium text-[#64748B] hover:text-[#0F172A] transition-colors"
         >
-          <ArrowLeft size={15} /> Back to Centers
+          <ArrowLeft size={15} /> {isMulti ? "Back to Centers" : "Back to Dashboard"}
         </button>
         {center && (
           <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${statusColor}`}>
@@ -513,6 +518,6 @@ export default function CenterManagePage() {
           )}
         </>
       )}
-    </SuperPartnerLayout>
+    </Layout>
   );
 }
