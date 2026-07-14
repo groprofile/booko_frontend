@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
-import { Plus, Tag, X, Check, Loader2, ToggleLeft, ToggleRight, Percent, Calendar, Hash } from "lucide-react";
+import { Plus, Tag, X, Check, Loader2, ToggleLeft, ToggleRight, Calendar, Hash } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import { apiGet, apiPost, apiPatch, getVendorToken } from "../../../lib/api";
 
 interface Coupon {
   id: string;
   code: string;
-  discount_type: "percentage" | "flat";
+  discount_type: "PERCENT" | "FLAT";
   discount_value: number;
-  min_order_paise?: number;
-  max_uses?: number;
-  uses_count: number;
+  min_booking_paise: number;
+  usage_limit: number | null;
+  used_count: number;
   valid_from: string;
-  valid_until: string;
+  valid_to: string | null;
   is_active: boolean;
-  description?: string;
+  description?: string | null;
 }
 
 const INPUT_CLS = "bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8] w-full";
@@ -27,12 +27,12 @@ interface CreateModalProps {
 function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
   const [form, setForm] = useState({
     code: "",
-    discountType: "percentage" as "percentage" | "flat",
+    discountType: "PERCENT" as "PERCENT" | "FLAT",
     discountValue: "",
-    minOrder: "",
-    maxUses: "",
+    minBookingPaise: "",
+    usageLimit: "",
     validFrom: "",
-    validUntil: "",
+    validTo: "",
     description: "",
   });
   const [saving, setSaving] = useState(false);
@@ -43,7 +43,7 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
   }
 
   async function handleCreate() {
-    if (!form.code.trim() || !form.discountValue || !form.validFrom || !form.validUntil) return;
+    if (!form.code.trim() || !form.discountValue || !form.validFrom || !form.validTo) return;
     setSaving(true);
     setError("");
     try {
@@ -52,10 +52,10 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
         code: form.code.trim().toUpperCase(),
         discountType: form.discountType,
         discountValue: parseFloat(form.discountValue),
-        minOrderPaise: form.minOrder ? Math.round(parseFloat(form.minOrder) * 100) : undefined,
-        maxUses: form.maxUses ? parseInt(form.maxUses) : undefined,
+        minBookingPaise: form.minBookingPaise ? Math.round(parseFloat(form.minBookingPaise) * 100) : undefined,
+        usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined,
         validFrom: form.validFrom,
-        validUntil: form.validUntil,
+        validTo: form.validTo,
         description: form.description.trim() || undefined,
       }, token);
       onCreated();
@@ -66,7 +66,7 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
     }
   }
 
-  const canSubmit = form.code.trim() && form.discountValue && form.validFrom && form.validUntil && !saving;
+  const canSubmit = form.code.trim() && form.discountValue && form.validFrom && form.validTo && !saving;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -91,12 +91,12 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
           <div>
             <label className="mb-2 block text-xs font-semibold text-[#0F172A]">Discount Type *</label>
             <div className="flex gap-2">
-              {(["percentage", "flat"] as const).map((t) => (
+              {(["PERCENT", "FLAT"] as const).map((t) => (
                 <button key={t} onClick={() => set("discountType", t)}
                   className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
                     form.discountType === t ? "bg-[#7C3AED] text-white" : "border border-[#E2E8F0] text-[#64748B] hover:border-[#7C3AED]"
                   }`}>
-                  {t === "percentage" ? "% Percentage" : "₹ Flat Amount"}
+                  {t === "PERCENT" ? "% Percentage" : "₹ Flat Amount"}
                 </button>
               ))}
             </div>
@@ -105,25 +105,25 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-[#0F172A]">
-                {form.discountType === "percentage" ? "Discount %" : "Discount ₹"} *
+                {form.discountType === "PERCENT" ? "Discount %" : "Discount ₹"} *
               </label>
               <input type="number" min="0" value={form.discountValue}
                 onChange={(e) => set("discountValue", e.target.value)}
-                placeholder={form.discountType === "percentage" ? "20" : "100"}
+                placeholder={form.discountType === "PERCENT" ? "20" : "100"}
                 className={INPUT_CLS} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#0F172A]">Min Order (₹)</label>
-              <input type="number" min="0" value={form.minOrder}
-                onChange={(e) => set("minOrder", e.target.value)}
+              <label className="text-xs font-semibold text-[#0F172A]">Min Booking (₹)</label>
+              <input type="number" min="0" value={form.minBookingPaise}
+                onChange={(e) => set("minBookingPaise", e.target.value)}
                 placeholder="0" className={INPUT_CLS} />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-[#0F172A]">Max Uses</label>
-            <input type="number" min="1" value={form.maxUses}
-              onChange={(e) => set("maxUses", e.target.value)}
+            <input type="number" min="1" value={form.usageLimit}
+              onChange={(e) => set("usageLimit", e.target.value)}
               placeholder="Unlimited" className={INPUT_CLS} />
           </div>
 
@@ -135,8 +135,8 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-[#0F172A]">Valid Until *</label>
-              <input type="date" value={form.validUntil}
-                onChange={(e) => set("validUntil", e.target.value)} className={INPUT_CLS} />
+              <input type="date" value={form.validTo}
+                onChange={(e) => set("validTo", e.target.value)} className={INPUT_CLS} />
             </div>
           </div>
 
@@ -230,7 +230,7 @@ export default function SuperPartnerCouponsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {coupons.map((coupon) => {
-            const isExpired = new Date(coupon.valid_until) < new Date();
+            const isExpired = coupon.valid_to ? new Date(coupon.valid_to) < new Date() : false;
             return (
               <div key={coupon.id}
                 className={`rounded-2xl border bg-white shadow-sm transition-all duration-200 overflow-hidden ${
@@ -247,7 +247,7 @@ export default function SuperPartnerCouponsPage() {
                     </span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-white">
-                    {coupon.discount_type === "percentage" ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
+                    {coupon.discount_type === "PERCENT" ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
                   </p>
                   {coupon.description && <p className="mt-0.5 text-xs text-white/70">{coupon.description}</p>}
                 </div>
@@ -255,22 +255,29 @@ export default function SuperPartnerCouponsPage() {
                 {/* Details */}
                 <div className="p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs text-[#64748B]">
-                    <span className="flex items-center gap-1"><Calendar size={11} /> {coupon.valid_from} – {coupon.valid_until}</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar size={11} />
+                      {coupon.valid_from ? new Date(coupon.valid_from).toLocaleDateString("en-IN") : "—"}
+                      {" – "}
+                      {coupon.valid_to ? new Date(coupon.valid_to).toLocaleDateString("en-IN") : "No expiry"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-[#64748B]">
-                    <span className="flex items-center gap-1"><Hash size={11} /> {coupon.uses_count} / {coupon.max_uses ?? "∞"} uses</span>
-                    {coupon.min_order_paise != null && coupon.min_order_paise > 0 && (
-                      <span>Min ₹{coupon.min_order_paise / 100}</span>
+                    <span className="flex items-center gap-1">
+                      <Hash size={11} /> {coupon.used_count} / {coupon.usage_limit ?? "∞"} uses
+                    </span>
+                    {coupon.min_booking_paise > 0 && (
+                      <span>Min ₹{coupon.min_booking_paise / 100}</span>
                     )}
                   </div>
 
                   {/* Usage bar */}
-                  {coupon.max_uses && (
+                  {coupon.usage_limit && (
                     <div className="mt-1">
                       <div className="h-1.5 w-full rounded-full bg-[#F1F5F9]">
                         <div
                           className="h-1.5 rounded-full bg-[#7C3AED]"
-                          style={{ width: `${Math.min(100, (coupon.uses_count / coupon.max_uses) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (coupon.used_count / coupon.usage_limit) * 100)}%` }}
                         />
                       </div>
                     </div>

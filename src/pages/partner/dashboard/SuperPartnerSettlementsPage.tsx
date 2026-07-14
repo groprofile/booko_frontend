@@ -9,13 +9,17 @@ interface Settlement {
   period_end: string;
   gross_amount_paise: number;
   commission_paise: number;
-  gst_paise: number;
-  tds_paise: number;
-  net_payable_paise: number;
+  net_amount_paise: number;
   status: "pending" | "processing" | "paid";
   paid_at?: string;
-  bookings_count: number;
-  utr_number?: string;
+  created_at: string;
+}
+
+interface SettlementsResponse {
+  settlements: Settlement[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 const fmt = (paise: number) => {
@@ -39,15 +43,15 @@ export default function SuperPartnerSettlementsPage() {
 
   useEffect(() => {
     const token = getVendorToken() ?? undefined;
-    apiGet<Settlement[]>("/settlements", token)
-      .then((data) => setSettlements(data ?? []))
+    apiGet<SettlementsResponse>("/vendor/settlements", token)
+      .then((data) => setSettlements(data?.settlements ?? []))
       .catch((err) => setError((err as Error).message ?? "Failed to load settlements"))
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = filter === "all" ? settlements : settlements.filter((s) => s.status === filter);
-  const totalPending = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.net_payable_paise, 0);
-  const totalPaid = settlements.filter((s) => s.status === "paid").reduce((a, s) => a + s.net_payable_paise, 0);
+  const totalPending = settlements.filter((s) => s.status === "pending").reduce((a, s) => a + s.net_amount_paise, 0);
+  const totalPaid = settlements.filter((s) => s.status === "paid").reduce((a, s) => a + s.net_amount_paise, 0);
 
   const metrics = [
     { label: "Total Settlements", value: settlements.length.toString(), icon: Banknote, color: "#2563EB", bg: "#EFF6FF" },
@@ -100,10 +104,10 @@ export default function SuperPartnerSettlementsPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
-                  {["ID", "Period", "Bookings", "Gross", "Commission", "GST", "TDS", "Net Payable", "Status", "UTR"].map((h) => (
+                  {["ID", "Period", "Gross", "Commission", "Net Amount", "Status", "Paid At"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#64748B]">{h}</th>
                   ))}
                 </tr>
@@ -111,7 +115,7 @@ export default function SuperPartnerSettlementsPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-16 text-center text-sm text-[#94A3B8]">No settlements found</td>
+                    <td colSpan={7} className="py-16 text-center text-sm text-[#94A3B8]">No settlements found</td>
                   </tr>
                 ) : (
                   filtered.map((s) => (
@@ -120,19 +124,16 @@ export default function SuperPartnerSettlementsPage() {
                       <td className="px-4 py-3 text-xs text-[#64748B]">
                         {s.period_start} → {s.period_end}
                       </td>
-                      <td className="px-4 py-3 text-center text-xs font-semibold text-[#0F172A]">{s.bookings_count}</td>
                       <td className="px-4 py-3 text-xs font-bold text-[#0F172A]">{fmt(s.gross_amount_paise)}</td>
                       <td className="px-4 py-3 text-xs text-[#7C3AED]">-{fmt(s.commission_paise)}</td>
-                      <td className="px-4 py-3 text-xs text-[#0891B2]">-{fmt(s.gst_paise)}</td>
-                      <td className="px-4 py-3 text-xs text-[#D97706]">-{fmt(s.tds_paise)}</td>
-                      <td className="px-4 py-3 text-xs font-extrabold text-[#16A34A]">{fmt(s.net_payable_paise)}</td>
+                      <td className="px-4 py-3 text-xs font-extrabold text-[#16A34A]">{fmt(s.net_amount_paise)}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}>
                           {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-[#64748B]">
-                        {s.utr_number ?? (s.status === "paid" ? "—" : "Pending")}
+                      <td className="px-4 py-3 text-[11px] text-[#64748B]">
+                        {s.paid_at ? new Date(s.paid_at).toLocaleDateString("en-IN") : "—"}
                       </td>
                     </tr>
                   ))

@@ -1,6 +1,7 @@
 import type { DayPassListing } from "./dayPassListings";
 
 export interface SeatingOptionDetail {
+  planId?: string;
   type: string;
   description: string;
   features: string[];

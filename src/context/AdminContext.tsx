@@ -359,8 +359,14 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | null>(null);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
-  const stored = sessionStorage.getItem("bokko_admin");
-  const [admin, setAdmin] = useState<AdminUser | null>(stored ? JSON.parse(stored) : null);
+  const [admin, setAdmin] = useState<AdminUser | null>(() => {
+    try {
+      const stored = sessionStorage.getItem("bokko_admin");
+      return stored ? (JSON.parse(stored) as AdminUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);

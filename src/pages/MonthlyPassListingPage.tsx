@@ -16,9 +16,10 @@ import {
   allMonthlyBrands,
   allMonthlySeatingTypes,
   allMonthlySpaceTypes,
-  monthlyPassListings,
 } from "../data/monthlyPassListings";
-import type { MonthlyPassFilters, MonthlySortOption } from "../data/monthlyPassListings";
+import type { MonthlyPassFilters, MonthlyPassListing, MonthlySortOption } from "../data/monthlyPassListings";
+import { apiGet } from "../lib/api";
+import { apiToMonthlyPassListing, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 function cityLabel(slug: string) {
@@ -41,6 +42,18 @@ export default function MonthlyPassListingPage() {
   const [members, setMembers] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const [listings, setListings] = useState<MonthlyPassListing[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  useEffect(() => {
+    setApiLoading(true);
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?productType=monthly-pass&city=${encodeURIComponent(cityName)}&pageSize=100`,
+    )
+      .then((res) => setListings(res.data.map(apiToMonthlyPassListing)))
+      .catch(() => setListings([]))
+      .finally(() => setApiLoading(false));
+  }, [cityName]);
 
   useEffect(() => {
     document.title = `Monthly Pass in ${cityName} | Bokko`;
@@ -143,7 +156,7 @@ export default function MonthlyPassListingPage() {
   }
 
   const filteredListings = useMemo(() => {
-    let list = monthlyPassListings.filter((listing) => listing.city === citySlug);
+    let list = listings.slice();
 
     if (location.trim()) {
       const q = location.trim().toLowerCase();
@@ -182,7 +195,7 @@ export default function MonthlyPassListingPage() {
     else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
 
     return sorted;
-  }, [citySlug, filters, location]);
+  }, [citySlug, filters, location, listings]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -265,7 +278,11 @@ export default function MonthlyPassListingPage() {
             </aside>
 
             <div>
-              {filteredListings.length === 0 ? (
+              {apiLoading ? (
+                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
+                  Loading workspaces…
+                </div>
+              ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
                   <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
                   <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>

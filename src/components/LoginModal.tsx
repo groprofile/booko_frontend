@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Building2, CheckCircle2, Gift, MapPin, X, Zap } from "lucide-react";
+import { useUser } from "../context/UserAuthContext";
+import { ApiError } from "../lib/api";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 type Step = "phone" | "otp" | "success";
@@ -40,12 +43,15 @@ const benefits = [
   },
 ];
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
+  const { sendOtp, verifyOtp } = useUser();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState<string[]>(Array(4).fill(""));
   const [resendIn, setResendIn] = useState(30);
   const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -54,6 +60,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setStep("phone");
     setPhone("");
     setOtp(Array(4).fill(""));
+    setError(null);
     document.body.style.overflow = "hidden";
 
     const raf = requestAnimationFrame(() => setVisible(true));
@@ -93,6 +100,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   function handlePhoneChange(event: React.ChangeEvent<HTMLInputElement>) {
     setPhone(event.target.value.replace(/\D/g, "").slice(0, 10));
+    setError(null);
   }
 
   function handleOtpChange(index: number, value: string) {
@@ -102,6 +110,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       next[index] = digit;
       return next;
     });
+    setError(null);
     if (digit && index < 3) otpRefs.current[index + 1]?.focus();
   }
 
@@ -111,11 +120,50 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
   }
 
-  function handleResend() {
+  async function handleSendOtp() {
+    setLoading(true);
+    setError(null);
+    try {
+      await sendOtp(phone);
+      setStep("otp");
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    setLoading(true);
+    setError(null);
+    try {
+      await verifyOtp(phone, otp.join(""));
+      setStep("success");
+      onSuccess?.();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Invalid OTP. Please try again.");
+      setOtp(Array(4).fill(""));
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
     if (resendIn > 0) return;
-    setOtp(Array(4).fill(""));
-    setResendIn(30);
-    otpRefs.current[0]?.focus();
+    setLoading(true);
+    setError(null);
+    try {
+      await sendOtp(phone);
+      setOtp(Array(4).fill(""));
+      setResendIn(30);
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to resend OTP.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!isOpen) return null;
@@ -214,10 +262,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   maxLength={10}
                   value={phone}
                   onChange={handlePhoneChange}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && isPhoneValid && !loading) handleSendOtp(); }}
                   placeholder="Enter Mobile Number"
                   className="h-full w-full bg-transparent text-base font-semibold text-[#111111] outline-none placeholder:font-normal placeholder:text-[#94A3B8]"
                 />
               </div>
+
+              {error && (
+                <p className="mt-3 text-sm font-medium text-[#DC2626]">{error}</p>
+              )}
 
               <p className="mt-4 text-sm text-[#475569]">
                 Don&apos;t have an account?{" "}
@@ -234,11 +287,11 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <div className="mt-auto pt-8 sm:static sm:pt-10">
                 <button
                   type="button"
-                  disabled={!isPhoneValid}
-                  onClick={() => setStep("otp")}
+                  disabled={!isPhoneValid || loading}
+                  onClick={handleSendOtp}
                   className="h-14 w-full rounded-[14px] bg-[#111111] text-base font-bold text-white transition-colors hover:bg-[#222222] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8]"
                 >
-                  Continue
+                  {loading ? "Sending…" : "Continue"}
                 </button>
                 <p className="mt-4 text-center text-xs leading-relaxed text-[#94A3B8]">
                   By continuing, you agree to Bokko&apos;s{" "}
@@ -277,16 +330,23 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     maxLength={1}
                     value={digit}
                     onChange={(event) => handleOtpChange(index, event.target.value)}
-                    onKeyDown={(event) => handleOtpKeyDown(index, event)}
+                    onKeyDown={(event) => {
+                      handleOtpKeyDown(index, event);
+                      if (event.key === 'Enter' && isOtpValid && !loading) handleVerifyOtp();
+                    }}
                     className="h-16 w-16 rounded-[14px] border border-[#D1D5DB] text-center text-2xl font-bold text-[#111111] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
                   />
                 ))}
               </div>
 
+              {error && (
+                <p className="mt-4 text-center text-sm font-medium text-[#DC2626]">{error}</p>
+              )}
+
               <div className="mt-5 flex items-center justify-between text-sm">
                 <button
                   type="button"
-                  onClick={() => setStep("phone")}
+                  onClick={() => { setStep("phone"); setError(null); }}
                   className="font-semibold text-[#475569] hover:text-[#111111]"
                 >
                   Change Number
@@ -296,7 +356,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   <button
                     type="button"
                     onClick={handleResend}
-                    disabled={resendIn > 0}
+                    disabled={resendIn > 0 || loading}
                     className="font-semibold text-[#2563EB] hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:text-[#94A3B8]"
                     style={{ fontWeight: 600 }}
                   >
@@ -308,11 +368,11 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <div className="mt-auto pt-8 sm:static sm:pt-10">
                 <button
                   type="button"
-                  disabled={!isOtpValid}
-                  onClick={() => setStep("success")}
+                  disabled={!isOtpValid || loading}
+                  onClick={handleVerifyOtp}
                   className="h-14 w-full rounded-[14px] bg-[#111111] text-base font-bold text-white transition-colors hover:bg-[#222222] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8]"
                 >
-                  Verify &amp; Continue
+                  {loading ? "Verifying…" : "Verify & Continue"}
                 </button>
                 <p className="mt-4 text-center text-xs leading-relaxed text-[#94A3B8]">
                   By continuing, you agree to Bokko&apos;s{" "}

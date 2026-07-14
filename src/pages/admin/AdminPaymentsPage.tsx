@@ -6,13 +6,22 @@ import { apiGet, getAdminToken } from "../../lib/api";
 interface Payment {
   id: string;
   txnid?: string;
-  booking_id: string;
+  booking_id?: string;
+  // backend returns nested objects from JOIN
+  users?: { full_name?: string; phone?: string };
+  centers?: { center_name?: string };
+  // flat fields on the row
   user_name?: string;
   user_email?: string;
   center_name?: string;
-  amount_paise: number;
-  gateway: string;
-  status: "success" | "failed" | "pending" | "refunded";
+  // backend column names
+  total_paise?: number;
+  amount_paise?: number;
+  payment_method?: string;
+  payment_status?: string;
+  // normalised aliases used in display
+  gateway?: string;
+  status?: "success" | "failed" | "pending" | "refunded";
   method?: string;
   created_at: string;
   gateway_order_id?: string;
@@ -41,15 +50,25 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     const token = getAdminToken() ?? undefined;
-    apiGet<Payment[]>("/admin/payments", token)
-      .then((data) => setPayments(data ?? []))
+    apiGet<{ payments: Payment[] } | Payment[]>("/admin/payments", token)
+      .then((data) => {
+        if (Array.isArray(data)) setPayments(data);
+        else setPayments((data as { payments: Payment[] }).payments ?? []);
+      })
       .catch((err) => setError((err as Error).message ?? "Failed to load payments"))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = filter === "all" ? payments : payments.filter((p) => p.status === filter);
-  const totalSuccessful = payments.filter((p) => p.status === "success").reduce((a, p) => a + p.amount_paise, 0);
-  const totalFailed = payments.filter((p) => p.status === "failed").length;
+  const getStatus = (p: Payment) => (p.status ?? p.payment_status ?? "pending") as string;
+  const getPaise = (p: Payment) => p.amount_paise ?? p.total_paise ?? 0;
+  const getUserName = (p: Payment) => p.user_name ?? p.users?.full_name ?? "—";
+  const getCenterName = (p: Payment) => p.center_name ?? p.centers?.center_name ?? "—";
+  const getMethod = (p: Payment) => p.method ?? p.payment_method ?? "—";
+  const getGateway = (p: Payment) => p.gateway ?? "PayU";
+
+  const filtered = filter === "all" ? payments : payments.filter((p) => getStatus(p) === filter);
+  const totalSuccessful = payments.filter((p) => getStatus(p) === "success").reduce((a, p) => a + getPaise(p), 0);
+  const totalFailed = payments.filter((p) => getStatus(p) === "failed").length;
 
   return (
     <AdminLayout title="Payments" subtitle="All transaction history across the platform">
@@ -58,7 +77,7 @@ export default function AdminPaymentsPage() {
         {[
           { label: "Total Transactions", value: payments.length.toString(), icon: CreditCard, color: "#2563EB", bg: "#EFF6FF" },
           { label: "Total Revenue", value: fmtLarge(totalSuccessful), icon: TrendingUp, color: "#16A34A", bg: "#DCFCE7" },
-          { label: "Successful", value: payments.filter((p) => p.status === "success").length.toString(), icon: CheckCircle, color: "#059669", bg: "#ECFDF5" },
+          { label: "Successful", value: payments.filter((p) => getStatus(p) === "success").length.toString(), icon: CheckCircle, color: "#059669", bg: "#ECFDF5" },
           { label: "Failed", value: totalFailed.toString(), icon: XCircle, color: "#DC2626", bg: "#FEE2E2" },
         ].map((m) => (
           <div key={m.label} className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
@@ -81,7 +100,7 @@ export default function AdminPaymentsPage() {
               filter === s ? "bg-[#2563EB] text-white" : "border border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#2563EB]"
             }`}>
             {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            {s !== "all" && ` (${payments.filter((p) => p.status === s).length})`}
+            {s !== "all" && ` (${payments.filter((p) => getStatus(p) === s).length})`}
           </button>
         ))}
         <div className="ml-auto">
@@ -116,23 +135,29 @@ export default function AdminPaymentsPage() {
                         {p.txnid ?? p.id.slice(0, 8)}
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-[#0F172A]">{p.user_name ?? "—"}</p>
+                        <p className="font-semibold text-[#0F172A]">{getUserName(p)}</p>
                         <p className="text-xs text-[#94A3B8]">{p.user_email ?? ""}</p>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#64748B]">{p.center_name ?? "—"}</td>
-                      <td className="px-4 py-3 font-bold text-[#0F172A]">{fmt(p.amount_paise)}</td>
+                      <td className="px-4 py-3 text-xs text-[#64748B]">{getCenterName(p)}</td>
+                      <td className="px-4 py-3 font-bold text-[#0F172A]">{fmt(getPaise(p))}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-lg bg-[#F1F5F9] px-2 py-0.5 text-xs font-medium text-[#64748B] capitalize">
-                          {p.gateway}
+                          {getGateway(p)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#64748B] capitalize">{p.method ?? "—"}</td>
-                      <td className="px-4 py-3 text-xs text-[#64748B]">{p.created_at.slice(0, 10)}</td>
+                      <td className="px-4 py-3 text-xs text-[#64748B] capitalize">{getMethod(p)}</td>
+                      <td className="px-4 py-3 text-xs text-[#64748B]">{p.created_at?.slice(0, 10) ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold w-fit ${STATUS_STYLE[p.status]}`}>
-                          {p.status === "success" ? <CheckCircle size={10} /> : p.status === "failed" ? <XCircle size={10} /> : <Clock size={10} />}
-                          {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                        </span>
+                        {(() => {
+                          const s = getStatus(p);
+                          const style = STATUS_STYLE[s] ?? "bg-slate-100 text-slate-600";
+                          return (
+                            <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold w-fit ${style}`}>
+                              {s === "success" ? <CheckCircle size={10} /> : s === "failed" ? <XCircle size={10} /> : <Clock size={10} />}
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))

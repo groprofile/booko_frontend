@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
@@ -15,8 +15,11 @@ import SimilarWorkspacesSection from "../components/daypassdetails/SimilarWorksp
 import ExploreNearbySection from "../components/daypassdetails/ExploreNearbySection";
 import BookingCard from "../components/daypassdetails/BookingCard";
 import MobileBookingBar from "../components/daypassdetails/MobileBookingBar";
-import { CITY_NAMES, cityToLocalities, dayPassListings } from "../data/dayPassListings";
-import { getDayPassDetails } from "../data/dayPassDetails";
+import { CITY_NAMES, cityToLocalities } from "../data/dayPassListings";
+import type { DayPassListing } from "../data/dayPassListings";
+import type { DayPassDetails } from "../data/dayPassDetails";
+import { apiGet } from "../lib/api";
+import { apiToDayPassListing, apiToDayPassDetails, type CentreApiRow } from "../lib/centreAdapter";
 
 function cityLabel(slug: string) {
   return (
@@ -33,20 +36,26 @@ export default function DayPassDetailsPage() {
   const citySlug = (params.city ?? "mumbai").toLowerCase();
   const cityName = cityLabel(citySlug);
 
-  const listing = useMemo(
-    () => dayPassListings.find((item) => item.id === params.listingId),
-    [params.listingId],
-  );
-
-  const details = useMemo(() => (listing ? getDayPassDetails(listing) : null), [listing]);
+  const [listing, setListing] = useState<DayPassListing | null>(null);
+  const [details, setDetails] = useState<DayPassDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [members, setMembers] = useState(1);
-  const [selectedType, setSelectedType] = useState(listing?.seatingTypes[0] ?? "");
+  const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
-    if (listing) setSelectedType(listing.seatingTypes[0] ?? "");
-  }, [listing]);
+    setLoading(true);
+    apiGet<CentreApiRow>(`/centers/${params.listingId}`)
+      .then((raw) => {
+        const l = apiToDayPassListing(raw);
+        setListing(l);
+        setDetails(apiToDayPassDetails(raw));
+        setSelectedType(l.seatingTypes[0] ?? "");
+      })
+      .catch(() => setListing(null))
+      .finally(() => setLoading(false));
+  }, [params.listingId]);
 
   useEffect(() => {
     if (!listing) return;
@@ -62,6 +71,18 @@ export default function DayPassDetailsPage() {
       `Book a day pass at ${listing.name} in ${listing.locality}, ${cityName}. Compare seating options, amenities and pricing on Bokko.`,
     );
   }, [listing, cityName]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="text-[#64748B]">Loading…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!listing || !details) {
     return (
@@ -141,7 +162,7 @@ export default function DayPassDetailsPage() {
                 current={listing}
                 cityName={cityName}
                 citySlug={citySlug}
-                allListings={dayPassListings.filter((item) => item.city === citySlug)}
+                allListings={[]}
               />
 
               <ExploreNearbySection

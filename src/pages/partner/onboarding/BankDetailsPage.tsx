@@ -1,8 +1,8 @@
-import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, Upload, CheckCircle2, ShieldCheck } from "lucide-react";
+import { AlertCircle, ShieldCheck, Loader2 } from "lucide-react";
 import { usePartner } from "../../../context/PartnerContext";
-import { apiPost, apiPatch, ApiError, getVendorToken } from "../../../lib/api";
+import { apiGet, apiPost, apiPatch, ApiError, getVendorToken } from "../../../lib/api";
 
 const STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana",
@@ -10,7 +10,10 @@ const STATES = [
   "Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
   "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Chandigarh","Jammu & Kashmir","Ladakh",
 ];
-const BANKS = ["State Bank of India","HDFC Bank","ICICI Bank","Axis Bank","Kotak Mahindra Bank","Punjab National Bank","Bank of Baroda","Canara Bank","IndusInd Bank","Yes Bank","Other"];
+const BANKS = [
+  "State Bank of India","HDFC Bank","ICICI Bank","Axis Bank","Kotak Mahindra Bank",
+  "Punjab National Bank","Bank of Baroda","Canara Bank","IndusInd Bank","Yes Bank","Other",
+];
 
 const BASE = "w-full rounded-xl border px-4 py-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] transition-colors focus:outline-none focus:ring-2 bg-white";
 const NORMAL = `${BASE} border-[#E2E8F0] focus:border-[#2563EB] focus:ring-[#2563EB]/15`;
@@ -42,24 +45,50 @@ export default function BankDetailsPage() {
   const { partner, updatePartner, markStepComplete } = usePartner();
   const navigate = useNavigate();
   const gb = partner?.gstBank ?? {};
-  const chequeRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    gstin: gb.gstin ?? "",
-    legalBusinessName: gb.legalBusinessName ?? "",
-    gstAddress: gb.gstAddress ?? "",
-    gstState: gb.gstState ?? "",
-    accountHolderName: gb.accountHolderName ?? "",
-    bankName: gb.bankName ?? "",
-    accountNumber: gb.accountNumber ?? "",
+    gstin:               gb.gstin               ?? "",
+    legalBusinessName:   gb.legalBusinessName   ?? "",
+    gstAddress:          gb.gstAddress          ?? "",
+    gstState:            gb.gstState            ?? "",
+    accountHolderName:   gb.accountHolderName   ?? "",
+    bankName:            gb.bankName            ?? "",
+    accountNumber:       gb.accountNumber       ?? "",
     confirmAccountNumber: gb.confirmAccountNumber ?? "",
-    ifscCode: gb.ifscCode ?? "",
-    branch: gb.branch ?? "",
-    cancelledChequeName: gb.cancelledChequeName ?? "",
+    ifscCode:            gb.ifscCode            ?? "",
+    branch:              gb.branch              ?? "",
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState("");
+  const [errors, setErrors]         = useState<Record<string, string>>({});
+  const [apiError, setApiError]     = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Pre-populate from backend on mount — covers return visits and cross-device logins.
+  useEffect(() => {
+    const token = getVendorToken();
+    if (!token) { setProfileLoading(false); return; }
+    apiGet<any>('/vendor/profile', token)
+      .then((p) => {
+        const bank = (p.vendor_bank_accounts ?? [])[0];
+        setForm((prev) => ({
+          ...prev,
+          gstin:             p.gstin           || prev.gstin,
+          legalBusinessName: p.gst_legal_name  || prev.legalBusinessName,
+          gstAddress:        p.gst_address     || prev.gstAddress,
+          gstState:          p.gst_state       || prev.gstState,
+          ...(bank ? {
+            accountHolderName:    bank.account_holder_name || prev.accountHolderName,
+            bankName:             bank.bank_name           || prev.bankName,
+            accountNumber:        bank.account_number      || prev.accountNumber,
+            confirmAccountNumber: bank.account_number      || prev.confirmAccountNumber,
+            ifscCode:             bank.ifsc_code           || prev.ifscCode,
+          } : {}),
+        }));
+      })
+      .catch(() => {/* keep context/localStorage values */})
+      .finally(() => setProfileLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -80,18 +109,8 @@ export default function BankDetailsPage() {
     if (!form.ifscCode) e.ifscCode = "IFSC code is required";
     else if (!validateIfsc(form.ifscCode.toUpperCase())) e.ifscCode = "Invalid IFSC format (e.g. SBIN0001234)";
     if (!form.branch.trim()) e.branch = "Branch name is required";
-    if (!form.cancelledChequeName) e.cancelledChequeName = "Please upload cancelled cheque";
     setErrors(e);
     return Object.keys(e).length === 0;
-  }
-
-  function handleCheque(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5MB."); return; }
-    set("cancelledChequeName", file.name);
-    setErrors((p) => { const err = { ...p }; delete err.cancelledChequeName; return err; });
-    e.target.value = "";
   }
 
   async function handleSubmit(ev: FormEvent) {
@@ -104,20 +123,26 @@ export default function BankDetailsPage() {
     try {
       await Promise.all([
         apiPatch("/vendor/profile", {
-          gstin: form.gstin.toUpperCase(),
+          gstin:        form.gstin.toUpperCase(),
           gstLegalName: form.legalBusinessName,
-          gstAddress: form.gstAddress,
-          gstState: form.gstState,
+          gstAddress:   form.gstAddress,
+          gstState:     form.gstState,
         }, token),
         apiPost("/vendor/bank-accounts", {
           accountHolder: form.accountHolderName,
           accountNumber: form.accountNumber,
-          ifscCode: form.ifscCode.toUpperCase(),
-          bankName: form.bankName,
-          branchName: form.branch,
+          ifscCode:      form.ifscCode.toUpperCase(),
+          bankName:      form.bankName,
+          branchName:    form.branch,
         }, token),
       ]);
-      updatePartner({ gstBank: { ...form, gstin: form.gstin.toUpperCase(), ifscCode: form.ifscCode.toUpperCase() } });
+      updatePartner({
+        gstBank: {
+          ...form,
+          gstin:    form.gstin.toUpperCase(),
+          ifscCode: form.ifscCode.toUpperCase(),
+        },
+      });
       markStepComplete(4);
       navigate("/partner/onboarding/review");
     } catch (err) {
@@ -125,6 +150,14 @@ export default function BankDetailsPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-[#2563EB]" size={28} />
+      </div>
+    );
   }
 
   return (
@@ -147,28 +180,45 @@ export default function BankDetailsPage() {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-        {/* GST */}
+        {/* GST Details */}
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
           <h3 className="mb-4 text-base font-bold text-[#0F172A]">GST Details</h3>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <F label="GSTIN" required error={errors.gstin} hint="15-character GST Identification Number">
-                <input value={form.gstin} onChange={(e: ChangeEvent<HTMLInputElement>) => set("gstin", e.target.value.toUpperCase())}
-                  className={errors.gstin ? ERR_CLS : NORMAL} placeholder="27AABCU9603R1ZM" maxLength={15} style={{ fontFamily: "monospace" }} />
+                <input
+                  value={form.gstin}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => set("gstin", e.target.value.toUpperCase())}
+                  className={errors.gstin ? ERR_CLS : NORMAL}
+                  placeholder="27AABCU9603R1ZM"
+                  maxLength={15}
+                  style={{ fontFamily: "monospace" }}
+                />
               </F>
               <F label="Legal Business Name" required error={errors.legalBusinessName}>
-                <input value={form.legalBusinessName} onChange={(e: ChangeEvent<HTMLInputElement>) => set("legalBusinessName", e.target.value)}
-                  className={errors.legalBusinessName ? ERR_CLS : NORMAL} placeholder="As per GST registration" />
+                <input
+                  value={form.legalBusinessName}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => set("legalBusinessName", e.target.value)}
+                  className={errors.legalBusinessName ? ERR_CLS : NORMAL}
+                  placeholder="As per GST registration"
+                />
               </F>
             </div>
             <F label="GST Registered Address" required error={errors.gstAddress}>
-              <input value={form.gstAddress} onChange={(e: ChangeEvent<HTMLInputElement>) => set("gstAddress", e.target.value)}
-                className={errors.gstAddress ? ERR_CLS : NORMAL} placeholder="Address as per GST certificate" />
+              <input
+                value={form.gstAddress}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("gstAddress", e.target.value)}
+                className={errors.gstAddress ? ERR_CLS : NORMAL}
+                placeholder="Address as per GST certificate"
+              />
             </F>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <F label="GST State" required error={errors.gstState}>
-                <select value={form.gstState} onChange={(e: ChangeEvent<HTMLSelectElement>) => set("gstState", e.target.value)}
-                  className={errors.gstState ? ERR_CLS : NORMAL}>
+                <select
+                  value={form.gstState}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => set("gstState", e.target.value)}
+                  className={errors.gstState ? ERR_CLS : NORMAL}
+                >
                   <option value="">Select state</option>
                   {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -177,71 +227,85 @@ export default function BankDetailsPage() {
           </div>
         </div>
 
-        {/* Bank */}
+        {/* Bank Account Details */}
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6">
           <h3 className="mb-4 text-base font-bold text-[#0F172A]">Bank Account Details</h3>
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <F label="Account Holder Name" required error={errors.accountHolderName}>
-                <input value={form.accountHolderName} onChange={(e: ChangeEvent<HTMLInputElement>) => set("accountHolderName", e.target.value)}
-                  className={errors.accountHolderName ? ERR_CLS : NORMAL} placeholder="As per bank records" />
-              </F>
-              <F label="Bank Name" required error={errors.bankName}>
-                <select value={form.bankName} onChange={(e: ChangeEvent<HTMLSelectElement>) => set("bankName", e.target.value)}
-                  className={errors.bankName ? ERR_CLS : NORMAL}>
-                  <option value="">Select bank</option>
-                  {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </F>
-              <F label="Account Number" required error={errors.accountNumber}>
-                <input type="password" value={form.accountNumber} onChange={(e: ChangeEvent<HTMLInputElement>) => set("accountNumber", e.target.value)}
-                  className={errors.accountNumber ? ERR_CLS : NORMAL} placeholder="Enter account number" autoComplete="off" />
-              </F>
-              <F label="Confirm Account Number" required error={errors.confirmAccountNumber}>
-                <input value={form.confirmAccountNumber} onChange={(e: ChangeEvent<HTMLInputElement>) => set("confirmAccountNumber", e.target.value)}
-                  className={errors.confirmAccountNumber ? ERR_CLS : NORMAL} placeholder="Re-enter account number"
-                  onPaste={(e) => e.preventDefault()} autoComplete="off" />
-              </F>
-              <F label="IFSC Code" required error={errors.ifscCode} hint="11-character code (e.g. SBIN0001234)">
-                <input value={form.ifscCode} onChange={(e: ChangeEvent<HTMLInputElement>) => set("ifscCode", e.target.value.toUpperCase())}
-                  className={errors.ifscCode ? ERR_CLS : NORMAL} placeholder="SBIN0001234" maxLength={11} style={{ fontFamily: "monospace" }} />
-              </F>
-              <F label="Branch Name" required error={errors.branch}>
-                <input value={form.branch} onChange={(e: ChangeEvent<HTMLInputElement>) => set("branch", e.target.value)}
-                  className={errors.branch ? ERR_CLS : NORMAL} placeholder="Bandra West, Mumbai" />
-              </F>
-            </div>
-
-            <F label="Cancelled Cheque" required error={errors.cancelledChequeName}>
-              {form.cancelledChequeName ? (
-                <div className="flex items-center justify-between rounded-xl border border-[#2563EB]/30 bg-[#EFF6FF] px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-[#2563EB]">
-                    <CheckCircle2 size={15} />
-                    {form.cancelledChequeName}
-                  </div>
-                  <button type="button" onClick={() => { set("cancelledChequeName", ""); chequeRef.current?.click(); }}
-                    className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A]">Replace</button>
-                </div>
-              ) : (
-                <button type="button" onClick={() => chequeRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#E2E8F0] py-4 text-sm font-semibold text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors">
-                  <Upload size={16} />
-                  Upload Cancelled Cheque
-                </button>
-              )}
-              <input ref={chequeRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleCheque} className="hidden" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <F label="Account Holder Name" required error={errors.accountHolderName}>
+              <input
+                value={form.accountHolderName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("accountHolderName", e.target.value)}
+                className={errors.accountHolderName ? ERR_CLS : NORMAL}
+                placeholder="As per bank records"
+              />
+            </F>
+            <F label="Bank Name" required error={errors.bankName}>
+              <select
+                value={form.bankName}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => set("bankName", e.target.value)}
+                className={errors.bankName ? ERR_CLS : NORMAL}
+              >
+                <option value="">Select bank</option>
+                {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </F>
+            <F label="Account Number" required error={errors.accountNumber}>
+              <input
+                type="password"
+                value={form.accountNumber}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("accountNumber", e.target.value)}
+                className={errors.accountNumber ? ERR_CLS : NORMAL}
+                placeholder="Enter account number"
+                autoComplete="off"
+              />
+            </F>
+            <F label="Confirm Account Number" required error={errors.confirmAccountNumber}>
+              <input
+                value={form.confirmAccountNumber}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("confirmAccountNumber", e.target.value)}
+                className={errors.confirmAccountNumber ? ERR_CLS : NORMAL}
+                placeholder="Re-enter account number"
+                onPaste={(e) => e.preventDefault()}
+                autoComplete="off"
+              />
+            </F>
+            <F label="IFSC Code" required error={errors.ifscCode} hint="11-character code (e.g. SBIN0001234)">
+              <input
+                value={form.ifscCode}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("ifscCode", e.target.value.toUpperCase())}
+                className={errors.ifscCode ? ERR_CLS : NORMAL}
+                placeholder="SBIN0001234"
+                maxLength={11}
+                style={{ fontFamily: "monospace" }}
+              />
+            </F>
+            <F label="Branch Name" required error={errors.branch}>
+              <input
+                value={form.branch}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => set("branch", e.target.value)}
+                className={errors.branch ? ERR_CLS : NORMAL}
+                placeholder="Bandra West, Mumbai"
+              />
             </F>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={() => navigate("/partner/onboarding/kyc")}
-            className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]">
+          <button
+            type="button"
+            onClick={() => navigate("/partner/onboarding/kyc")}
+            className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]"
+          >
             ← Back
           </button>
-          <button type="submit" disabled={submitting}
-            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60">
-            {submitting ? "Saving…" : "Save & Continue →"}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60"
+          >
+            {submitting ? (
+              <span className="flex items-center gap-2"><Loader2 size={15} className="animate-spin" />Saving…</span>
+            ) : "Save & Continue →"}
           </button>
         </div>
       </form>

@@ -15,9 +15,10 @@ import {
   allEquipment,
   allRoomTypes,
   allSeatingCapacities,
-  meetingRoomListings,
 } from "../data/meetingRoomListings";
-import type { MeetingRoomFilters, MeetingSortOption } from "../data/meetingRoomListings";
+import type { MeetingRoomFilters, MeetingRoomListing, MeetingSortOption } from "../data/meetingRoomListings";
+import { apiGet } from "../lib/api";
+import { apiToMeetingRoomListing, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 200;
@@ -49,6 +50,18 @@ export default function MeetingRoomListingPage() {
   const [roomTypeField, setRoomTypeField] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [listings, setListings] = useState<MeetingRoomListing[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  useEffect(() => {
+    setApiLoading(true);
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?productType=meeting-room&city=${encodeURIComponent(cityName)}&pageSize=100`,
+    )
+      .then((res) => setListings(res.data.map(apiToMeetingRoomListing)))
+      .catch(() => setListings([]))
+      .finally(() => setApiLoading(false));
+  }, [cityName]);
 
   useEffect(() => {
     document.title = `Meeting Rooms in ${cityName} | Book Hourly Meeting Rooms | Bokko`;
@@ -141,7 +154,7 @@ export default function MeetingRoomListingPage() {
   }
 
   const filteredListings = useMemo(() => {
-    let list = meetingRoomListings.filter((listing) => listing.city === citySlug);
+    let list = listings.slice();
 
     if (filters.roomTypes.length) {
       list = list.filter((listing) => filters.roomTypes.includes(listing.roomType));
@@ -176,7 +189,7 @@ export default function MeetingRoomListingPage() {
     else sorted.sort((a, b) => Number(b.popular) - Number(a.popular));
 
     return sorted;
-  }, [citySlug, filters]);
+  }, [citySlug, filters, listings]);
 
   const visibleListings = filteredListings.slice(0, visibleCount);
 
@@ -248,7 +261,11 @@ export default function MeetingRoomListingPage() {
             </aside>
 
             <div className="min-w-0">
-              {filteredListings.length === 0 ? (
+              {apiLoading ? (
+                <div className="flex h-[300px] items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
+                  Loading meeting rooms…
+                </div>
+              ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-center">
                   <p className="text-base font-bold text-[#0F172A]">No meeting rooms found.</p>
                   <p className="mt-1 text-sm text-[#64748B]">Try changing filters.</p>

@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, CalendarDays, ScanLine, MessageSquare,
-  CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store,
+  CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store, Tag,
 } from "lucide-react";
 import Logo from "../Logo";
 import { usePartner } from "../../context/PartnerContext";
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/partner/center/checkin",   label: "Guest Check-in",  icon: ScanLine,      badge: "4", badgeColor: "emerald" },
   { href: "/partner/center/requests",  label: "Special Requests",icon: MessageSquare, badge: "2", badgeColor: "amber" },
   { href: "/partner/center/calendar",  label: "Calendar",        icon: CalendarRange  },
+  { href: "/partner/center/coupons",   label: "Coupons",         icon: Tag            },
   { href: "/partner/settings",         label: "Settings",        icon: Settings2      },
 ];
 
