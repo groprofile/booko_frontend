@@ -1,7 +1,8 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, ChevronDown, ChevronUp, AlertCircle, Building2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, AlertCircle, Building2, Loader2 } from "lucide-react";
 import { usePartner, type CenterData, type BusinessDetails } from "../../../context/PartnerContext";
+import { apiGet, apiPost, apiPut, apiUploadFile, ApiError, getVendorToken } from "../../../lib/api";
 
 const CENTER_TYPES = ["Coworking Space","Hotel","Meeting Room","Virtual Office","Managed Office","Event Space","Training Room","Board Room"];
 const SERVICES = ["Day Pass","Meeting Rooms","Monthly Pass","Virtual Office","Hotel Rooms","Hourly Stay","Full Day Stay","Private Cabin","Managed Office"];
@@ -17,10 +18,6 @@ const BASE = "w-full rounded-xl border px-4 py-3 text-sm text-[#0F172A] placehol
 const NORMAL = `${BASE} border-[#E2E8F0] focus:border-[#2563EB] focus:ring-[#2563EB]/15`;
 const ERR = `${BASE} border-red-400 focus:border-red-400 focus:ring-red-400/15`;
 
-// Pre-fill what we already collected in Business Details so vendors don't retype it.
-// `fullAddress` also copies the registered address (used for the first / single center,
-// which is typically at the business address); additional centers only inherit the
-// vendor-level contact person + phone, since their location differs.
 function makeCenter(
   business: Partial<BusinessDetails> = {},
   opts: { fullAddress?: boolean } = {},
@@ -38,9 +35,10 @@ function makeCenter(
   };
 }
 
-function CenterForm({ center, index, onChange, onRemove, canRemove, errors }:{
+function CenterForm({ center, index, onChange, onRemove, canRemove, errors, onPhotosAdded }:{
   center: CenterData; index: number; onChange: (c: CenterData) => void;
   onRemove: () => void; canRemove: boolean; errors: Record<string, string>;
+  onPhotosAdded: (files: File[]) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -65,6 +63,7 @@ function CenterForm({ center, index, onChange, onRemove, canRemove, errors }:{
           <div className="text-left">
             <p className="text-sm font-bold text-[#0F172A]">{center.name || `Center ${index + 1}`}</p>
             {center.city && <p className="text-xs text-[#64748B]">{center.city}</p>}
+            {center.backendId && <p className="text-[10px] text-emerald-600">Saved to account</p>}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -192,11 +191,14 @@ function CenterForm({ center, index, onChange, onRemove, canRemove, errors }:{
                 <Building2 size={24} className="text-[#94A3B8]" />
                 <p className="text-sm font-medium text-[#334155]">Click to upload photos</p>
                 <p className="text-xs text-[#94A3B8]">PNG, JPG up to 5MB each. Min. 3 photos recommended.</p>
-                <input type="file" multiple accept="image/*" className="hidden"
+                <input type="file" multiple accept="image/jpeg,image/png" className="hidden"
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     const files = Array.from(e.target.files ?? []);
+                    if (!files.length) return;
                     const names = [...center.photoNames, ...files.map((f) => f.name)].slice(0, 10);
                     onChange({ ...center, photoNames: names });
+                    onPhotosAdded(files);
+                    e.target.value = "";
                   }} />
               </label>
               {center.photoNames.length > 0 && (
@@ -226,7 +228,76 @@ export default function CenterSetupPage() {
     partner?.centers?.length ? partner.centers : [makeCenter(business, { fullAddress: true })]
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState("");
+  // Keyed by center.id (temp ID), holds File[] pending upload
+  const [pendingFiles, setPendingFiles] = useState<Map<string, File[]>>(new Map());
   const isMultiple = partner?.centerType === "multiple";
+
+  // On mount: fetch DB centers and enrich context data with real backendIds
+  useEffect(() => {
+    const token = getVendorToken();
+    if (!token) { setLoading(false); return; }
+
+    apiGet<any[]>('/vendor/centers', token)
+      .then((dbCenters) => {
+        if (!dbCenters.length) return;
+
+        // Build name → DB row map for matching
+        const dbByName = new Map<string, any>(
+          dbCenters.map((r) => [String(r.center_name ?? "").toLowerCase(), r]),
+        );
+
+        setCenters((prev) => {
+          // Enrich existing context centers with backendId where names match
+          const enriched = prev.map((c) => {
+            if (c.backendId) return c;
+            const match = dbByName.get(c.name.toLowerCase());
+            if (match) {
+              dbByName.delete(c.name.toLowerCase());
+              return { ...c, backendId: match.id };
+            }
+            return c;
+          });
+
+          // Add DB centers that weren't in context (different device / second session)
+          const extra: CenterData[] = [];
+          for (const [, r] of dbByName) {
+            extra.push({
+              id: `ctr_${r.id}`,
+              backendId: r.id,
+              name: r.center_name ?? "",
+              type: "",
+              address: r.address ?? "",
+              city: r.city ?? "",
+              state: r.state ?? "",
+              locality: r.locality ?? "",
+              landmark: "",
+              googleMapUrl: r.google_map_url ?? "",
+              contactPerson: r.contact_name ?? "",
+              phone: r.contact_phone ?? "",
+              services: [],
+              amenities: [],
+              photoNames: [],
+            });
+          }
+
+          return [...enriched, ...extra];
+        });
+      })
+      .catch(() => {/* keep context data as-is */})
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function addPendingFiles(centerId: string, files: File[]) {
+    setPendingFiles((prev) => {
+      const next = new Map(prev);
+      next.set(centerId, [...(next.get(centerId) ?? []), ...files]);
+      return next;
+    });
+  }
 
   function updateCenter(i: number, c: CenterData) {
     setCenters((prev) => prev.map((x, idx) => idx === i ? c : x));
@@ -253,12 +324,62 @@ export default function CenterSetupPage() {
     return Object.keys(e).length === 0;
   }
 
-  function handleSubmit(ev: FormEvent) {
+  async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (!validate()) return;
-    updatePartner({ centers });
-    markStepComplete(2);
-    navigate("/partner/onboarding/kyc");
+    const token = getVendorToken();
+    if (!token) return;
+    setSaving(true);
+    setApiError("");
+    try {
+      const saved: CenterData[] = [];
+      for (const c of centers) {
+        let centerId = c.backendId;
+        const payload = {
+          centerName: c.name,
+          address: c.address,
+          locality: c.locality || undefined,
+          city: c.city,
+          state: c.state,
+          googleMapUrl: c.googleMapUrl || undefined,
+          contactName: c.contactPerson || undefined,
+          contactPhone: c.phone || undefined,
+        };
+
+        if (!centerId) {
+          const res = await apiPost<{ centre: { id: string } }>('/vendor/centers', payload, token);
+          centerId = res.centre.id;
+        } else {
+          await apiPut(`/vendor/centers/${centerId}`, payload, token);
+        }
+
+        // Upload any photos queued for this center
+        const files = pendingFiles.get(c.id) ?? [];
+        for (const file of files) {
+          const fd = new FormData();
+          fd.append('photo', file);
+          await apiUploadFile(`/vendor/centers/${centerId}/photos`, fd, token);
+        }
+
+        saved.push({ ...c, backendId: centerId, photoNames: [] });
+      }
+
+      updatePartner({ centers: saved });
+      markStepComplete(2);
+      navigate("/partner/onboarding/kyc");
+    } catch (err) {
+      setApiError((err as ApiError).message ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-[#2563EB]" size={28} />
+      </div>
+    );
   }
 
   return (
@@ -270,11 +391,19 @@ export default function CenterSetupPage() {
         </p>
       </div>
 
+      {apiError && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {apiError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         {centers.map((c, i) => (
           <CenterForm key={c.id} center={c} index={i} errors={errors}
             onChange={(updated) => updateCenter(i, updated)}
             onRemove={() => setCenters((prev) => prev.filter((_, idx) => idx !== i))}
+            onPhotosAdded={(files) => addPendingFiles(c.id, files)}
             canRemove={centers.length > 1} />
         ))}
 
@@ -291,9 +420,10 @@ export default function CenterSetupPage() {
             className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#F8FAFC]">
             ← Back
           </button>
-          <button type="submit"
-            className="rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">
-            Save &amp; Continue →
+          <button type="submit" disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:opacity-60">
+            {saving && <Loader2 size={15} className="animate-spin" />}
+            {saving ? "Saving…" : "Save & Continue →"}
           </button>
         </div>
       </form>

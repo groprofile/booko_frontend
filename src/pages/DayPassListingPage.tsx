@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, Map, SlidersHorizontal, X } from "lucide-react";
 import Header from "../components/Header";
@@ -14,9 +14,10 @@ import {
   allBrands,
   allSeatingTypes,
   allSpaceTypes,
-  dayPassListings,
 } from "../data/dayPassListings";
-import type { DayPassFilters, SortOption } from "../data/dayPassListings";
+import type { DayPassFilters, DayPassListing, SortOption } from "../data/dayPassListings";
+import { apiGet } from "../lib/api";
+import { apiToDayPassListing, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 function cityLabel(slug: string) {
@@ -40,6 +41,22 @@ export default function DayPassListingPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mapView, setMapView] = useState(false);
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const [listings, setListings] = useState<DayPassListing[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  const fetchListings = useCallback(() => {
+    setApiLoading(true);
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?productType=day-pass&city=${encodeURIComponent(cityName)}&pageSize=100`,
+    )
+      .then((res) => setListings(res.data.map(apiToDayPassListing)))
+      .catch(() => setListings([]))
+      .finally(() => setApiLoading(false));
+  }, [cityName]);
+
+  useEffect(() => {
+    fetchListings();
+  }, [fetchListings]);
 
   useEffect(() => {
     document.title = `Day Pass in ${cityName} | Bokko`;
@@ -145,7 +162,7 @@ export default function DayPassListingPage() {
   }
 
   const filteredListings = useMemo(() => {
-    let list = dayPassListings.filter((listing) => listing.city === citySlug);
+    let list = listings.slice();
 
     if (location.trim()) {
       const q = location.trim().toLowerCase();
@@ -197,7 +214,7 @@ export default function DayPassListingPage() {
     else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
 
     return sorted;
-  }, [citySlug, filters, location]);
+  }, [citySlug, filters, location, listings]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -294,6 +311,10 @@ export default function DayPassListingPage() {
               {mapView ? (
                 <div className="flex h-[480px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm font-medium text-[#64748B]">
                   Map view coming soon for {cityName}.
+                </div>
+              ) : apiLoading ? (
+                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
+                  Loading workspaces…
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">

@@ -18,9 +18,10 @@ import {
   allRatingThresholds,
   allStayTypes,
   cityToLocalities,
-  hotelListings,
 } from "../data/hotelListings";
-import type { HotelFilters, HotelSortOption } from "../data/hotelListings";
+import type { HotelFilters, HotelListing, HotelSortOption } from "../data/hotelListings";
+import { apiGet } from "../lib/api";
+import { apiToHotelListing, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 300;
@@ -62,11 +63,17 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
+  const [listings, setListings] = useState<HotelListing[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 450);
-    return () => clearTimeout(timer);
-  }, [citySlug]);
+    setLoading(true);
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?productType=hotel&city=${encodeURIComponent(cityName)}&pageSize=100`,
+    )
+      .then((res) => setListings(res.data.map(apiToHotelListing)))
+      .catch(() => setListings([]))
+      .finally(() => setLoading(false));
+  }, [cityName]);
 
   useEffect(() => {
     if (seeded.current) return;
@@ -187,7 +194,7 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
   }
 
   const filteredListings = useMemo(() => {
-    let list = hotelListings.filter((listing) => listing.city === citySlug);
+    let list = listings.slice();
 
     if (filters.stayTypes.length) {
       list = list.filter((listing) => filters.stayTypes.some((type) => listing.stayTypes.includes(type)));
@@ -230,7 +237,7 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
     else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
 
     return sorted;
-  }, [citySlug, filters]);
+  }, [citySlug, filters, listings]);
 
   const visibleListings = filteredListings.slice(0, visibleCount);
 

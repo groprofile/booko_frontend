@@ -36,6 +36,9 @@ function sessionForToken(token: string): Session | null {
   if (token === sessionStorage.getItem('bokko_vendor_token')) {
     return { accessKey: 'bokko_vendor_token', refreshKey: 'bokko_vendor_refresh' };
   }
+  if (token === sessionStorage.getItem('bokko_user_token')) {
+    return { accessKey: 'bokko_user_token', refreshKey: 'bokko_user_refresh' };
+  }
   return null;
 }
 
@@ -207,5 +210,6 @@ export async function apiUploadFile<T>(path: string, formData: FormData, token?:
 
 export const getAdminToken = () => sessionStorage.getItem('bokko_admin_token');
 export const getVendorToken = () => sessionStorage.getItem('bokko_vendor_token');
+export const getUserToken = () => sessionStorage.getItem('bokko_user_token');
 export const getCentreId = () => sessionStorage.getItem('bokko_centre_id');
 export const setCentreId = (id: string) => sessionStorage.setItem('bokko_centre_id', id);

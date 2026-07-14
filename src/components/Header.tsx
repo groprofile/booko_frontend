@@ -5,6 +5,7 @@ import Logo from "./Logo";
 import LoginModal from "./LoginModal";
 import CartDrawer from "./cart/CartDrawer";
 import { useCart } from "../context/CartContext";
+import { useUser } from "../context/UserAuthContext";
 
 const navLinks = [
   { label: "Hotels", to: "/mumbai/hotels" },
@@ -15,15 +16,19 @@ const navLinks = [
   { label: "Monthly Pass", to: "/mumbai/monthly-pass" },
 ];
 
-const isLoggedIn = false;
-
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const { totalItems } = useCart();
+  const { isLoggedIn, user, logout } = useUser();
   const location = useLocation();
+
+  async function handleLogout() {
+    setDropdownOpen(false);
+    await logout();
+  }
 
   return (
     <header
@@ -57,7 +62,7 @@ export default function Header() {
                 aria-haspopup="menu"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-sm font-semibold text-[#2563EB]">
-                  A
+                  {user?.name ? user.name[0].toUpperCase() : user?.phone?.slice(-2) ?? "U"}
                 </span>
                 <ChevronDown size={16} className="text-[#64748B]" />
               </button>
@@ -91,14 +96,15 @@ export default function Header() {
                     Support
                   </a>
                   <div className="my-1 h-px bg-[#E2E8F0]" />
-                  <a
-                    href="#logout"
+                  <button
+                    type="button"
                     role="menuitem"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#DC2626] hover:bg-[#FEF2F2]"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#DC2626] hover:bg-[#FEF2F2]"
                   >
                     <LogOut size={18} />
                     Logout
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

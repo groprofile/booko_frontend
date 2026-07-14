@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Loader2, CalendarClock, Ban, Check, X, IndianRupee } from "lucide-react";
+import { Plus, Trash2, Loader2, CalendarClock, Ban, Check, X, IndianRupee, Pencil } from "lucide-react";
 import { apiGet, apiPost, apiPatch, apiDelete, getVendorToken, ApiError } from "../../../lib/api";
 
 // ── Product-type model (mirrors backend CATEGORY_PRODUCT_TYPES) ────────────────
@@ -290,11 +290,15 @@ function SlotManager({ centerId, plan, onClose }: { centerId: string; plan: Plan
   const [gen, setGen] = useState({ startDate: today, endDate: today, slotStartTime: "09:00", slotEndTime: "18:00", slotDurationMins: plan.duration_hours ? plan.duration_hours * 60 : 60 });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editCapacity, setEditCapacity] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
 
   const loadSlots = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await apiGet<Slot[]>(`/slots/availability/${centerId}?date=${viewDate}&planId=${plan.id}`);
+      const rows = await apiGet<Slot[]>(`/slots/${centerId}/vendor?date=${viewDate}&planId=${plan.id}`, getVendorToken() ?? undefined);
       setSlots(Array.isArray(rows) ? rows : []);
     } finally {
       setLoading(false);
@@ -320,6 +324,26 @@ function SlotManager({ centerId, plan, onClose }: { centerId: string; plan: Plan
   async function setStatus(slot: Slot, status: "blocked" | "available") {
     await apiPatch(`/slots/${centerId}/${slot.id}/status`, { status }, getVendorToken() ?? undefined);
     loadSlots();
+  }
+
+  function startEdit(s: Slot) {
+    setEditingSlotId(s.id);
+    setEditPrice(String(s.price));
+    setEditCapacity(String(s.capacity));
+  }
+
+  async function saveEdit(s: Slot) {
+    if (!editPrice || !editCapacity) return;
+    setEditBusy(true);
+    try {
+      await apiPatch(`/slots/${centerId}/${s.id}`, { price: Number(editPrice), capacity: Number(editCapacity) }, getVendorToken() ?? undefined);
+      setEditingSlotId(null);
+      loadSlots();
+    } catch {
+      // error is silent — slot card stays open so user can retry
+    } finally {
+      setEditBusy(false);
+    }
   }
 
   return (
@@ -363,19 +387,54 @@ function SlotManager({ centerId, plan, onClose }: { centerId: string; plan: Plan
             <p className="py-6 text-center text-xs text-[#94A3B8]">No slots for this date. Generate some above.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {slots.map((s) => (
-                <div key={s.id} className="flex items-center justify-between rounded-lg border border-[#E2E8F0] px-3 py-2">
-                  <div>
-                    <p className="text-xs font-semibold text-[#0F172A]">{s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}</p>
-                    <p className="text-[10px] text-[#94A3B8]">{s.available_count}/{s.capacity} left · ₹{s.price}</p>
+              {slots.map((s) =>
+                editingSlotId === s.id ? (
+                  <div key={s.id} className="rounded-lg border border-[#2563EB]/40 bg-[#F8FAFF] px-3 py-2">
+                    <p className="mb-2 text-xs font-semibold text-[#0F172A]">{s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-[#475569]">Price ₹</label>
+                        <input
+                          type="number"
+                          className="mt-0.5 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs outline-none focus:border-[#2563EB]"
+                          value={editPrice}
+                          onChange={(e) => setEditPrice(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-[#475569]">Cap</label>
+                        <input
+                          type="number"
+                          className="mt-0.5 w-full rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs outline-none focus:border-[#2563EB]"
+                          value={editCapacity}
+                          onChange={(e) => setEditCapacity(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex justify-end gap-1">
+                      <button onClick={() => setEditingSlotId(null)} className="rounded p-1 text-[#94A3B8] hover:bg-slate-100" title="Cancel"><X size={13} /></button>
+                      <button onClick={() => saveEdit(s)} disabled={editBusy} className="rounded p-1 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50" title="Save">
+                        {editBusy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                      </button>
+                    </div>
                   </div>
-                  {s.status === "blocked" ? (
-                    <button onClick={() => setStatus(s, "available")} className="rounded p-1 text-emerald-600 hover:bg-emerald-50" title="Unblock"><Check size={14} /></button>
-                  ) : (
-                    <button onClick={() => setStatus(s, "blocked")} className="rounded p-1 text-[#94A3B8] hover:bg-red-50 hover:text-red-500" title="Block"><Ban size={14} /></button>
-                  )}
-                </div>
-              ))}
+                ) : (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border border-[#E2E8F0] px-3 py-2">
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F172A]">{s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}</p>
+                      <p className="text-[10px] text-[#94A3B8]">{s.available_count}/{s.capacity} left · ₹{s.price}</p>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      <button onClick={() => startEdit(s)} className="rounded p-1 text-[#CBD5E1] hover:bg-[#F8FAFC] hover:text-[#2563EB]" title="Edit price/capacity"><Pencil size={12} /></button>
+                      {s.status === "blocked" ? (
+                        <button onClick={() => setStatus(s, "available")} className="rounded p-1 text-emerald-600 hover:bg-emerald-50" title="Unblock"><Check size={14} /></button>
+                      ) : (
+                        <button onClick={() => setStatus(s, "blocked")} className="rounded p-1 text-[#94A3B8] hover:bg-red-50 hover:text-red-500" title="Block"><Ban size={14} /></button>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           )}
         </div>

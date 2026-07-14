@@ -27,6 +27,7 @@ export const billingTiers: BillingTier[] = [
 
 export interface MembershipType {
   key: string;
+  planId?: string;
   name: string;
   price: number;
   accessHours: string;

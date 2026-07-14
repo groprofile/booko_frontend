@@ -6,6 +6,7 @@ export type VOSortOption = "recommended" | "popularity" | "price-asc" | "price-d
 
 export interface VOPlan {
   key: string;
+  planId?: string;
   name: string;
   price: number;
   description: string;

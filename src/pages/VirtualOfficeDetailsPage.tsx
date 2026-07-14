@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
@@ -21,9 +21,11 @@ import CorporateEnquirySection from "../components/virtualofficedetails/Corporat
 import BokkoExpertWidget from "../components/virtualofficedetails/BokkoExpertWidget";
 import TrustBanner from "../components/virtualofficedetails/TrustBanner";
 import MobileBottomBar from "../components/virtualofficedetails/MobileBottomBar";
-import { CITY_NAMES, virtualOfficeListings } from "../data/virtualOfficeListings";
-import { getVirtualOfficeDetails } from "../data/virtualOfficeDetails";
-import { slugify } from "../utils/slug";
+import { CITY_NAMES } from "../data/virtualOfficeListings";
+import type { VirtualOfficeListing } from "../data/virtualOfficeListings";
+import type { VirtualOfficeDetails } from "../data/virtualOfficeDetails";
+import { apiGet } from "../lib/api";
+import { apiToVirtualOfficeListing, apiToVirtualOfficeDetails, type CentreApiRow } from "../lib/centreAdapter";
 
 function cityLabel(slug: string) {
   return (
@@ -44,12 +46,20 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
   const citySlug = (params.city ?? "mumbai").toLowerCase();
   const cityName = cityLabel(citySlug);
 
-  const listing = useMemo(
-    () => virtualOfficeListings.find((item) => item.city === citySlug && slugify(item.centerName) === officeSlug),
-    [citySlug, officeSlug],
-  );
+  const [listing, setListing] = useState<VirtualOfficeListing | null>(null);
+  const [details, setDetails] = useState<VirtualOfficeDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const details = useMemo(() => (listing ? getVirtualOfficeDetails(listing) : null), [listing]);
+  useEffect(() => {
+    setLoading(true);
+    apiGet<CentreApiRow>(`/centers/${officeSlug}`)
+      .then((raw) => {
+        setListing(apiToVirtualOfficeListing(raw));
+        setDetails(apiToVirtualOfficeDetails(raw));
+      })
+      .catch(() => setListing(null))
+      .finally(() => setLoading(false));
+  }, [officeSlug]);
 
   useEffect(() => {
     if (!listing) return;
@@ -65,6 +75,18 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
       `Book a virtual office at ${listing.centerName} in ${listing.area}, ${cityName}. GST registration, business address and compliance support on Bokko.`,
     );
   }, [listing, cityName]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="text-[#64748B]">Loading…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!listing || !details) {
     return (
@@ -82,7 +104,7 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
     );
   }
 
-  const sameCityListings = virtualOfficeListings.filter((item) => item.city === citySlug);
+  const sameCityListings: VirtualOfficeListing[] = [];
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">

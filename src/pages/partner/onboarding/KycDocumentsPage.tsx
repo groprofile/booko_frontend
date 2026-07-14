@@ -110,13 +110,15 @@ export default function KycDocumentsPage() {
       fd.append("file", file);
       fd.append("docType", doc.docType);
       const result = await apiUploadFile<{ key: string }>("/vendor/kyc/upload", fd, token);
-      setDocs((prev) =>
-        prev.map((d) =>
+      setDocs((prev) => {
+        const updated = prev.map((d) =>
           d.docType === doc.docType
-            ? { ...d, fileName: file.name, fileKey: result.key, status: "uploaded" }
+            ? { ...d, fileName: file.name, fileKey: result.key, status: "uploaded" as const }
             : d,
-        ),
-      );
+        );
+        updatePartner({ kyc: updated });
+        return updated;
+      });
     } catch (err) {
       setError((err as ApiError).message ?? "Upload failed");
     } finally {
@@ -125,11 +127,13 @@ export default function KycDocumentsPage() {
   }
 
   function handleRemove(doc: KycDocumentRecord) {
-    setDocs((prev) =>
-      prev.map((d) =>
-        d.docType === doc.docType ? { ...d, fileName: "", fileKey: undefined, status: "pending" } : d,
-      ),
-    );
+    setDocs((prev) => {
+      const updated = prev.map((d) =>
+        d.docType === doc.docType ? { ...d, fileName: "", fileKey: undefined, status: "pending" as const } : d,
+      );
+      updatePartner({ kyc: updated });
+      return updated;
+    });
   }
 
   function validate() {

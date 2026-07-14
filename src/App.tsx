@@ -34,6 +34,7 @@ import VirtualOfficeSlugRouter from "./pages/VirtualOfficeSlugRouter";
 import CoworkingSpacesListingPage from "./pages/CoworkingSpacesListingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import BookingConfirmedPage from "./pages/BookingConfirmedPage";
+import BookingFailedPage from "./pages/BookingFailedPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
@@ -71,6 +72,7 @@ import GuestCheckInPage from "./pages/partner/center/GuestCheckInPage";
 import SpecialRequestsPage from "./pages/partner/center/SpecialRequestsPage";
 import CenterCalendarPage from "./pages/partner/center/CenterCalendarPage";
 import CenterManageRedirect from "./pages/partner/center/CenterManageRedirect";
+import CenterCouponsPage from "./pages/partner/center/CenterCouponsPage";
 // Partner — shared settings
 import PartnerSettingsPage from "./pages/partner/PartnerSettingsPage";
 
@@ -108,6 +110,7 @@ function App() {
       <Route path="/:city/coworking-spaces" element={<CoworkingSpacesListingPage />} />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/booking-confirmed" element={<BookingConfirmedPage />} />
+      <Route path="/booking-failed" element={<BookingFailedPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -174,6 +177,7 @@ function App() {
         <Route path="/partner/center/requests" element={<SpecialRequestsPage />} />
         <Route path="/partner/center/calendar" element={<CenterCalendarPage />} />
         <Route path="/partner/center/manage" element={<CenterManageRedirect />} />
+        <Route path="/partner/center/coupons" element={<CenterCouponsPage />} />
         {/* Shared */}
         <Route path="/partner/settings" element={<PartnerSettingsPage />} />
       </Route>

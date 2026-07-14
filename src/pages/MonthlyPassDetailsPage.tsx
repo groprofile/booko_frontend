@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
@@ -23,9 +23,12 @@ import BusinessSolutionsSection from "../components/monthlypassdetails/BusinessS
 import CorporateEnquirySection from "../components/monthlypassdetails/CorporateEnquirySection";
 import BokkoExpertWidget from "../components/monthlypassdetails/BokkoExpertWidget";
 import MobileBottomBar from "../components/monthlypassdetails/MobileBottomBar";
-import { CITY_NAMES, monthlyPassListings } from "../data/monthlyPassListings";
-import { billingTiers, getMonthlyPassDetails } from "../data/monthlyPassDetails";
-import { slugify } from "../utils/slug";
+import { CITY_NAMES } from "../data/monthlyPassListings";
+import type { MonthlyPassListing } from "../data/monthlyPassListings";
+import { billingTiers } from "../data/monthlyPassDetails";
+import type { MonthlyPassDetails } from "../data/monthlyPassDetails";
+import { apiGet } from "../lib/api";
+import { apiToMonthlyPassListing, apiToMonthlyPassDetails, type CentreApiRow } from "../lib/centreAdapter";
 
 function cityLabel(slug: string) {
   return (
@@ -42,12 +45,20 @@ export default function MonthlyPassDetailsPage() {
   const citySlug = (params.city ?? "mumbai").toLowerCase();
   const cityName = cityLabel(citySlug);
 
-  const listing = useMemo(
-    () => monthlyPassListings.find((item) => item.city === citySlug && slugify(item.name) === params.passSlug),
-    [citySlug, params.passSlug],
-  );
+  const [listing, setListing] = useState<MonthlyPassListing | null>(null);
+  const [details, setDetails] = useState<MonthlyPassDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const details = useMemo(() => (listing ? getMonthlyPassDetails(listing) : null), [listing]);
+  useEffect(() => {
+    setLoading(true);
+    apiGet<CentreApiRow>(`/centers/${params.passSlug}`)
+      .then((raw) => {
+        setListing(apiToMonthlyPassListing(raw));
+        setDetails(apiToMonthlyPassDetails(raw));
+      })
+      .catch(() => setListing(null))
+      .finally(() => setLoading(false));
+  }, [params.passSlug]);
 
   useEffect(() => {
     if (!listing) return;
@@ -63,6 +74,18 @@ export default function MonthlyPassDetailsPage() {
       `Book a coworking membership at ${listing.name} in ${listing.locality}, ${cityName}. Open desks, dedicated desks and private cabins on Bokko.`,
     );
   }, [listing, cityName]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="text-[#64748B]">Loading…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!listing || !details) {
     return (
@@ -80,7 +103,7 @@ export default function MonthlyPassDetailsPage() {
     );
   }
 
-  const sameCityListings = monthlyPassListings.filter((item) => item.city === citySlug);
+  const sameCityListings: MonthlyPassListing[] = [];
   const hasParking = listing.accessibility.includes("Parking (Free/Paid)");
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
@@ -18,9 +18,11 @@ import NearbyExperiencesSection from "../components/hoteldetails/NearbyExperienc
 import TrustSection from "../components/hoteldetails/TrustSection";
 import BokkoExpertWidget from "../components/hoteldetails/BokkoExpertWidget";
 import MobileBottomBar from "../components/hoteldetails/MobileBottomBar";
-import { CITY_NAMES, hotelListings } from "../data/hotelListings";
-import { getHotelDetails } from "../data/hotelDetails";
-import { slugify } from "../utils/slug";
+import { CITY_NAMES } from "../data/hotelListings";
+import type { HotelListing } from "../data/hotelListings";
+import type { HotelDetails } from "../data/hotelDetails";
+import { apiGet } from "../lib/api";
+import { apiToHotelListing, apiToHotelDetails, type CentreApiRow } from "../lib/centreAdapter";
 
 function cityLabel(slug: string) {
   return (
@@ -37,12 +39,9 @@ export default function HotelDetailsPage() {
   const citySlug = (params.city ?? "mumbai").toLowerCase();
   const cityName = cityLabel(citySlug);
 
-  const listing = useMemo(
-    () => hotelListings.find((item) => item.city === citySlug && slugify(item.name) === params.hotelSlug),
-    [citySlug, params.hotelSlug],
-  );
-
-  const details = useMemo(() => (listing ? getHotelDetails(listing) : null), [listing]);
+  const [listing, setListing] = useState<HotelListing | null>(null);
+  const [details, setDetails] = useState<HotelDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [checkIn, setCheckIn] = useState(() => new Date().toISOString().slice(0, 10));
   const [checkOut, setCheckOut] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10));
@@ -53,16 +52,24 @@ export default function HotelDetailsPage() {
   const [selectedMealKey, setSelectedMealKey] = useState("");
 
   useEffect(() => {
-    if (!details) return;
-    setSelectedRoomId(details.rooms[0].id);
-    const firstAvailable = details.rooms[0].pricing.find((tier) => tier.available) ?? details.rooms[0].pricing[0];
-    setSelectedStayKey(firstAvailable.key);
-    setSelectedMealKey(details.mealOptions[0].key);
-  }, [details]);
+    setLoading(true);
+    apiGet<CentreApiRow>(`/centers/${params.hotelSlug}`)
+      .then((raw) => {
+        setListing(apiToHotelListing(raw));
+        const d = apiToHotelDetails(raw);
+        setDetails(d);
+        setSelectedRoomId(d.rooms[0].id);
+        const firstAvailable = d.rooms[0].pricing.find((tier) => tier.available) ?? d.rooms[0].pricing[0];
+        setSelectedStayKey(firstAvailable.key);
+        setSelectedMealKey(d.mealOptions[0].key);
+      })
+      .catch(() => setListing(null))
+      .finally(() => setLoading(false));
+  }, [params.hotelSlug]);
 
   useEffect(() => {
     if (!listing) return;
-    document.title = `${listing.name} | ${cityName} | Bokko`;
+    document.title = `${listing.name} | Hotels in ${cityName} | Bokko`;
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
       meta = document.createElement("meta");
@@ -74,6 +81,18 @@ export default function HotelDetailsPage() {
       `Book ${listing.name} in ${listing.locality}, ${cityName}. Compare room options, hourly stays and pricing on Bokko.`,
     );
   }, [listing, cityName]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="text-[#64748B]">Loading…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!listing || !details) {
     return (
@@ -92,7 +111,6 @@ export default function HotelDetailsPage() {
   }
 
   const selectedRoom = details.rooms.find((room) => room.id === selectedRoomId) ?? details.rooms[0];
-  const sameCityListings = hotelListings.filter((item) => item.city === citySlug);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -136,7 +154,7 @@ export default function HotelDetailsPage() {
 
               <ReviewsSection rating={listing.rating} reviewCount={listing.reviews} details={details} />
 
-              <SimilarPropertiesSection current={listing} citySlug={citySlug} allListings={sameCityListings} />
+              <SimilarPropertiesSection current={listing} citySlug={citySlug} allListings={[]} />
 
               <NearbyExperiencesSection citySlug={citySlug} />
 

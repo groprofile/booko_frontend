@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { apiPost, apiGet, getUserToken } from "../lib/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProgressBar from "../components/ucheckout/ProgressBar";
@@ -165,15 +166,83 @@ export default function UniversalCheckoutPage({ booking }: Props) {
     return false;
   }, [step, booking.productType, dpPrimaryName, dpPrimaryEmail, dpPrimaryPhone, mrOrgName, mrOrgEmail, mrOrgPhone, voBusinessName, voFounderName, voBusinessType, voContactEmail, voContactPhone, paymentMethod]);
 
-  function handleNext() {
+  async function handleNext() {
     if (!canAdvance || step >= 4) return;
     if (step === 3) {
+      const token = getUserToken();
+      if (!token) {
+        alert("Please sign in to complete your booking.");
+        return;
+      }
       setSubmitting(true);
-      setTimeout(() => {
+      try {
+        const productTypeMap: Record<string, string> = {
+          "day-pass": "coworking_day_pass",
+          "meeting-room": "coworking_meeting_room",
+          "monthly-pass": "coworking_monthly_pass",
+          "virtual-office": "coworking_monthly_pass",
+        };
+        const backendProductType = productTypeMap[booking.productType] ?? "coworking_day_pass";
+
+        let createDto: Record<string, unknown> = {
+          centerId: booking.listingId,
+          productType: backendProductType,
+          couponCode: appliedCoupon?.code,
+        };
+
+        if (booking.productType === "day-pass") {
+          const opt = booking.seatingOptions.find((o) => o.type === dpPassType) ?? booking.seatingOptions[0];
+          createDto = { ...createDto, planId: opt?.planId, bookingDate: dpDate, memberCount: dpMembers };
+        } else if (booking.productType === "monthly-pass") {
+          const mp = booking.membershipTypes.find((t) => t.key === mpMembershipKey) ?? booking.membershipTypes[0];
+          createDto = { ...createDto, planId: mp?.planId ?? mp?.key, bookingDate: new Date().toISOString().slice(0, 10), memberCount: mpSeats };
+        } else if (booking.productType === "virtual-office") {
+          const plan = booking.plans.find((p) => p.key === voPlanKey) ?? booking.plans[0];
+          createDto = { ...createDto, planId: plan?.planId ?? plan?.key, bookingDate: new Date().toISOString().slice(0, 10) };
+        } else if (booking.productType === "meeting-room") {
+          // Fetch available slots for the selected date + plan, then pick matching time window
+          const slots = await apiGet<Array<{ id: string; start_time: string; end_time: string }>>(
+            `/slots/availability/${booking.listingId}?date=${mrDate}&planId=${mrRoomId}`,
+          );
+          const hours = parseInt(mrDurationKey) || 1;
+          const [startH, startM] = mrStartTime.split(":").map(Number);
+          const startMinutes = startH * 60 + startM;
+          const endMinutes = startMinutes + hours * 60;
+          const needed = slots.filter((s) => {
+            const [sh, sm] = s.start_time.slice(0, 5).split(":").map(Number);
+            const [eh, em] = s.end_time.slice(0, 5).split(":").map(Number);
+            return sh * 60 + sm >= startMinutes && eh * 60 + em <= endMinutes;
+          });
+          if (!needed.length) throw new Error("No available slots for the selected time. Please choose a different time.");
+          createDto = { ...createDto, slotIds: needed.map((s) => s.id), bookingDate: mrDate, guestCount: mrAttendees };
+        }
+
+        const created = await apiPost<{ id: string }>("/bookings", createDto, token);
+        const payuParams = await apiPost<Record<string, string>>(
+          `/payments/booking/${created.id}/initiate-web`,
+          {},
+          token,
+        );
+
+        // Build and auto-submit a hidden PayU form
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = payuParams["url"] ?? "https://test.payu.in/_payment";
+        const skip = new Set(["url"]);
+        Object.entries(payuParams).forEach(([k, v]) => {
+          if (skip.has(k) || typeof v !== "string") return;
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = k;
+          input.value = v;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      } catch (err) {
+        alert((err as Error).message ?? "Booking failed. Please try again.");
         setSubmitting(false);
-        setStep(4);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }, 1200);
+      }
     } else {
       setStep((s) => (s + 1) as 1 | 2 | 3 | 4);
       window.scrollTo({ top: 0, behavior: "smooth" });

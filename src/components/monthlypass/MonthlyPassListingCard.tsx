@@ -169,7 +169,7 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
               className="w-full rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black sm:w-auto">
               Book Monthly Pass
             </button>
-            <Link to={`/${listing.city}/monthly-pass/${slugify(listing.name)}`}
+            <Link to={`/${listing.city}/monthly-pass/${listing.id}`}
               className="w-full rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] sm:w-auto">
               View Details
             </Link>

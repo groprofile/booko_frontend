@@ -12,6 +12,7 @@ export type PartnerStatus =
 
 export interface CenterData {
   id: string;
+  backendId?: string;
   name: string;
   type: string;
   address: string;

@@ -20,9 +20,10 @@ import {
   allRatingThresholds,
   allServices,
   cityToLocalities,
-  virtualOfficeListings,
 } from "../data/virtualOfficeListings";
-import type { VirtualOfficeFilters, VOSortOption } from "../data/virtualOfficeListings";
+import type { VirtualOfficeListing, VirtualOfficeFilters, VOSortOption } from "../data/virtualOfficeListings";
+import { apiGet } from "../lib/api";
+import { apiToVirtualOfficeListing, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 500;
@@ -64,6 +65,18 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
   const [priceRangeField, setPriceRangeField] = useState("Any Budget");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [listings, setListings] = useState<VirtualOfficeListing[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  useEffect(() => {
+    setApiLoading(true);
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?productType=virtual-office&city=${encodeURIComponent(cityName)}&pageSize=100`,
+    )
+      .then((res) => setListings(res.data.map(apiToVirtualOfficeListing)))
+      .catch(() => setListings([]))
+      .finally(() => setApiLoading(false));
+  }, [cityName]);
 
   useEffect(() => {
     if (seeded.current) return;
@@ -184,7 +197,7 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
   }
 
   const filteredListings = useMemo(() => {
-    let list = virtualOfficeListings.filter((listing) => listing.city === citySlug);
+    let list = listings.slice();
 
     if (filters.areas.length) {
       list = list.filter((listing) => filters.areas.includes(listing.area));
@@ -218,7 +231,7 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
     else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
 
     return sorted;
-  }, [citySlug, filters]);
+  }, [citySlug, filters, listings]);
 
   const visibleListings = filteredListings.slice(0, visibleCount);
 
@@ -311,7 +324,11 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
             </aside>
 
             <div className="min-w-0">
-              {filteredListings.length === 0 ? (
+              {apiLoading ? (
+                <div className="flex h-[320px] items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
+                  Loading virtual offices…
+                </div>
+              ) : filteredListings.length === 0 ? (
                 <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-[24px] border border-[#E2E8F0] bg-white text-center">
                   <span className="text-4xl">🏢</span>
                   <p className="text-base font-bold text-[#0F172A]">No Virtual Offices Found</p>

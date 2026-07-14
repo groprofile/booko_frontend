@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
@@ -20,9 +20,11 @@ import WorkspaceBundleSection from "../components/meetingroomdetails/WorkspaceBu
 import CorporateEnquirySection from "../components/meetingroomdetails/CorporateEnquirySection";
 import BokkoExpertWidget from "../components/meetingroomdetails/BokkoExpertWidget";
 import MobileBottomBar from "../components/meetingroomdetails/MobileBottomBar";
-import { CITY_NAMES, meetingRoomListings } from "../data/meetingRoomListings";
-import { getMeetingRoomDetails } from "../data/meetingRoomDetails";
-import { slugify } from "../utils/slug";
+import { CITY_NAMES } from "../data/meetingRoomListings";
+import type { MeetingRoomListing } from "../data/meetingRoomListings";
+import type { MeetingRoomDetails } from "../data/meetingRoomDetails";
+import { apiGet } from "../lib/api";
+import { apiToMeetingRoomListing, apiToMeetingRoomDetails, type CentreApiRow } from "../lib/centreAdapter";
 
 function cityLabel(slug: string) {
   return (
@@ -39,12 +41,9 @@ export default function MeetingRoomDetailsPage() {
   const citySlug = (params.city ?? "mumbai").toLowerCase();
   const cityName = cityLabel(citySlug);
 
-  const listing = useMemo(
-    () => meetingRoomListings.find((item) => item.city === citySlug && slugify(item.workspaceName) === params.roomSlug),
-    [citySlug, params.roomSlug],
-  );
-
-  const details = useMemo(() => (listing ? getMeetingRoomDetails(listing) : null), [listing]);
+  const [listing, setListing] = useState<MeetingRoomListing | null>(null);
+  const [details, setDetails] = useState<MeetingRoomDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("10:00");
@@ -54,11 +53,19 @@ export default function MeetingRoomDetailsPage() {
   const [selectedAddOnKeys, setSelectedAddOnKeys] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!details) return;
-    setSelectedRoomId(details.siblingRoomTypes[0].id);
-    setSelectedDurationKey(details.siblingRoomTypes[0].pricing[0].key);
-    setAttendees(details.siblingRoomTypes[0].capacity > 4 ? 4 : details.siblingRoomTypes[0].capacity);
-  }, [details]);
+    setLoading(true);
+    apiGet<CentreApiRow>(`/centers/${params.roomSlug}`)
+      .then((raw) => {
+        setListing(apiToMeetingRoomListing(raw));
+        const d = apiToMeetingRoomDetails(raw);
+        setDetails(d);
+        setSelectedRoomId(d.siblingRoomTypes[0].id);
+        setSelectedDurationKey(d.siblingRoomTypes[0].pricing[0].key);
+        setAttendees(d.siblingRoomTypes[0].capacity > 4 ? 4 : d.siblingRoomTypes[0].capacity);
+      })
+      .catch(() => setListing(null))
+      .finally(() => setLoading(false));
+  }, [params.roomSlug]);
 
   useEffect(() => {
     if (!listing) return;
@@ -77,6 +84,18 @@ export default function MeetingRoomDetailsPage() {
 
   function toggleAddOn(key: string) {
     setSelectedAddOnKeys((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="text-[#64748B]">Loading…</p>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   if (!listing || !details) {
@@ -102,7 +121,7 @@ export default function MeetingRoomDetailsPage() {
     .reduce((sum, addOn) => sum + addOn.price, 0);
   const total = selectedTier.price + addOnsTotal;
   const costPerPerson = Math.round(total / Math.max(1, attendees));
-  const sameCityListings = meetingRoomListings.filter((item) => item.city === citySlug);
+  const sameCityListings: MeetingRoomListing[] = [];
 
   const bookingCardProps = {
     listing,

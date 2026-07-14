@@ -1,8 +1,8 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, Save, Loader2 } from "lucide-react";
 import { usePartner } from "../../../context/PartnerContext";
-import { apiPatch, ApiError, getVendorToken } from "../../../lib/api";
+import { apiGet, apiPatch, ApiError, getVendorToken } from "../../../lib/api";
 
 const BUSINESS_TYPES = [
   "Coworking Space","Hotel","Meeting Room Provider","Virtual Office Provider","Managed Office","Event Space",
@@ -56,6 +56,32 @@ export default function BusinessDetailsPage() {
   const [saved, setSaved] = useState(false);
   const [apiError, setApiError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getVendorToken();
+    if (!token) { setProfileLoading(false); return; }
+    apiGet<Record<string, string>>('/vendor/profile', token)
+      .then((p) => {
+        setForm({
+          businessName:      p.business_name      ?? "",
+          businessType:      p.business_type      ?? "",
+          businessEmail:     p.email              ?? "",
+          registeredAddress: p.registered_address ?? "",
+          city:              p.city               ?? "",
+          state:             p.state              ?? "",
+          pincode:           p.pincode            ?? "",
+          contactPerson:     p.contact_person     ?? "",
+          mobile:            p.phone              ?? "",
+          website:           p.website            ?? "",
+          instagram:         p.instagram          ?? "",
+          linkedin:          p.linkedin           ?? "",
+        });
+      })
+      .catch(() => { /* keep localStorage-seeded form on error */ })
+      .finally(() => setProfileLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }));
@@ -67,7 +93,6 @@ export default function BusinessDetailsPage() {
     const e: Record<string, string> = {};
     if (!form.businessName.trim()) e.businessName = "Business name is required";
     if (!form.businessType) e.businessType = "Select your business type";
-    if (!form.businessEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.businessEmail)) e.businessEmail = "Enter a valid email";
     if (!form.registeredAddress.trim()) e.registeredAddress = "Registered address is required";
     if (!form.city.trim()) e.city = "City is required";
     if (!form.state) e.state = "Select state";
@@ -85,7 +110,7 @@ export default function BusinessDetailsPage() {
     await apiPatch('/vendor/profile', {
       businessName: form.businessName,
       businessType: form.businessType,
-      phone: form.mobile ?? form.contactPerson,
+      phone: form.mobile,
       contactPerson: form.contactPerson,
       registeredAddress: form.registeredAddress,
       city: form.city,
@@ -128,6 +153,14 @@ export default function BusinessDetailsPage() {
     }
   }
 
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-[#2563EB]" size={28} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[720px]">
       <div className="mb-6">
@@ -158,9 +191,9 @@ export default function BusinessDetailsPage() {
                 {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </F>
-            <F label="Business Email" required error={errors.businessEmail}>
-              <input type="email" value={form.businessEmail} onChange={(e: ChangeEvent<HTMLInputElement>) => set("businessEmail", e.target.value)}
-                className={errors.businessEmail ? ERR : NORMAL} placeholder="info@company.com" />
+            <F label="Business Email" hint="Set at signup — contact support to change">
+              <input type="email" value={form.businessEmail} readOnly
+                className={`${NORMAL} cursor-default bg-[#F8FAFC] text-[#64748B]`} />
             </F>
             <F label="Contact Person" required error={errors.contactPerson}>
               <input value={form.contactPerson} onChange={(e: ChangeEvent<HTMLInputElement>) => set("contactPerson", e.target.value)}

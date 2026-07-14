@@ -23,10 +23,10 @@ export default function SimilarWorkspacesCarousel({ spaces }: SimilarWorkspacesC
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const candidates = useMemo(() => {
-    if (tab === "top-rated") return [...spaces].sort((a, b) => b.rating - a.rating).slice(0, 10);
-    if (tab === "most-booked") return [...spaces].sort((a, b) => b.reviews - a.reviews).slice(0, 10);
+    if (tab === "top-rated") return [...spaces].sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 10);
+    if (tab === "most-booked") return [...spaces].sort((a, b) => Number(b.reviews) - Number(a.reviews)).slice(0, 10);
     if (tab === "premium") return spaces.filter((space) => space.premium).slice(0, 10);
-    return [...spaces].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 10);
+    return [...spaces].sort((a, b) => Number(a.distanceKm) - Number(b.distanceKm)).slice(0, 10);
   }, [spaces, tab]);
 
   function scrollByAmount(amount: number) {
@@ -86,9 +86,9 @@ export default function SimilarWorkspacesCarousel({ spaces }: SimilarWorkspacesC
                 </p>
                 <p className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
                   <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
-                  {space.rating.toFixed(1)}
+                  {Number(space.rating ?? 0).toFixed(1)}
                 </p>
-                <p className="mt-2 text-sm font-bold text-[#0F172A]">From ₹{space.startingPrice.toLocaleString()}</p>
+                <p className="mt-2 text-sm font-bold text-[#0F172A]">From ₹{Number(space.startingPrice ?? 0).toLocaleString()}</p>
               </div>
             </Link>
           ))}

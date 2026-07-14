@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, CalendarDays, ScanLine, MessageSquare,
-  CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store,
+  CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store, Tag,
   Building2,
 } from "lucide-react";
 import Logo from "../Logo";
@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   // Center editing (details/pricing/photos/schedule) is VENDOR_SUPER_ADMIN-only
   // on the backend — hide it from center-manager (staff) sessions.
   { href: "/partner/center/manage",    label: "Manage Center",   icon: Building2, ownerOnly: true },
+  { href: "/partner/center/coupons",   label: "Coupons",         icon: Tag            },
   { href: "/partner/settings",         label: "Settings",        icon: Settings2      },
 ];
 

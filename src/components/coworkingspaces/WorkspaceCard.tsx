@@ -53,7 +53,7 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-[11px] font-bold text-white">
               <Star size={11} className="fill-[#FBBF24] text-[#FBBF24]" />
-              {space.rating.toFixed(1)} ({space.reviews.toLocaleString()})
+              {Number(space.rating ?? 0).toFixed(1)} ({Number(space.reviews ?? 0).toLocaleString()})
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#64748B]">
               <Train size={12} />

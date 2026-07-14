@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import Header from "../components/Header";
@@ -14,8 +14,10 @@ import BokkoExpertCard from "../components/coworkingspaces/BokkoExpertCard";
 import BokkoExpertWidget from "../components/coworkingspaces/BokkoExpertWidget";
 import SimilarWorkspacesCarousel from "../components/coworkingspaces/SimilarWorkspacesCarousel";
 import ExploreCitiesSection from "../components/coworkingspaces/ExploreCitiesSection";
-import { CITY_NAMES, allProviders, coworkingSpaces, sortSpaces } from "../data/coworkingSpaces";
-import type { ServiceKey, SortOption } from "../data/coworkingSpaces";
+import { CITY_NAMES, allProviders, sortSpaces } from "../data/coworkingSpaces";
+import type { CoworkingSpace, ServiceKey, SortOption } from "../data/coworkingSpaces";
+import { apiGet } from "../lib/api";
+import { apiToCoworkingSpace, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 function cityLabel(slug: string) {
@@ -35,6 +37,23 @@ export default function CoworkingSpacesListingPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [listings, setListings] = useState<CoworkingSpace[]>([]);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  const fetchListings = useCallback(() => {
+    setApiLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : '';
+    apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+      `/centers/list?pageSize=200${cityParam}`,
+    )
+      .then((res) => setListings(res.data.map(apiToCoworkingSpace)))
+      .catch(() => setListings([]))
+      .finally(() => setApiLoading(false));
+  }, [lockedCitySlug, cityName]);
+
+  useEffect(() => {
+    fetchListings();
+  }, [fetchListings]);
 
   useEffect(() => {
     document.title = lockedCitySlug
@@ -139,7 +158,7 @@ export default function CoworkingSpacesListingPage() {
   }
 
   const filteredSpaces = useMemo(() => {
-    let list = coworkingSpaces;
+    let list = listings.slice();
 
     if (selectedCities.length) {
       list = list.filter((space) => selectedCities.includes(space.city));
@@ -177,7 +196,7 @@ export default function CoworkingSpacesListingPage() {
       list = list.filter((space) => space.serviceKeys.includes("virtualOffice") && space.serviceKeys.includes("meetingRoom"));
 
     return sortSpaces(list, sort);
-  }, [selectedCities, query, area, selectedProviders, selectedServices, toggles, persona, sort]);
+  }, [selectedCities, query, area, selectedProviders, selectedServices, toggles, persona, sort, listings]);
 
   const activeFilterCount =
     selectedProviders.length +
@@ -185,7 +204,7 @@ export default function CoworkingSpacesListingPage() {
     (lockedCitySlug ? 0 : selectedCities.length) +
     Object.values(toggles).filter(Boolean).length;
 
-  const carouselScope = lockedCitySlug ? coworkingSpaces.filter((space) => space.city === lockedCitySlug) : coworkingSpaces;
+  const carouselScope = listings;
 
   const sidebarProps = {
     showCityFilter: !lockedCitySlug,
@@ -266,7 +285,11 @@ export default function CoworkingSpacesListingPage() {
             </aside>
 
             <div className="flex min-w-0 flex-col gap-12">
-              {filteredSpaces.length === 0 ? (
+              {apiLoading ? (
+                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
+                  Loading workspaces…
+                </div>
+              ) : filteredSpaces.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
                   <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
                   <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>

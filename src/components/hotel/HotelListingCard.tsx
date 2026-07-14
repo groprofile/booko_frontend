@@ -195,13 +195,13 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
-                to={`/${listing.city}/hotels/${slugify(listing.name)}`}
+                to={`/${listing.city}/hotels/${listing.id}`}
                 className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
               >
                 View Details
               </Link>
               <Link
-                to={`/${listing.city}/hotels/${slugify(listing.name)}`}
+                to={`/${listing.city}/hotels/${listing.id}`}
                 className="rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black"
               >
                 Book Now
