@@ -16,7 +16,6 @@ import {
   Wifi,
 } from "lucide-react";
 import type { HotelListing } from "../../data/hotelListings";
-import { slugify } from "../../utils/slug";
 
 interface HotelListingCardProps {
   listing: HotelListing;

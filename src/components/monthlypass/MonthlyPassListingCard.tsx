@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, MapPin, ShieldCheck, ShoppingCart, Star, Tim
 import type { MonthlyPassListing } from "../../data/monthlyPassListings";
 import { CITY_NAMES } from "../../data/dayPassListings";
 import { getMonthlyPassDetails } from "../../data/monthlyPassDetails";
-import { slugify } from "../../utils/slug";
 import { useCart } from "../../context/CartContext";
 
 interface MonthlyPassListingCardProps {

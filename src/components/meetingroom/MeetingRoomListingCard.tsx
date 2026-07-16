@@ -20,7 +20,6 @@ import {
 import type { MeetingRoomListing } from "../../data/meetingRoomListings";
 import { getMeetingRoomDetails } from "../../data/meetingRoomDetails";
 import { CITY_NAMES } from "../../data/dayPassListings";
-import { slugify } from "../../utils/slug";
 import { useCart } from "../../context/CartContext";
 
 interface MeetingRoomListingCardProps {
