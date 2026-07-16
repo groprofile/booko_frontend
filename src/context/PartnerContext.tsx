@@ -88,6 +88,9 @@ export interface PartnerDraft {
   // True when the session belongs to a Center Manager (VENDOR_ADMIN), not the
   // owner. Managers have no vendor profile and are scoped to a single centre.
   isManager?: boolean;
+  // True for admin-created vendors that haven't changed their one-time
+  // generated password yet — gates access until they set their own password.
+  mustChangePassword?: boolean;
 }
 
 export const ONBOARDING_STEPS = [
@@ -143,7 +146,7 @@ interface PartnerCtx {
   partner: PartnerDraft | null;
   isAuthenticated: boolean;
   signup: (data: SignupData, password: string) => Promise<{ success: boolean; error?: string }>;
-  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus; centerType?: "single" | "multiple" }>;
+  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string; status?: PartnerStatus; centerType?: "single" | "multiple"; mustChangePassword?: boolean }>;
   signinManager: (user: { id: string; name: string; email: string; centreId?: string }) => void;
   signout: () => void;
   updatePartner: (updates: Partial<PartnerDraft>) => void;
@@ -233,7 +236,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
   async function signin(email: string, password: string) {
     try {
       const data = await apiPost<{
-        vendor: { id: string; ownerName: string; businessName: string; status: string; dashboardLocked: boolean; centerType: "single" | "multiple" };
+        vendor: { id: string; ownerName: string; businessName: string; status: string; dashboardLocked: boolean; centerType: "single" | "multiple"; mustChangePassword?: boolean };
         accessToken: string;
         refreshToken: string;
       }>('/auth/vendor/login', { email, password });
@@ -261,6 +264,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         kyc: defaultKycDocs(),
         gstBank: {},
         createdAt: new Date().toISOString(),
+        mustChangePassword: data.vendor.mustChangePassword ?? false,
       };
 
       setPartner(draft);
@@ -270,7 +274,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
       // the next mount or tab focus — refreshStatus's functional setPartner
       // update safely picks up `draft` above once it lands.
       await refreshStatus();
-      return { success: true, status, centerType };
+      return { success: true, status, centerType, mustChangePassword: data.vendor.mustChangePassword ?? false };
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
         return { success: true as const, status: 'email_unverified' as PartnerStatus };
@@ -359,6 +363,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
         gst_legal_name?: string;
         gst_address?: string;
         gst_state?: string;
+        must_change_password?: boolean;
         vendor_bank_accounts?: Array<{
           account_holder_name?: string;
           account_number?: string;
@@ -373,6 +378,7 @@ export function PartnerProvider({ children }: { children: ReactNode }) {
           ? {
               ...prev,
               status,
+              mustChangePassword: vendor.must_change_password ?? prev.mustChangePassword,
               businessName: vendor.business_name ?? prev.businessName,
               name: vendor.owner_name ?? prev.name,
               mobile: vendor.phone ?? prev.mobile,

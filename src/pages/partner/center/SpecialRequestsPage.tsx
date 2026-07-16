@@ -23,15 +23,9 @@ interface SpecialRequest {
   avatar: string;
 }
 
-const INITIAL_REQUESTS: SpecialRequest[] = [
-  { id: "SR001", bookingId: "BK8824", guest: "Priya Mehta", type: "Meeting Room", request: "Need projector + whiteboard setup before 10 AM", priority: "high", status: "pending", time: "09:15 AM", avatar: "P" },
-  { id: "SR002", bookingId: "BK8826", guest: "Neha Singh", type: "Meeting Room", request: "Please arrange 3 chairs in Focus Room 1", priority: "medium", status: "pending", time: "09:45 AM", avatar: "N" },
-  { id: "SR003", bookingId: "BK8829", guest: "Rohit Kumar", type: "Meeting Room", request: "Team lunch arrangement — need 8 chairs and a side table", priority: "high", status: "in_progress", time: "08:30 AM", avatar: "R" },
-  { id: "SR004", bookingId: "BK8810", guest: "Kavita Sharma", type: "Day Pass", request: "Quiet zone desk preferred — working on an important deadline", priority: "low", status: "resolved", time: "Yesterday", avatar: "K" },
-  { id: "SR005", bookingId: "BK8812", guest: "Aditya Rao", type: "Meeting Room", request: "Video conferencing setup needed — international call at 3 PM", priority: "high", status: "resolved", time: "Yesterday", avatar: "A" },
-  { id: "SR006", bookingId: "BK8815", guest: "Meera Joshi", type: "Day Pass", request: "Ergonomic chair if available", priority: "low", status: "resolved", time: "25 Jun", avatar: "M" },
-  { id: "SR007", bookingId: "BK8818", guest: "Suresh Nair", type: "Meeting Room", request: "Tea and coffee for 5 people at 11 AM", priority: "medium", status: "resolved", time: "25 Jun", avatar: "S" },
-];
+// Guest special-requests have no backend feature yet — the page shows an
+// honest empty state instead of demo data until the API exists.
+const INITIAL_REQUESTS: SpecialRequest[] = [];
 
 const PRIORITY_BORDER: Record<Priority, string> = {
   high: "border-l-red-500",

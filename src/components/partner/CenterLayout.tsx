@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, CalendarDays, ScanLine, MessageSquare,
   CalendarRange, Settings2, LogOut, ChevronRight, Bell, Store, Tag,
-  Building2,
+  Building2, CalendarClock,
 } from "lucide-react";
 import Logo from "../Logo";
+import ToastContainer from "../admin/Toast";
 import { usePartner } from "../../context/PartnerContext";
 
 interface NavItem {
@@ -15,15 +16,19 @@ interface NavItem {
   badge?: string;
   badgeColor?: string;
   ownerOnly?: boolean;
+  managerOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
   { href: "/partner/center/overview",  label: "Dashboard",       icon: LayoutDashboard },
-  { href: "/partner/center/bookings",  label: "Bookings",        icon: CalendarDays,  badge: "12" },
-  { href: "/partner/center/checkin",   label: "Guest Check-in",  icon: ScanLine,      badge: "4", badgeColor: "emerald" },
-  { href: "/partner/center/requests",  label: "Special Requests",icon: MessageSquare, badge: "2", badgeColor: "amber" },
+  { href: "/partner/center/bookings",  label: "Bookings",        icon: CalendarDays   },
+  { href: "/partner/center/checkin",   label: "Guest Check-in",  icon: ScanLine       },
+  { href: "/partner/center/requests",  label: "Special Requests",icon: MessageSquare  },
   { href: "/partner/center/calendar",  label: "Calendar",        icon: CalendarRange  },
-  // Center editing (details/pricing/photos/schedule) is VENDOR_SUPER_ADMIN-only
+  // Managers can't open Manage Center, so they get slot management as its own
+  // entry; owners reach the same panel via Manage Center → Slots & Schedule.
+  { href: "/partner/center/slots",     label: "Slot Management", icon: CalendarClock, managerOnly: true },
+  // Center editing (details/pricing/photos/slots) is VENDOR_SUPER_ADMIN-only
   // on the backend — hide it from center-manager (staff) sessions.
   { href: "/partner/center/manage",    label: "Manage Center",   icon: Building2, ownerOnly: true },
   { href: "/partner/center/coupons",   label: "Coupons",         icon: Tag            },
@@ -75,7 +80,10 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
 
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
-          {NAV.filter((item) => !item.ownerOnly || !partner?.isManager).map((item) => {
+          {NAV.filter((item) =>
+            (!item.ownerOnly || !partner?.isManager) &&
+            (!item.managerOnly || partner?.isManager),
+          ).map((item) => {
             const active = pathname === item.href;
             const badgeStyle = item.badgeColor ? BADGE_COLORS[item.badgeColor] : BADGE_COLORS.blue;
             return (
@@ -149,6 +157,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-5">{children}</main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

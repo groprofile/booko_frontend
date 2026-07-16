@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { Plus, Tag, X, Building2, ShieldCheck, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Tag, X, Building2, ShieldCheck, Loader2, ImagePlus } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
-import { useAdmin } from "../../context/AdminContext";
-import { apiGet, apiPost, apiPatch } from "../../lib/api";
+import CouponImagePicker from "../../components/CouponImagePicker";
+import { apiGet, apiPost, apiPatch, apiUploadFile } from "../../lib/api";
 
 interface Coupon {
   id: string;
@@ -17,6 +17,7 @@ interface Coupon {
   valid_to: string | null;
   is_active: boolean;
   description?: string | null;
+  image_url?: string | null;
   vendor_id?: string | null;
   vendor_owner_name?: string | null;
   vendor_business_name?: string | null;
@@ -31,13 +32,16 @@ function getAdminToken() {
 }
 
 export default function AdminCouponsPage() {
-  const { admin } = useAdmin();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<"all" | "admin" | "vendor">("all");
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [retryTargetId, setRetryTargetId] = useState<string | null>(null);
+  const [uploadingRetry, setUploadingRetry] = useState(false);
+  const retryFileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     code: "", discountType: "PERCENT" as "PERCENT" | "FLAT", discountValue: "",
     maxDiscountPaise: "", minBookingPaise: "0", usageLimit: "100",
@@ -56,11 +60,12 @@ export default function AdminCouponsPage() {
 
   async function handleCreate() {
     if (!form.code || !form.discountValue || !form.validFrom || !form.validTo) return;
+    if (!imageFile) { setError("A banner image is required to create a coupon"); return; }
     setSaving(true);
     setError(null);
     try {
       const token = getAdminToken();
-      await apiPost("/admin/coupons", {
+      const coupon = await apiPost<{ id: string }>("/admin/coupons", {
         code: form.code.toUpperCase(),
         discountType: form.discountType,
         discountValue: parseFloat(form.discountValue),
@@ -71,8 +76,22 @@ export default function AdminCouponsPage() {
         validTo: form.validTo,
         description: form.description.trim() || undefined,
       }, token as string);
+
+      const fd = new FormData();
+      fd.append("image", imageFile);
+      try {
+        await apiUploadFile(`/admin/coupons/${coupon.id}/image`, fd, token as string);
+      } catch {
+        setError("Coupon created, but the banner image failed to upload. You can retry from the coupon card.");
+        setShowCreate(false);
+        setForm({ code: "", discountType: "PERCENT", discountValue: "", maxDiscountPaise: "", minBookingPaise: "0", usageLimit: "100", validFrom: "", validTo: "", description: "" });
+        setImageFile(null);
+        load();
+        return;
+      }
       setShowCreate(false);
       setForm({ code: "", discountType: "PERCENT", discountValue: "", maxDiscountPaise: "", minBookingPaise: "0", usageLimit: "100", validFrom: "", validTo: "", description: "" });
+      setImageFile(null);
       load();
     } catch (err) {
       setError((err as Error).message ?? "Failed to create coupon");
@@ -85,6 +104,29 @@ export default function AdminCouponsPage() {
     const token = getAdminToken();
     await apiPatch(`/admin/coupons/${couponId}/deactivate`, {}, token as string).catch(() => null);
     load();
+  }
+
+  function triggerRetryUpload(couponId: string) {
+    setRetryTargetId(couponId);
+    retryFileRef.current?.click();
+  }
+
+  async function handleRetryFile(file: File | null) {
+    if (!file || !retryTargetId) return;
+    setUploadingRetry(true);
+    try {
+      const token = getAdminToken();
+      const fd = new FormData();
+      fd.append("image", file);
+      await apiUploadFile(`/admin/coupons/${retryTargetId}/image`, fd, token as string);
+      load();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to upload banner image");
+    } finally {
+      setUploadingRetry(false);
+      setRetryTargetId(null);
+      if (retryFileRef.current) retryFileRef.current.value = "";
+    }
   }
 
   const filtered = coupons.filter((c) => {
@@ -101,7 +143,22 @@ export default function AdminCouponsPage() {
     const usagePct = coupon.usage_limit ? (coupon.used_count / coupon.usage_limit) * 100 : 0;
 
     return (
-      <div className={`rounded-2xl border p-5 shadow-sm ${coupon.is_active && !expired ? "border-[#E2E8F0] bg-white" : "border-[#F1F5F9] bg-[#F8FAFC]"}`}>
+      <div className={`overflow-hidden rounded-2xl border shadow-sm ${coupon.is_active && !expired ? "border-[#E2E8F0] bg-white" : "border-[#F1F5F9] bg-[#F8FAFC]"}`}>
+        {coupon.image_url ? (
+          <img src={coupon.image_url} alt={`${coupon.code} banner`} className="h-28 w-full object-cover" />
+        ) : (
+          <button
+            onClick={() => triggerRetryUpload(coupon.id)}
+            disabled={uploadingRetry && retryTargetId === coupon.id}
+            className="flex h-14 w-full items-center justify-center gap-1.5 bg-[#F8FAFC] text-xs font-semibold text-[#2563EB] hover:bg-[#EFF6FF] transition-colors disabled:opacity-50"
+          >
+            {uploadingRetry && retryTargetId === coupon.id
+              ? <Loader2 size={13} className="animate-spin" />
+              : <ImagePlus size={13} />}
+            Add banner image
+          </button>
+        )}
+        <div className="p-5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isVendorCoupon ? "bg-[#F3E8FF]" : "bg-[#EFF6FF]"}`}>
@@ -172,6 +229,7 @@ export default function AdminCouponsPage() {
             <X size={12} /> Disable Coupon
           </button>
         )}
+        </div>
       </div>
     );
   }
@@ -288,10 +346,13 @@ export default function AdminCouponsPage() {
                 <input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   placeholder="Internal note" className={INPUT_CLS} />
               </div>
+              <div className="col-span-2">
+                <CouponImagePicker file={imageFile} onChange={setImageFile} />
+              </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#F1F5F9] px-6 py-4">
               <button onClick={() => setShowCreate(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#64748B]">Cancel</button>
-              <button onClick={handleCreate} disabled={saving || !form.code || !form.discountValue || !form.validFrom || !form.validTo}
+              <button onClick={handleCreate} disabled={saving || !form.code || !form.discountValue || !form.validFrom || !form.validTo || !imageFile}
                 className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2 text-sm font-bold text-white hover:bg-[#1d4ed8] disabled:opacity-50">
                 {saving ? <Loader2 size={13} className="animate-spin" /> : null}
                 {saving ? "Creating…" : "Create Coupon"}
@@ -300,6 +361,14 @@ export default function AdminCouponsPage() {
           </div>
         </div>
       )}
+
+      <input
+        ref={retryFileRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => handleRetryFile(e.target.files?.[0] ?? null)}
+      />
     </AdminLayout>
   );
 }

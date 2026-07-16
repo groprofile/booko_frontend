@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Save, User, Shield, Bell, Database, Globe } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { showToast } from "../../components/admin/Toast";
 import { apiGet, apiPatch, getAdminToken, ApiError } from "../../lib/api";
 import { useAdmin, ROLE_LABELS } from "../../context/AdminContext";
 
-const ADMIN_USERS = [
-  { name: "Arjun Mehta",  email: "admin@bokkoapp.com",   role: "super_admin",       status: "active" },
-  { name: "Priya Sharma", email: "finance@bokkoapp.com", role: "finance_admin",     status: "active" },
-  { name: "Rohit Kumar",  email: "ops@bokkoapp.com",     role: "operations_admin",  status: "active" },
-  { name: "Anjali Singh", email: "support@bokkoapp.com", role: "support_admin",     status: "active" },
-  { name: "Varun Gupta",  email: "sales@bokkoapp.com",   role: "sales_admin",       status: "active" },
-];
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+}
+
+const EMPLOYEE_ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin", VENDOR_APPROVAL_TEAM: "Operations", FINANCE_TEAM: "Finance",
+  SUPPORT_TEAM: "Support", OPERATIONS_TEAM: "Operations", CONTENT_MANAGER: "Content", CITY_MANAGER: "City Manager",
+};
 
 const ROLE_PERMISSIONS_DISPLAY = [
   { role: "Super Admin",      perms: "Full access to all modules, settings, and configurations" },
@@ -32,15 +38,26 @@ export default function AdminSettingsPage() {
 
   const isSuperAdmin = admin?.role === "super_admin";
 
-  const [globalCommission, setGlobalCommission] = useState("");
+  const [globalCommission, setGlobalCommission] = useState("10");
   const [commissionSaving, setCommissionSaving] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
     const token = getAdminToken();
     if (!token) return;
-    apiGet<{ rate_percent: string }>("/admin/commission-config", token)
-      .then((r) => setGlobalCommission(String(r.rate_percent)))
+    apiGet<Employee[]>("/admin/employees", token)
+      .then((r) => setEmployees(Array.isArray(r) ? r : []))
+      .catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ rate_percent: string | null }>("/admin/commission-config", token)
+      .then((r) => { if (r.rate_percent != null) setGlobalCommission(String(r.rate_percent)); })
       .catch(console.error);
   }, [isSuperAdmin]);
 
@@ -147,12 +164,15 @@ export default function AdminSettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ADMIN_USERS.map((u) => (
-                      <tr key={u.email} className="border-b border-[#F8FAFC] hover:bg-[#F8FAFC]">
+                    {employees.length === 0 && (
+                      <tr><td colSpan={4} className="py-10 text-center text-xs text-[#94A3B8]">No team members found.</td></tr>
+                    )}
+                    {employees.map((u) => (
+                      <tr key={u.id} className="border-b border-[#F8FAFC] hover:bg-[#F8FAFC]">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
-                              {u.name.charAt(0)}
+                              {u.name?.charAt(0) ?? "?"}
                             </div>
                             <span className="font-semibold text-[#0F172A]">{u.name}</span>
                           </div>
@@ -160,11 +180,13 @@ export default function AdminSettingsPage() {
                         <td className="px-4 py-3 text-xs text-[#64748B]">{u.email}</td>
                         <td className="px-4 py-3">
                           <span className="rounded-full bg-[#EFF6FF] px-2.5 py-1 text-xs font-semibold text-[#2563EB]">
-                            {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS]}
+                            {EMPLOYEE_ROLE_LABELS[u.role] ?? u.role}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-semibold text-[#15803D]">Active</span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${u.is_active ? "bg-[#DCFCE7] text-[#15803D]" : "bg-[#F1F5F9] text-[#64748B]"}`}>
+                            {u.is_active ? "Active" : "Inactive"}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -240,11 +262,17 @@ export default function AdminSettingsPage() {
                       className="h-9 flex-1 rounded-xl border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />
                   </div>
                 ))}
-                <div className="flex items-center gap-4">
-                  <label className="w-56 shrink-0 text-sm font-medium text-[#64748B]">Default Commission Rate (%)</label>
-                  <input type="number" min="0" max="100" value={globalCommission}
-                    onChange={(e) => setGlobalCommission(e.target.value)}
-                    className="h-9 flex-1 rounded-xl border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />
+                <div className="flex items-start gap-4">
+                  <label className="w-56 shrink-0 pt-2 text-sm font-medium text-[#64748B]">Default Commission Rate (%)</label>
+                  <div className="flex-1">
+                    <input type="number" min="0" max="100" value={globalCommission}
+                      onChange={(e) => setGlobalCommission(e.target.value)}
+                      className="h-9 w-full rounded-xl border border-[#E2E8F0] px-3 text-sm outline-none focus:border-[#2563EB]" />
+                    <p className="mt-1 text-xs text-[#94A3B8]">
+                      Applies to every category unless it has its own rate — see{" "}
+                      <Link to="/admin/commissions" className="font-semibold text-[#2563EB] hover:underline">Commission Management</Link>.
+                    </p>
+                  </div>
                 </div>
                 {[
                   { label: "Settlement Window (days)", value: "7" },

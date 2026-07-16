@@ -1,26 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Bell, ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useAdmin, ROLE_LABELS } from "../../context/AdminContext";
+import { apiGet, getAdminToken } from "../../lib/api";
 
 interface Props { title: string; subtitle?: string; }
 
 export default function AdminTopbar({ title, subtitle }: Props) {
-  const { admin, logout, vendors, tickets } = useAdmin();
+  const { admin, logout, vendors } = useAdmin();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [showProfile, setShowProfile] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [openTickets, setOpenTickets] = useState(0);
+
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ total: number }>("/admin/support/tickets?status=open&limit=1", token)
+      .then((r) => setOpenTickets(r.total ?? 0))
+      .catch(() => {});
+  }, []);
 
   const pendingApprovals = vendors.filter((v) => v.status === "under_review" || v.status === "pending").length;
-  const openTickets = tickets.filter((t) => t.status === "open").length;
   const notifCount = pendingApprovals + openTickets;
 
   const NOTIFICATIONS = [
     ...(pendingApprovals > 0 ? [{ id: "n1", text: `${pendingApprovals} vendor approvals pending`, link: "/admin/vendor-approvals", dot: "#F59E0B" }] : []),
     ...(openTickets > 0 ? [{ id: "n2", text: `${openTickets} support tickets open`, link: "/admin/support", dot: "#DC2626" }] : []),
-    { id: "n3", text: "June settlements due by Jun 30", link: "/admin/settlements", dot: "#2563EB" },
   ];
 
   function handleSearch(e: React.FormEvent) {
@@ -85,6 +93,9 @@ export default function AdminTopbar({ title, subtitle }: Props) {
               <div className="border-b border-[#F1F5F9] px-4 py-3">
                 <p className="text-xs font-bold text-[#0F172A]">Notifications</p>
               </div>
+              {NOTIFICATIONS.length === 0 && (
+                <p className="px-4 py-4 text-center text-xs text-[#94A3B8]">Nothing needs your attention right now.</p>
+              )}
               {NOTIFICATIONS.map((n) => (
                 <button
                   key={n.id}

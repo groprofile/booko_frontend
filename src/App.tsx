@@ -46,6 +46,7 @@ import StaticPage from "./pages/StaticPage";
 import PartnerSignupPage from "./pages/partner/PartnerSignupPage";
 import PartnerSigninPage from "./pages/partner/PartnerSigninPage";
 import PartnerVerifyEmailPage from "./pages/partner/PartnerVerifyEmailPage";
+import ForcePasswordResetPage from "./pages/partner/ForcePasswordResetPage";
 import PartnerOnboardingPage from "./pages/partner/PartnerOnboardingPage";
 import PartnerPendingReviewPage from "./pages/partner/PartnerPendingReviewPage";
 import OnboardingLayout from "./components/partner/OnboardingLayout";
@@ -72,6 +73,7 @@ import GuestCheckInPage from "./pages/partner/center/GuestCheckInPage";
 import SpecialRequestsPage from "./pages/partner/center/SpecialRequestsPage";
 import CenterCalendarPage from "./pages/partner/center/CenterCalendarPage";
 import CenterManageRedirect from "./pages/partner/center/CenterManageRedirect";
+import SlotManagementPage from "./pages/partner/center/SlotManagementPage";
 import CenterCouponsPage from "./pages/partner/center/CenterCouponsPage";
 // Partner — shared settings
 import PartnerSettingsPage from "./pages/partner/PartnerSettingsPage";
@@ -150,6 +152,7 @@ function App() {
       <Route path="/partner/signup" element={<PartnerSignupPage />} />
       <Route path="/partner/signin" element={<PartnerSigninPage />} />
       <Route path="/partner/verify-email" element={<PartnerVerifyEmailPage />} />
+      <Route path="/partner/force-password-reset" element={<ForcePasswordResetPage />} />
       <Route path="/partner/pending-review" element={<PartnerPendingReviewPage />} />
       <Route path="/partner/onboarding" element={<OnboardingLayout />}>
         <Route index element={<PartnerOnboardingPage />} />
@@ -177,6 +180,7 @@ function App() {
         <Route path="/partner/center/requests" element={<SpecialRequestsPage />} />
         <Route path="/partner/center/calendar" element={<CenterCalendarPage />} />
         <Route path="/partner/center/manage" element={<CenterManageRedirect />} />
+        <Route path="/partner/center/slots" element={<SlotManagementPage />} />
         <Route path="/partner/center/coupons" element={<CenterCouponsPage />} />
         {/* Shared */}
         <Route path="/partner/settings" element={<PartnerSettingsPage />} />

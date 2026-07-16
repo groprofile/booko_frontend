@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Building2, Clock, Camera, Calendar,
-  Ban, Check, X, Upload, Loader2, Plus, BedDouble,
+  Check, X, Upload, Loader2, Plus, BedDouble,
 } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import CenterLayout from "../../../components/partner/CenterLayout";
+import SlotManagementPanel from "../../../components/partner/SlotManagementPanel";
 import { usePartner } from "../../../context/PartnerContext";
-import { apiGet, apiPost, apiPut, apiUploadFile, getVendorToken } from "../../../lib/api";
+import { apiGet, apiPut, apiUploadFile, getVendorToken } from "../../../lib/api";
 import RoomsPricingTab from "./RoomsPricingTab";
 
 interface CenterDetail {
@@ -30,12 +31,6 @@ interface CenterDetail {
   center_photos?: { id: string; image_url: string; is_cover: boolean }[];
 }
 
-interface Holiday {
-  id: string;
-  date: string;
-  reason?: string;
-}
-
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const INPUT_CLS = "bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8] w-full";
 
@@ -51,7 +46,6 @@ export default function CenterManagePage() {
   const Layout = isMulti ? SuperPartnerLayout : CenterLayout;
 
   const [center, setCenter] = useState<CenterDetail | null>(null);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("details");
   const [error, setError] = useState<string | null>(null);
@@ -78,25 +72,13 @@ export default function CenterManagePage() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Holidays
-  const [newHoliday, setNewHoliday] = useState({ date: "", reason: "" });
-  const [addingHoliday, setAddingHoliday] = useState(false);
-
-  // Block date
-  const [blockDate, setBlockDate] = useState("");
-  const [blockReason, setBlockReason] = useState("");
-  const [blocking, setBlocking] = useState(false);
 
   function load() {
     const token = getVendorToken() ?? undefined;
     setLoading(true);
-    Promise.all([
-      apiGet<CenterDetail>(`/vendor/centers/${id}`, token),
-      apiGet<Holiday[]>(`/vendor/centers/${id}/holidays`, token).catch(() => [] as Holiday[]),
-    ])
-      .then(([c, h]) => {
+    apiGet<CenterDetail>(`/vendor/centers/${id}`, token)
+      .then((c) => {
         setCenter(c);
-        setHolidays(h ?? []);
         setForm({
           centerName: c.center_name ?? "",
           description: c.description ?? "",
@@ -178,42 +160,6 @@ export default function CenterManagePage() {
     }
   }
 
-  async function handleAddHoliday() {
-    if (!newHoliday.date) return;
-    setAddingHoliday(true);
-    try {
-      const token = getVendorToken() ?? undefined;
-      await apiPost(`/vendor/centers/${id}/holidays`, {
-        date: newHoliday.date,
-        reason: newHoliday.reason.trim() || undefined,
-      }, token);
-      setNewHoliday({ date: "", reason: "" });
-      load();
-    } catch (err) {
-      setError((err as Error).message ?? "Failed to add holiday");
-    } finally {
-      setAddingHoliday(false);
-    }
-  }
-
-  async function handleBlockDate() {
-    if (!blockDate) return;
-    setBlocking(true);
-    try {
-      const token = getVendorToken() ?? undefined;
-      await apiPost(`/vendor/centers/${id}/block-date`, {
-        date: blockDate,
-        reason: blockReason.trim() || undefined,
-      }, token);
-      setBlockDate("");
-      setBlockReason("");
-    } catch (err) {
-      setError((err as Error).message ?? "Failed to block date");
-    } finally {
-      setBlocking(false);
-    }
-  }
-
   const isActive = center?.approval_status === "approved" && center.is_active;
   const statusColor = isActive ? "bg-emerald-100 text-emerald-700"
     : center?.approval_status === "pending" ? "bg-amber-100 text-amber-700"
@@ -258,7 +204,7 @@ export default function CenterManagePage() {
               { key: "details", label: "Details", icon: Building2 },
               { key: "rooms",   label: "Rooms & Pricing", icon: BedDouble },
               { key: "photos",  label: "Photos",  icon: Camera },
-              { key: "schedule", label: "Schedule", icon: Calendar },
+              { key: "schedule", label: "Slots & Schedule", icon: Calendar },
             ] as { key: Tab; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -424,98 +370,8 @@ export default function CenterManagePage() {
             </div>
           )}
 
-          {/* ── SCHEDULE TAB ── */}
-          {tab === "schedule" && (
-            <div className="space-y-5">
-              {/* Holidays */}
-              <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
-                    <Calendar size={15} className="text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#0F172A]">Holidays</p>
-                    <p className="text-xs text-[#94A3B8]">Days the center will be closed</p>
-                  </div>
-                </div>
-
-                <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#0F172A]">Date *</label>
-                    <input type="date" value={newHoliday.date}
-                      onChange={(e) => setNewHoliday((p) => ({ ...p, date: e.target.value }))}
-                      className={INPUT_CLS} />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#0F172A]">Reason</label>
-                    <input value={newHoliday.reason}
-                      onChange={(e) => setNewHoliday((p) => ({ ...p, reason: e.target.value }))}
-                      placeholder="e.g. Diwali"
-                      className={INPUT_CLS} />
-                  </div>
-                  <div className="flex items-end">
-                    <button onClick={handleAddHoliday} disabled={!newHoliday.date || addingHoliday}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-50">
-                      {addingHoliday ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                      Add Holiday
-                    </button>
-                  </div>
-                </div>
-
-                {holidays.length > 0 ? (
-                  <div className="divide-y divide-[#F1F5F9] rounded-xl border border-[#E2E8F0]">
-                    {holidays.map((h) => (
-                      <div key={h.id} className="flex items-center justify-between px-4 py-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[#0F172A]">{h.date}</p>
-                          {h.reason && <p className="text-xs text-[#64748B]">{h.reason}</p>}
-                        </div>
-                        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Holiday</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-xs text-[#94A3B8] py-4">No holidays added yet</p>
-                )}
-              </div>
-
-              {/* Block Date */}
-              <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
-                    <Ban size={15} className="text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#0F172A]">Block a Date</p>
-                    <p className="text-xs text-[#94A3B8]">Prevent new bookings for a specific date</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#0F172A]">Date *</label>
-                    <input type="date" value={blockDate}
-                      onChange={(e) => setBlockDate(e.target.value)}
-                      className={INPUT_CLS} />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-[#0F172A]">Reason</label>
-                    <input value={blockReason}
-                      onChange={(e) => setBlockReason(e.target.value)}
-                      placeholder="e.g. Private event"
-                      className={INPUT_CLS} />
-                  </div>
-                  <div className="flex items-end">
-                    <button onClick={handleBlockDate} disabled={!blockDate || blocking}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50">
-                      {blocking ? <Loader2 size={13} className="animate-spin" /> : <Ban size={13} />}
-                      Block Date
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* ── SLOTS & SCHEDULE TAB ── */}
+          {tab === "schedule" && id && <SlotManagementPanel centerId={id} />}
         </>
       )}
     </Layout>

@@ -20,6 +20,49 @@ export class ApiError extends Error {
   }
 }
 
+// Last line of defense: backend messages are user-facing by convention, but if
+// anything technical ever slips through (SQL errors, driver output, stack
+// traces), it must never be rendered in the UI.
+const TECHNICAL_PATTERNS = [
+  /duplicate key/i, /violates .*constraint/i, /constraint "/i, /syntax error/i,
+  /relation "/i, /column "/i, /null value in column/i, /invalid input syntax/i,
+  /ECONNREFUSED/, /ETIMEDOUT/, /EAI_AGAIN/, /getaddrinfo/, /connect timeout/i,
+  /\bat\s+\w+\.\w+\s*\(/, /Cannot read propert/i, /is not a function/i,
+  /undefined is not/i, /jwt (malformed|expired)/i, /bcrypt/i, /pg_/, /pool/i,
+];
+
+function fallbackMessage(status: number): string {
+  if (status === 401) return 'Your session has expired. Please sign in again.';
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return 'The requested item could not be found.';
+  if (status === 429) return 'Too many attempts. Please wait a minute and try again.';
+  if (status >= 500) return 'Something went wrong on our side. Please try again.';
+  return 'Request failed. Please try again.';
+}
+
+function sanitizeMessage(raw: unknown, status: number): string {
+  const msg = Array.isArray(raw) ? raw.join('; ') : typeof raw === 'string' ? raw : '';
+  if (!msg.trim()) return fallbackMessage(status);
+  if (msg.length > 300) return fallbackMessage(status);
+  if (TECHNICAL_PATTERNS.some((re) => re.test(msg))) return fallbackMessage(status);
+  return msg;
+}
+
+async function toApiError(res: Response): Promise<ApiError> {
+  const err = await res.json().catch(() => ({})) as { message?: string | string[]; code?: string };
+  return new ApiError(sanitizeMessage(err.message, res.status), err.code, res.status);
+}
+
+// Wraps fetch so network-level failures ("Failed to fetch", DNS, offline)
+// surface as a plain, user-friendly ApiError instead of a browser message.
+async function safeFetch(run: () => Promise<Response>): Promise<Response> {
+  try {
+    return await run();
+  } catch {
+    throw new ApiError('Unable to reach the server. Please check your connection and try again.', 'NETWORK_ERROR', 0);
+  }
+}
+
 // The backend rotates (single-use) refresh tokens: each successful refresh
 // deletes the old session. If several requests 401 at once with the same
 // expired access token, they must NOT each fire their own refresh — only the
@@ -101,15 +144,12 @@ export async function apiPost<T>(path: string, body: unknown, token?: string): P
     return fetch(`${BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 
@@ -120,15 +160,12 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
     return fetch(`${BASE}${path}`, { headers });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 
@@ -139,15 +176,12 @@ export async function apiPatch<T>(path: string, body: unknown, token?: string): 
     return fetch(`${BASE}${path}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 
@@ -158,15 +192,12 @@ export async function apiPut<T>(path: string, body: unknown, token?: string): Pr
     return fetch(`${BASE}${path}`, { method: 'PUT', headers, body: JSON.stringify(body) });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 
@@ -177,15 +208,12 @@ export async function apiDelete<T>(path: string, token?: string): Promise<T> {
     return fetch(`${BASE}${path}`, { method: 'DELETE', headers });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 
@@ -196,15 +224,12 @@ export async function apiUploadFile<T>(path: string, formData: FormData, token?:
     return fetch(`${BASE}${path}`, { method: 'POST', headers, body: formData });
   };
 
-  let res = await makeRequest(token);
+  let res = await safeFetch(() => makeRequest(token));
   if (res.status === 401 && token) {
     const newToken = await attemptTokenRefresh(token);
-    if (newToken) res = await makeRequest(newToken);
+    if (newToken) res = await safeFetch(() => makeRequest(newToken));
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string; code?: string };
-    throw new ApiError(err.message ?? `Error ${res.status}`, err.code, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return unwrap<T>(await res.json());
 }
 

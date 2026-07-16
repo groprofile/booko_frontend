@@ -47,6 +47,7 @@ export default function PartnerSigninPage() {
     const result = await signin(email.toLowerCase(), password);
     setSubmitting(false);
     if (!result.success) { setApiError(result.error ?? "Sign in failed"); return; }
+    if (result.mustChangePassword) { navigate("/partner/force-password-reset"); return; }
     const status = result.status;
     if (status === "email_unverified") navigate("/partner/verify-email");
     else if (status === "submitted_for_review" || status === "under_review") navigate("/partner/pending-review");

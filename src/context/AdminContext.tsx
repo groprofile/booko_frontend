@@ -24,6 +24,15 @@ export interface Vendor {
   joinedAt: string; approvedAt?: string;
   totalRevenue: number; totalBookings: number; totalCenters: number;
   notes?: string;
+  // "admin_created" vendors were set up directly by admin with a system-
+  // generated password (see CreateVendorPayload); "self_signup" went through
+  // the normal signup + email verification flow.
+  source: "admin_created" | "self_signup";
+  // Only meaningful for admin_created vendors — true until they log in and
+  // set their own password. Regenerating a password only makes sense while
+  // this is still true; once they've set their own, it's their password to
+  // manage (via Settings → Security), not admin's to reset.
+  mustChangePassword: boolean;
 }
 
 export type CenterStatus = "live" | "inactive" | "pending_approval" | "rejected";
@@ -67,34 +76,6 @@ export interface Settlement {
   ifsc: string; generatedAt: string; paidAt?: string; bookingsCount: number;
 }
 
-export type CouponDiscountType = "percentage" | "flat";
-
-export interface Coupon {
-  id: string; code: string; discountType: CouponDiscountType;
-  value: number; maxDiscount?: number; minBooking: number;
-  city?: string; category?: string; vendorId?: string;
-  startDate: string; endDate: string; usageLimit: number;
-  usageCount: number; active: boolean; createdAt: string;
-}
-
-export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-export type TicketPriority = "low" | "medium" | "high" | "urgent";
-export type TicketType = "booking_issue" | "payment_issue" | "refund_issue" | "vendor_issue" | "kyc_issue" | "complaint" | "general";
-
-export interface SupportTicket {
-  id: string; customerId: string; customerName: string;
-  customerEmail: string; customerMobile: string;
-  type: TicketType; priority: TicketPriority; status: TicketStatus;
-  subject: string; description: string; bookingId?: string;
-  assignedTo?: string; createdAt: string; updatedAt: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  type: "booking" | "vendor" | "payment" | "refund" | "user" | "center" | "approval" | "kyc";
-  description: string; meta?: string; timestamp: string;
-}
-
 export interface MonthlyPoint { month: string; value: number; }
 
 export interface DashboardStats {
@@ -118,75 +99,6 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
   super_admin: "Super Admin", operations_admin: "Operations", finance_admin: "Finance",
   support_admin: "Support", sales_admin: "Sales", content_admin: "Content",
 };
-
-// ─── Static chart data (no backend aggregate endpoint yet) ───────────────────
-
-export const MONTHLY_REVENUE: MonthlyPoint[] = [
-  { month: "Jul'25", value: 8.5 }, { month: "Aug'25", value: 9.8 }, { month: "Sep'25", value: 11.2 },
-  { month: "Oct'25", value: 13.5 }, { month: "Nov'25", value: 15.1 }, { month: "Dec'25", value: 16.8 },
-  { month: "Jan'26", value: 18.2 }, { month: "Feb'26", value: 21.5 }, { month: "Mar'26", value: 24.8 },
-  { month: "Apr'26", value: 28.1 }, { month: "May'26", value: 31.4 }, { month: "Jun'26", value: 34.8 },
-];
-
-export const MONTHLY_BOOKINGS: MonthlyPoint[] = [
-  { month: "Jul'25", value: 342 }, { month: "Aug'25", value: 421 }, { month: "Sep'25", value: 445 },
-  { month: "Oct'25", value: 532 }, { month: "Nov'25", value: 641 }, { month: "Dec'25", value: 752 },
-  { month: "Jan'26", value: 818 }, { month: "Feb'26", value: 924 }, { month: "Mar'26", value: 1034 },
-  { month: "Apr'26", value: 1182 }, { month: "May'26", value: 1341 }, { month: "Jun'26", value: 1489 },
-];
-
-export const CATEGORY_REVENUE = [
-  { label: "Hotels", value: 38, color: "#2563EB" },
-  { label: "Coworking", value: 24, color: "#7C3AED" },
-  { label: "Meeting Rooms", value: 18, color: "#059669" },
-  { label: "Day Pass", value: 12, color: "#D97706" },
-  { label: "Virtual Office", value: 5, color: "#DC2626" },
-  { label: "Monthly Pass", value: 3, color: "#64748B" },
-];
-
-export const CITY_BOOKINGS = [
-  { city: "Mumbai", pct: 34 },
-  { city: "Bangalore", pct: 28 },
-  { city: "New Delhi", pct: 18 },
-  { city: "Hyderabad", pct: 10 },
-  { city: "Pune", pct: 7 },
-  { city: "Others", pct: 3 },
-];
-
-// ─── Mock data for sections without backend endpoints ─────────────────────────
-
-const INIT_COUPONS: Coupon[] = [
-  { id: "cp001", code: "BOKKO20", discountType: "percentage", value: 20, maxDiscount: 200, minBooking: 500, startDate: "2026-06-01", endDate: "2026-06-30", usageLimit: 500, usageCount: 312, active: true, createdAt: "2026-05-28" },
-  { id: "cp002", code: "FLAT150", discountType: "flat", value: 150, minBooking: 800, city: "Mumbai", startDate: "2026-06-15", endDate: "2026-07-15", usageLimit: 200, usageCount: 87, active: true, createdAt: "2026-06-12" },
-  { id: "cp003", code: "WORK10", discountType: "percentage", value: 10, maxDiscount: 100, minBooking: 400, category: "Day Pass", startDate: "2026-05-01", endDate: "2026-05-31", usageLimit: 300, usageCount: 300, active: false, createdAt: "2026-04-28" },
-  { id: "cp004", code: "HOTEL25", discountType: "percentage", value: 25, maxDiscount: 500, minBooking: 1500, category: "Hotel Room", startDate: "2026-06-20", endDate: "2026-07-20", usageLimit: 150, usageCount: 42, active: true, createdAt: "2026-06-18" },
-  { id: "cp005", code: "MEETFREE", discountType: "flat", value: 300, minBooking: 1200, category: "Meeting Room", startDate: "2026-07-01", endDate: "2026-07-31", usageLimit: 100, usageCount: 0, active: true, createdAt: "2026-06-22" },
-  { id: "cp006", code: "BLRSPECIAL", discountType: "percentage", value: 15, maxDiscount: 250, minBooking: 600, city: "Bangalore", startDate: "2026-06-01", endDate: "2026-06-30", usageLimit: 400, usageCount: 198, active: true, createdAt: "2026-05-30" },
-];
-
-const INIT_TICKETS: SupportTicket[] = [
-  { id: "TK001", customerId: "u009", customerName: "Farhan Sheikh", customerEmail: "farhan.sheikh@gmail.com", customerMobile: "9823456789", type: "refund_issue", priority: "high", status: "in_progress", subject: "Refund not received after 7 days", description: "I cancelled my Day Pass booking on June 10 and was promised a refund within 5-7 days. It has been 13 days and no refund.", bookingId: "BK26061006", assignedTo: "Anjali Singh", createdAt: "2026-06-23T08:00:00", updatedAt: "2026-06-23T10:30:00" },
-  { id: "TK002", customerId: "u008", customerName: "Sunita Yadav", customerEmail: "sunita.yadav@gmail.com", customerMobile: "9849234567", type: "booking_issue", priority: "medium", status: "open", subject: "Could not check in despite confirmed booking", description: "The coworking space staff said they have no record of my booking even though I received a confirmation email.", bookingId: "BK26061014", createdAt: "2026-06-23T09:15:00", updatedAt: "2026-06-23T09:15:00" },
-  { id: "TK003", customerId: "u005", customerName: "Aakash Patel", customerEmail: "aakash.patel@gmail.com", customerMobile: "9820345678", type: "payment_issue", priority: "urgent", status: "open", subject: "Payment deducted but booking not confirmed", description: "Amount of ₹999 was deducted from my account but the booking status shows failed.", bookingId: "BK26061010", createdAt: "2026-06-23T10:45:00", updatedAt: "2026-06-23T10:45:00" },
-  { id: "TK004", customerId: "u002", customerName: "Meera Joshi", customerEmail: "meera.joshi@gmail.com", customerMobile: "9867412345", type: "general", priority: "low", status: "resolved", subject: "How to upgrade monthly pass mid-month?", description: "I want to upgrade from hot desk to dedicated desk for the remaining 15 days of my monthly pass.", createdAt: "2026-06-20T14:00:00", updatedAt: "2026-06-21T11:00:00" },
-  { id: "TK005", customerId: "u007", customerName: "Mohit Sharma", customerEmail: "mohit.sharma@hotmail.com", customerMobile: "9813456789", type: "vendor_issue", priority: "high", status: "in_progress", subject: "Hotel room was not as advertised", description: "The SmartStay hotel room had dirty linen and the AC was not working. Very different from website photos.", bookingId: "BK26061004", assignedTo: "Anjali Singh", createdAt: "2026-06-23T07:00:00", updatedAt: "2026-06-23T09:00:00" },
-  { id: "TK006", customerId: "u001", customerName: "Ravi Khanna", customerEmail: "ravi.khanna@gmail.com", customerMobile: "9876543210", type: "complaint", priority: "medium", status: "open", subject: "Parking not available as listed", description: "The listing says free parking is included but when I arrived there was no parking space available.", bookingId: "BK26061013", createdAt: "2026-06-22T16:30:00", updatedAt: "2026-06-22T16:30:00" },
-  { id: "TK007", customerId: "u011", customerName: "Rohan Gupta", customerEmail: "rohan.gupta@gmail.com", customerMobile: "9818765432", type: "kyc_issue", priority: "low", status: "closed", subject: "Need GST invoice for corporate reimbursement", description: "I need a proper GST invoice for my hotel booking for reimbursement from my employer.", bookingId: "BK26061002", createdAt: "2026-06-23T11:00:00", updatedAt: "2026-06-23T12:00:00" },
-  { id: "TK008", customerId: "u006", customerName: "Preethi Krishnan", customerEmail: "preethi.k@gmail.com", customerMobile: "9884123456", type: "refund_issue", priority: "medium", status: "open", subject: "Partial refund received instead of full refund", description: "I cancelled within the allowed window but only received a 50% refund instead of 100%.", bookingId: "BK26061011", createdAt: "2026-06-23T13:00:00", updatedAt: "2026-06-23T13:00:00" },
-];
-
-const INIT_ACTIVITY: ActivityLog[] = [
-  { id: "act001", type: "booking", description: "New booking received", meta: "BK26061001 · WorkHub Lower Parel · ₹799", timestamp: "2026-06-23T07:45:00" },
-  { id: "act002", type: "booking", description: "Hotel booking confirmed", meta: "BK26061002 · StayEasy Powai · ₹3,499", timestamp: "2026-06-23T09:12:00" },
-  { id: "act003", type: "kyc", description: "KYC documents submitted", meta: "FlexiWork Hyderabad (v008)", timestamp: "2026-06-23T10:00:00" },
-  { id: "act004", type: "payment", description: "Payment processed successfully", meta: "BK26061003 · ₹1,500 via UPI", timestamp: "2026-06-23T08:30:00" },
-  { id: "act005", type: "refund", description: "Refund requested", meta: "TK001 · Farhan Sheikh · ₹799", timestamp: "2026-06-23T08:00:00" },
-  { id: "act006", type: "user", description: "New user registered", meta: "Sunita Yadav · Hyderabad", timestamp: "2026-06-22T21:30:00" },
-  { id: "act007", type: "vendor", description: "New partner signed up", meta: "EventPro Venues Delhi (v010)", timestamp: "2026-06-22T18:00:00" },
-  { id: "act008", type: "center", description: "New center added", meta: "VirtualDesk Whitefield · Pending Approval", timestamp: "2026-06-22T15:00:00" },
-  { id: "act009", type: "approval", description: "Vendor approved", meta: "SmartStay Hotels Gurgaon · Rohit Kumar", timestamp: "2025-11-19T14:00:00" },
-  { id: "act010", type: "booking", description: "Monthly Pass purchased", meta: "BK26061018 · WorkHub Lower Parel · ₹9,999", timestamp: "2026-05-29T10:00:00" },
-];
 
 // ─── Data normalization ───────────────────────────────────────────────────────
 
@@ -220,6 +132,8 @@ function normalizeVendor(raw: any): Vendor {
     totalBookings: 0,
     totalCenters: 0,
     notes: raw.rejection_reason ?? undefined,
+    source: raw.source === "admin_created" ? "admin_created" : "self_signup",
+    mustChangePassword: !!raw.must_change_password,
   };
 }
 
@@ -322,6 +236,12 @@ function normalizeCenter(raw: any): Center {
   };
 }
 
+export interface CreateVendorPayload {
+  ownerName: string; email: string; phone: string;
+  businessName?: string; businessType?: string; city?: string; state?: string;
+  centerType?: "single" | "multiple"; gstin?: string;
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface AdminContextType {
@@ -333,9 +253,6 @@ interface AdminContextType {
   users: AppUser[];
   usersLoading: boolean;
   settlements: Settlement[];
-  coupons: Coupon[];
-  tickets: SupportTicket[];
-  activity: ActivityLog[];
   login: (email: string, password: string, otp?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   hasPermission: (section: string) => boolean;
@@ -343,17 +260,14 @@ interface AdminContextType {
   rejectVendor: (id: string, reason?: string) => void;
   blockVendor: (id: string) => void;
   unblockVendor: (id: string) => void;
-  addVendor: (data: Partial<Vendor>) => Vendor;
+  createVendor: (data: CreateVendorPayload) => Promise<{ success: boolean; email?: string; password?: string; error?: string }>;
+  regenerateVendorPassword: (id: string) => Promise<{ success: boolean; password?: string; error?: string }>;
   updateVendor: (id: string, data: Partial<Vendor>) => void;
   cancelBooking: (id: string) => void;
   refundBooking: (id: string) => void;
   blockUser: (id: string) => void;
   unblockUser: (id: string) => void;
   markSettlementPaid: (id: string) => void;
-  createCoupon: (data: Omit<Coupon, "id" | "usageCount" | "createdAt">) => void;
-  disableCoupon: (id: string) => void;
-  closeTicket: (id: string) => void;
-  assignTicket: (id: string, name: string) => void;
   approveCenterLive: (id: string) => void;
   addCenter: (data: Partial<Center>) => void;
 }
@@ -376,9 +290,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [coupons, setCoupons] = useState<Coupon[]>(INIT_COUPONS);
-  const [tickets, setTickets] = useState<SupportTicket[]>(INIT_TICKETS);
-  const [activity] = useState<ActivityLog[]>(INIT_ACTIVITY);
 
   const ROLE_MAP: Record<string, AdminRole> = {
     SUPER_ADMIN: "super_admin",
@@ -493,16 +404,33 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "approved" as VendorStatus } : v));
   }
 
-  function addVendor(data: Partial<Vendor>): Vendor {
-    const v: Vendor = {
-      id: `v${Date.now()}`, businessName: "", ownerName: "", email: "", businessEmail: "",
-      mobile: "", businessType: "", city: "", state: "", gstin: "",
-      centerType: "single", status: "draft", kycStatus: "not_submitted", bankStatus: "not_submitted",
-      joinedAt: new Date().toISOString().slice(0, 10), totalRevenue: 0, totalBookings: 0,
-      totalCenters: 0, ...data,
-    };
-    setVendors(vs => [v, ...vs]);
-    return v;
+  async function createVendor(data: CreateVendorPayload) {
+    const token = getAdminToken();
+    if (!token) return { success: false, error: "Not signed in" };
+    try {
+      const res = await apiPost<{ vendorId: string; email: string; password: string }>(
+        "/admin/vendors", data, token,
+      );
+      const r = await apiGet<{ vendors: unknown[] }>("/admin/vendors?limit=100", token);
+      setVendors((r.vendors ?? []).map(normalizeVendor));
+      return { success: true, email: res.email, password: res.password };
+    } catch (err) {
+      return { success: false, error: (err as Error).message ?? "Failed to create vendor" };
+    }
+  }
+
+  async function regenerateVendorPassword(id: string) {
+    const token = getAdminToken();
+    if (!token) return { success: false, error: "Not signed in" };
+    try {
+      const res = await apiPost<{ password: string }>(
+        `/admin/vendors/${id}/regenerate-password`, {}, token,
+      );
+      setVendors(vs => vs.map(v => v.id === id ? { ...v, mustChangePassword: true } : v));
+      return { success: true, password: res.password };
+    } catch (err) {
+      return { success: false, error: (err as Error).message ?? "Failed to regenerate password" };
+    }
   }
 
   function updateVendor(id: string, data: Partial<Vendor>) {
@@ -535,17 +463,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setSettlements(ss => ss.map(s => s.id === id ? { ...s, status: "paid" as SettlementStatus, paidAt: new Date().toISOString().slice(0, 10) } : s));
   }
 
-  function createCoupon(data: Omit<Coupon, "id" | "usageCount" | "createdAt">) {
-    const c: Coupon = { ...data, id: `cp${Date.now()}`, usageCount: 0, createdAt: new Date().toISOString().slice(0, 10) };
-    setCoupons(cs => [c, ...cs]);
-  }
-
-  function disableCoupon(id: string) { setCoupons(cs => cs.map(c => c.id === id ? { ...c, active: false } : c)); }
-
-  function closeTicket(id: string) { setTickets(ts => ts.map(t => t.id === id ? { ...t, status: "closed" as TicketStatus } : t)); }
-
-  function assignTicket(id: string, name: string) { setTickets(ts => ts.map(t => t.id === id ? { ...t, status: "in_progress" as TicketStatus, assignedTo: name } : t)); }
-
   async function approveCenterLive(id: string) {
     const token = getAdminToken();
     if (token) await apiPost(`/admin/centers/${id}/approve`, {}, token).catch(console.error);
@@ -563,11 +480,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   return (
     <AdminContext.Provider value={{
-      admin, dashboardStats, vendors, centers, bookings, users, usersLoading, settlements, coupons, tickets, activity,
+      admin, dashboardStats, vendors, centers, bookings, users, usersLoading, settlements,
       login, logout, hasPermission, approveVendor, rejectVendor, blockVendor, unblockVendor,
-      addVendor, updateVendor, cancelBooking, refundBooking, blockUser, unblockUser,
-      markSettlementPaid, createCoupon, disableCoupon, closeTicket, assignTicket,
-      approveCenterLive, addCenter,
+      createVendor, regenerateVendorPassword, updateVendor, cancelBooking, refundBooking, blockUser, unblockUser,
+      markSettlementPaid, approveCenterLive, addCenter,
     }}>
       {children}
     </AdminContext.Provider>

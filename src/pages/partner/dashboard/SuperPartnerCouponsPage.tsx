@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { Plus, Tag, X, Check, Loader2, ToggleLeft, ToggleRight, Calendar, Hash } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Tag, X, Check, Loader2, ToggleLeft, ToggleRight, Calendar, Hash, ImagePlus } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
-import { apiGet, apiPost, apiPatch, getVendorToken } from "../../../lib/api";
+import CouponImagePicker from "../../../components/CouponImagePicker";
+import { apiGet, apiPost, apiPatch, apiUploadFile, getVendorToken } from "../../../lib/api";
 
 interface Coupon {
   id: string;
@@ -15,6 +16,7 @@ interface Coupon {
   valid_to: string | null;
   is_active: boolean;
   description?: string | null;
+  image_url?: string | null;
 }
 
 const INPUT_CLS = "bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8] w-full";
@@ -35,6 +37,7 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
     validTo: "",
     description: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,11 +47,12 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
 
   async function handleCreate() {
     if (!form.code.trim() || !form.discountValue || !form.validFrom || !form.validTo) return;
+    if (!imageFile) { setError("A banner image is required to create a coupon"); return; }
     setSaving(true);
     setError("");
     try {
       const token = getVendorToken() ?? undefined;
-      await apiPost("/vendor/coupons", {
+      const coupon = await apiPost<{ id: string }>("/vendor/coupons", {
         code: form.code.trim().toUpperCase(),
         discountType: form.discountType,
         discountValue: parseFloat(form.discountValue),
@@ -58,6 +62,16 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
         validTo: form.validTo,
         description: form.description.trim() || undefined,
       }, token);
+
+      const fd = new FormData();
+      fd.append("image", imageFile);
+      try {
+        await apiUploadFile(`/vendor/coupons/${coupon.id}/image`, fd, token);
+      } catch {
+        setError("Coupon created, but the banner image failed to upload. You can retry from the coupon card.");
+        onCreated();
+        return;
+      }
       onCreated();
     } catch (err) {
       setError((err as Error).message ?? "Failed to create coupon");
@@ -66,7 +80,7 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
     }
   }
 
-  const canSubmit = form.code.trim() && form.discountValue && form.validFrom && form.validTo && !saving;
+  const canSubmit = form.code.trim() && form.discountValue && form.validFrom && form.validTo && !!imageFile && !saving;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -146,6 +160,8 @@ function CreateCouponModal({ onClose, onCreated }: CreateModalProps) {
               placeholder="Internal note about this coupon" className={INPUT_CLS} />
           </div>
 
+          <CouponImagePicker file={imageFile} onChange={setImageFile} />
+
           <div className="flex gap-3 pt-2">
             <button onClick={onClose}
               className="flex-1 rounded-xl border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#64748B] hover:bg-[#F8FAFC] transition-colors">
@@ -169,6 +185,9 @@ export default function SuperPartnerCouponsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [retryTargetId, setRetryTargetId] = useState<string | null>(null);
+  const [uploadingRetry, setUploadingRetry] = useState(false);
+  const retryFileRef = useRef<HTMLInputElement>(null);
 
   function load() {
     const token = getVendorToken() ?? undefined;
@@ -190,6 +209,29 @@ export default function SuperPartnerCouponsPage() {
       setError((err as Error).message ?? "Failed to toggle coupon");
     } finally {
       setToggling(null);
+    }
+  }
+
+  function triggerRetryUpload(couponId: string) {
+    setRetryTargetId(couponId);
+    retryFileRef.current?.click();
+  }
+
+  async function handleRetryFile(file: File | null) {
+    if (!file || !retryTargetId) return;
+    setUploadingRetry(true);
+    try {
+      const token = getVendorToken() ?? undefined;
+      const fd = new FormData();
+      fd.append("image", file);
+      await apiUploadFile(`/vendor/coupons/${retryTargetId}/image`, fd, token);
+      load();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to upload banner image");
+    } finally {
+      setUploadingRetry(false);
+      setRetryTargetId(null);
+      if (retryFileRef.current) retryFileRef.current.value = "";
     }
   }
 
@@ -236,6 +278,20 @@ export default function SuperPartnerCouponsPage() {
                 className={`rounded-2xl border bg-white shadow-sm transition-all duration-200 overflow-hidden ${
                   coupon.is_active && !isExpired ? "border-[#E2E8F0] hover:-translate-y-0.5 hover:shadow-md" : "border-[#E2E8F0] opacity-70"
                 }`}>
+                {coupon.image_url ? (
+                  <img src={coupon.image_url} alt={`${coupon.code} banner`} className="h-28 w-full object-cover" />
+                ) : (
+                  <button
+                    onClick={() => triggerRetryUpload(coupon.id)}
+                    disabled={uploadingRetry && retryTargetId === coupon.id}
+                    className="flex h-16 w-full items-center justify-center gap-1.5 bg-[#F8FAFC] text-xs font-semibold text-[#7C3AED] hover:bg-purple-50 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingRetry && retryTargetId === coupon.id
+                      ? <Loader2 size={13} className="animate-spin" />
+                      : <ImagePlus size={13} />}
+                    Add banner image
+                  </button>
+                )}
                 {/* Gradient header */}
                 <div className={`px-5 py-4 ${coupon.is_active && !isExpired ? "bg-gradient-to-br from-[#7C3AED] to-[#2563EB]" : "bg-gradient-to-br from-slate-400 to-slate-500"}`}>
                   <div className="flex items-start justify-between">
@@ -305,6 +361,14 @@ export default function SuperPartnerCouponsPage() {
           })}
         </div>
       )}
+
+      <input
+        ref={retryFileRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => handleRetryFile(e.target.files?.[0] ?? null)}
+      />
 
       {showModal && (
         <CreateCouponModal

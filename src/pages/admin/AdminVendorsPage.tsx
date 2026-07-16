@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Filter, MoreVertical, Eye, CheckCircle, XCircle, ShieldOff, Shield } from "lucide-react";
+import { Search, Plus, Filter, MoreVertical, Eye, CheckCircle, XCircle, ShieldOff, Shield, KeyRound } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
-import { useAdmin, type Vendor, type VendorStatus } from "../../context/AdminContext";
+import GeneratedCredentialsModal from "../../components/admin/GeneratedCredentialsModal";
+import { useAdmin, type VendorStatus } from "../../context/AdminContext";
 
 const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
@@ -16,14 +17,18 @@ const STATUS_OPTS: Array<{ label: string; value: VendorStatus | "all" }> = [
 const BUSINESS_TYPES = ["All Types", "Coworking Space", "Hotel", "Meeting Room Provider", "Virtual Office Provider", "Managed Office", "Event Space"];
 
 export default function AdminVendorsPage() {
-  const { vendors, approveVendor, rejectVendor, blockVendor, unblockVendor, addVendor } = useAdmin();
+  const { vendors, approveVendor, rejectVendor, blockVendor, unblockVendor, createVendor, regenerateVendorPassword } = useAdmin();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<VendorStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState("");
   const [addForm, setAddForm] = useState({ businessName: "", ownerName: "", email: "", mobile: "", businessType: "Coworking Space", city: "", state: "Maharashtra", gstin: "", centerType: "single" as "single" | "multiple" });
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
   const filtered = vendors.filter((v) => {
     const q = search.toLowerCase();
@@ -33,10 +38,43 @@ export default function AdminVendorsPage() {
     return matchSearch && matchStatus && matchType;
   });
 
-  function handleAdd() {
-    addVendor({ ...addForm } as Partial<Vendor>);
+  async function handleAdd() {
+    if (!addForm.ownerName.trim() || !addForm.email.trim() || !addForm.mobile.trim()) {
+      setAddError("Owner name, email and mobile are required");
+      return;
+    }
+    setAddSaving(true);
+    setAddError("");
+    const result = await createVendor({
+      ownerName: addForm.ownerName.trim(),
+      email: addForm.email.trim(),
+      phone: addForm.mobile.trim(),
+      businessName: addForm.businessName.trim() || undefined,
+      businessType: addForm.businessType || undefined,
+      city: addForm.city.trim() || undefined,
+      state: addForm.state || undefined,
+      gstin: addForm.gstin.trim() || undefined,
+      centerType: addForm.centerType,
+    });
+    setAddSaving(false);
+    if (!result.success || !result.email || !result.password) {
+      setAddError(result.error ?? "Failed to create vendor");
+      return;
+    }
     setShowAdd(false);
     setAddForm({ businessName: "", ownerName: "", email: "", mobile: "", businessType: "Coworking Space", city: "", state: "Maharashtra", gstin: "", centerType: "single" });
+    setCredentials({ email: result.email, password: result.password });
+  }
+
+  async function handleRegeneratePassword(id: string) {
+    setMenuOpen(null);
+    setRegeneratingId(id);
+    const result = await regenerateVendorPassword(id);
+    setRegeneratingId(null);
+    if (result.success && result.password) {
+      const vendor = vendors.find((v) => v.id === id);
+      setCredentials({ email: vendor?.email ?? "", password: result.password });
+    }
   }
 
   return (
@@ -145,6 +183,12 @@ export default function AdminVendorsPage() {
                                 <ShieldOff size={13} /> Block Vendor
                               </button>
                             )}
+                            {v.source === "admin_created" && v.mustChangePassword && (
+                              <button onClick={() => handleRegeneratePassword(v.id)} disabled={regeneratingId === v.id}
+                                className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#64748B] hover:bg-[#F1F5F9] disabled:opacity-50">
+                                <KeyRound size={13} /> {regeneratingId === v.id ? "Regenerating…" : "Regenerate Password"}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -167,6 +211,9 @@ export default function AdminVendorsPage() {
             <div className="border-b border-[#F1F5F9] px-6 py-4">
               <h3 className="font-bold text-[#0F172A]">Add Vendor Manually</h3>
             </div>
+            {addError && (
+              <p className="mx-6 mt-4 rounded-xl bg-red-50 px-4 py-2.5 text-xs text-red-600">{addError}</p>
+            )}
             <div className="grid grid-cols-2 gap-4 p-6">
               {[
                 { label: "Business Name", key: "businessName", placeholder: "WorkHub Spaces" },
@@ -201,11 +248,21 @@ export default function AdminVendorsPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-[#F1F5F9] px-6 py-4">
-              <button onClick={() => setShowAdd(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#64748B] hover:bg-[#F8FAFC]">Cancel</button>
-              <button onClick={handleAdd} className="rounded-xl bg-[#2563EB] px-5 py-2 text-sm font-bold text-white hover:bg-[#1d4ed8]">Add Vendor</button>
+              <button onClick={() => { setShowAdd(false); setAddError(""); }} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#64748B] hover:bg-[#F8FAFC]">Cancel</button>
+              <button onClick={handleAdd} disabled={addSaving} className="rounded-xl bg-[#2563EB] px-5 py-2 text-sm font-bold text-white hover:bg-[#1d4ed8] disabled:opacity-60">
+                {addSaving ? "Creating…" : "Add Vendor"}
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {credentials && (
+        <GeneratedCredentialsModal
+          email={credentials.email}
+          password={credentials.password}
+          onClose={() => setCredentials(null)}
+        />
       )}
     </AdminLayout>
   );

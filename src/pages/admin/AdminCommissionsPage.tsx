@@ -18,7 +18,7 @@ interface Category {
 export default function AdminCommissionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [globalRate, setGlobalRate] = useState<number | null>(null);
+  const [globalRate, setGlobalRate] = useState<number | null>(10);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export default function AdminCommissionsPage() {
       .then(setCategories)
       .catch(console.error)
       .finally(() => setLoading(false));
-    apiGet<{ rate_percent: string }>("/admin/commission-config", token)
-      .then((r) => setGlobalRate(Number(r.rate_percent)))
+    apiGet<{ rate_percent: string | null }>("/admin/commission-config", token)
+      .then((r) => { if (r.rate_percent != null) setGlobalRate(Number(r.rate_percent)); })
       .catch(console.error);
   }, []);
 
@@ -74,11 +74,11 @@ export default function AdminCommissionsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-[#64748B]">
-              Commission resolves in order: a center's own override wins first, then its
-              category's rate below, then the platform default.
+              Every category charges the platform default commission below unless you set its
+              own rate here — a category's rate applies to every center in that category.
             </p>
             <Link to="/admin/centers" className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#2563EB] hover:underline">
-              Manage per-center overrides <ArrowRight size={12} />
+              View centers by category <ArrowRight size={12} />
             </Link>
           </div>
           <div className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] px-4 py-2.5">

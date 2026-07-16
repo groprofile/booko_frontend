@@ -6,6 +6,7 @@ import {
   Banknote, Tag,
 } from "lucide-react";
 import Logo from "../Logo";
+import ToastContainer from "../admin/Toast";
 import { usePartner } from "../../context/PartnerContext";
 
 const NAV = [
@@ -107,6 +108,7 @@ export default function SuperPartnerLayout({ children, title, subtitle }: Props)
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-5">{children}</main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

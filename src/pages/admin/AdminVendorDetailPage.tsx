@@ -3,10 +3,11 @@ import { useEffect, useState, useCallback } from "react";
 import {
   ArrowLeft, Building2, MapPin, Phone, Mail, CreditCard,
   CheckCircle, XCircle, ShieldOff, Shield, FileText,
-  Eye, Loader2, X, ChevronLeft, ChevronRight, Users,
+  Eye, Loader2, X, ChevronLeft, ChevronRight, Users, KeyRound,
 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
+import GeneratedCredentialsModal from "../../components/admin/GeneratedCredentialsModal";
 import { useAdmin } from "../../context/AdminContext";
 import { apiGet, getAdminToken, ApiError } from "../../lib/api";
 
@@ -185,7 +186,9 @@ function DocViewer({
 export default function AdminVendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
-  const { vendors, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor } = useAdmin();
+  const { vendors, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor, regenerateVendorPassword } = useAdmin();
+  const [regenerating, setRegenerating] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const [vendorDocs, setVendorDocs] = useState<VendorDocument[]>([]);
   const [staff, setStaff] = useState<CenterManager[]>([]);
@@ -266,6 +269,16 @@ export default function AdminVendorDetailPage() {
     [viewableDocs, openViewer],
   );
 
+  async function handleRegeneratePassword() {
+    if (!vendor) return;
+    setRegenerating(true);
+    const result = await regenerateVendorPassword(vendor.id);
+    setRegenerating(false);
+    if (result.success && result.password) {
+      setCredentials({ email: vendor.email, password: result.password });
+    }
+  }
+
   if (!vendor) return (
     <AdminLayout title="Vendor Detail">
       <div className="text-center py-24 text-[#94A3B8]">Vendor not found.</div>
@@ -335,8 +348,24 @@ export default function AdminVendorDetailPage() {
                   <ShieldOff size={13} /> Block
                 </button>
               )}
+              {vendor.source === "admin_created" && vendor.mustChangePassword && (
+                <button onClick={handleRegeneratePassword} disabled={regenerating}
+                  className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0] disabled:opacity-50">
+                  {regenerating ? <Loader2 size={13} className="animate-spin" /> : <KeyRound size={13} />}
+                  Regenerate Password
+                </button>
+              )}
             </div>
           </div>
+
+          {vendor.source === "admin_created" && vendor.mustChangePassword && (
+            <p className="mt-3 text-xs text-[#94A3B8]">
+              Missed copying the login password when this vendor was created? Regenerating sets a new
+              one-time password for their account — this covers every center they manage, since only
+              the vendor (not individual centers) logs in. This option disappears once they've logged
+              in and set their own password.
+            </p>
+          )}
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
@@ -528,6 +557,14 @@ export default function AdminVendorDetailPage() {
           </div>
         </div>
       </AdminLayout>
+
+      {credentials && (
+        <GeneratedCredentialsModal
+          email={credentials.email}
+          password={credentials.password}
+          onClose={() => setCredentials(null)}
+        />
+      )}
     </>
   );
 }

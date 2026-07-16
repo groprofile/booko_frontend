@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus, Percent, Pencil, Check } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
-import { showToast } from "../../components/admin/Toast";
-import { apiGet, apiPost, apiPatch, getAdminToken, ApiError } from "../../lib/api";
+import { apiGet, apiPost, getAdminToken, ApiError } from "../../lib/api";
 
 interface ApiCenter {
   id: string;
@@ -14,18 +14,8 @@ interface ApiCenter {
   is_active: boolean;
   created_at: string;
   contact_phone?: string;
-  commission_percent?: string | number | null;
   vendors?: { business_name?: string; email?: string };
   categories?: { name?: string; commission_percent?: string | number | null };
-}
-
-// Resolves the effective commission for a centre and where it comes from —
-// center override → category override → platform default.
-function resolveCommission(center: ApiCenter, globalRate: number | null): { value: number | null; source: string } {
-  if (center.commission_percent != null) return { value: Number(center.commission_percent), source: "override" };
-  if (center.categories?.commission_percent != null) return { value: Number(center.categories.commission_percent), source: "category" };
-  if (globalRate != null) return { value: globalRate, source: "platform default" };
-  return { value: null, source: "platform default" };
 }
 
 const STATUS_OPTS = [
@@ -119,6 +109,7 @@ interface VendorOption {
   business_name: string;
   owner_name: string;
   city?: string;
+  status?: string;
 }
 
 function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -135,8 +126,11 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
   useEffect(() => {
     const token = getAdminToken();
     if (!token) return;
-    apiGet<{ vendors: VendorOption[] }>("/admin/vendors?status=approved&limit=200", token)
-      .then((r) => setVendors(r.vendors ?? []))
+    // No status filter here — admin-created vendors that haven't finished
+    // onboarding (status "pending") still need to be assignable to a center
+    // right away. Only rejected/blocked vendors are excluded.
+    apiGet<{ vendors: VendorOption[] }>("/admin/vendors?limit=200", token)
+      .then((r) => setVendors((r.vendors ?? []).filter((v) => v.status !== "rejected" && v.status !== "blocked")))
       .catch(() => setVendors([]))
       .finally(() => setLoadingVendors(false));
   }, []);
@@ -203,7 +197,7 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
               <p className="text-xs text-[#94A3B8]">Loading vendors…</p>
             ) : (
               <select value={form.vendorId} onChange={(e) => set("vendorId", e.target.value)} className={inp}>
-                <option value="">Select approved vendor…</option>
+                <option value="">Select vendor…</option>
                 {vendors.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.business_name} — {v.owner_name}{v.city ? ` (${v.city})` : ""}
@@ -307,18 +301,6 @@ export default function AdminCentersPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiCenter | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [globalRate, setGlobalRate] = useState<number | null>(null);
-  const [editingCommissionId, setEditingCommissionId] = useState<string | null>(null);
-  const [commissionEditValue, setCommissionEditValue] = useState("");
-  const [savingCommissionId, setSavingCommissionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const token = getAdminToken();
-    if (!token) return;
-    apiGet<{ rate_percent: string }>("/admin/commission-config", token)
-      .then((r) => setGlobalRate(Number(r.rate_percent)))
-      .catch(console.error);
-  }, []);
 
   const load = useCallback(() => {
     const token = getAdminToken();
@@ -346,33 +328,6 @@ export default function AdminCentersPage() {
       setError(err instanceof ApiError ? err.message : "Failed to approve center");
     } finally {
       setApprovingId(null);
-    }
-  }
-
-  function startEditCommission(center: ApiCenter) {
-    setEditingCommissionId(center.id);
-    setCommissionEditValue(center.commission_percent != null ? String(center.commission_percent) : "");
-  }
-
-  async function handleSaveCommission(centerId: string) {
-    const token = getAdminToken();
-    if (!token) return;
-    const trimmed = commissionEditValue.trim();
-    const commissionPercent = trimmed === "" ? null : Number(trimmed);
-    if (commissionPercent !== null && (isNaN(commissionPercent) || commissionPercent < 0 || commissionPercent > 100)) {
-      showToast("Enter a value between 0 and 100, or leave blank to clear", "error");
-      return;
-    }
-    setSavingCommissionId(centerId);
-    try {
-      await apiPatch(`/admin/centers/${centerId}/commission`, { commissionPercent }, token);
-      showToast("Commission rate updated", "success");
-      setCenters((prev) => prev.map((c) => c.id === centerId ? { ...c, commission_percent: commissionPercent } : c));
-      setEditingCommissionId(null);
-    } catch (err) {
-      showToast(err instanceof ApiError ? err.message : "Failed to update commission", "error");
-    } finally {
-      setSavingCommissionId(null);
     }
   }
 
@@ -504,41 +459,17 @@ export default function AdminCentersPage() {
                 })}
               </div>
 
-              {/* Commission */}
-              <div className="mt-2 flex items-center justify-between rounded-lg bg-[#F8FAFC] px-2.5 py-1.5">
-                {editingCommissionId === c.id ? (
-                  <div className="flex flex-1 items-center gap-1.5">
-                    <input
-                      type="number" min="0" max="100" autoFocus
-                      placeholder="Platform default"
-                      value={commissionEditValue}
-                      onChange={(e) => setCommissionEditValue(e.target.value)}
-                      className="h-7 w-full rounded-md border border-[#E2E8F0] px-2 text-xs outline-none focus:border-[#2563EB]"
-                    />
-                    <button onClick={() => handleSaveCommission(c.id)} disabled={savingCommissionId === c.id}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-[#DCFCE7] text-[#16A34A] disabled:opacity-50" title="Save">
-                      <Check size={12} />
-                    </button>
-                    <button onClick={() => setEditingCommissionId(null)} disabled={savingCommissionId === c.id}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-[#F1F5F9] text-[#64748B] disabled:opacity-50" title="Cancel">
-                      <X size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="flex items-center gap-1.5 text-xs text-[#64748B]">
-                      <Percent size={10} />
-                      {(() => {
-                        const { value, source } = resolveCommission(c, globalRate);
-                        return value != null ? `${value}% (${source})` : "Platform default";
-                      })()}
-                    </span>
-                    <button onClick={() => startEditCommission(c)}
-                      className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[#EFF6FF] text-[#2563EB]" title="Edit commission">
-                      <Pencil size={11} />
-                    </button>
-                  </>
-                )}
+              {/* Commission — set per category on the Commissions page, not per center */}
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-[#64748B]">
+                <span>
+                  Commission:{" "}
+                  {c.categories?.commission_percent != null
+                    ? `${c.categories.commission_percent}% (${c.categories.name})`
+                    : "Platform default"}
+                </span>
+                <Link to="/admin/commissions" className="font-semibold text-[#2563EB] hover:underline">
+                  Manage
+                </Link>
               </div>
 
               {/* Actions */}
