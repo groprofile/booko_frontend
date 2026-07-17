@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { apiPost, apiGet, apiPatch, ApiError } from "../lib/api";
+import type { ProductType } from "../lib/productTypes";
 
 export type PartnerStatus =
   | "email_unverified"
@@ -10,6 +11,18 @@ export type PartnerStatus =
   | "approved"
   | "rejected"
   | "blocked";
+
+// One bookable product the vendor offers at a center, set up during onboarding.
+// Persisted as a center_membership_plan on submit; `backendId` is filled once
+// the plan exists so re-submits are idempotent.
+export interface PlanDraft {
+  backendId?: string;
+  productType: ProductType;
+  name: string;
+  price: number;
+  capacity: number;
+  enabled: boolean;
+}
 
 export interface CenterData {
   id: string;
@@ -25,7 +38,7 @@ export interface CenterData {
   googleMapUrl: string;
   contactPerson: string;
   phone: string;
-  services: string[];
+  plans: PlanDraft[];
   amenities: string[];
   photoNames: string[];
 }

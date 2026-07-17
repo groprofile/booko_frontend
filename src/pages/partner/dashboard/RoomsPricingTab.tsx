@@ -1,34 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Loader2, CalendarClock, Ban, Check, X, IndianRupee, Pencil } from "lucide-react";
 import { apiGet, apiPost, apiPatch, apiDelete, getVendorToken, ApiError } from "../../../lib/api";
-
-// ── Product-type model (mirrors backend CATEGORY_PRODUCT_TYPES) ────────────────
-type ProductType =
-  | "hotel_room"
-  | "coworking_day_pass"
-  | "coworking_monthly_pass"
-  | "coworking_meeting_room"
-  | "gym_slot"
-  | "turf_slot";
-
-const PRODUCT_META: Record<ProductType, { label: string; unit: string; slotBased: boolean }> = {
-  hotel_room:             { label: "Hotel Room",      unit: "night", slotBased: false },
-  coworking_day_pass:     { label: "Day Pass",        unit: "day",   slotBased: false },
-  coworking_monthly_pass: { label: "Monthly Pass",    unit: "month", slotBased: false },
-  coworking_meeting_room: { label: "Meeting Room",    unit: "hour",  slotBased: true },
-  gym_slot:               { label: "Gym Session",     unit: "slot",  slotBased: true },
-  turf_slot:              { label: "Turf Slot",       unit: "hour",  slotBased: true },
-};
-
-function typesForCategory(name?: string): ProductType[] {
-  const n = (name ?? "").toLowerCase();
-  if (n.includes("hotel") || n.includes("stay")) return ["hotel_room"];
-  if (n.includes("work") || n.includes("desk") || n.includes("coworking"))
-    return ["coworking_day_pass", "coworking_monthly_pass", "coworking_meeting_room"];
-  if (n.includes("gym")) return ["gym_slot"];
-  if (n.includes("turf")) return ["turf_slot"];
-  return Object.keys(PRODUCT_META) as ProductType[];
-}
+import { PRODUCT_META, typesForCategory, isSlotBased, type ProductType } from "../../../lib/productTypes";
 
 interface Plan {
   id: string;
@@ -58,12 +31,6 @@ interface Slot {
 
 const INPUT = "bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-3 py-2 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8] w-full";
 const LABEL = "block text-xs font-semibold text-[#475569] mb-1";
-
-// Is this plan booked via time-slots? (meeting room / gym / turf, or hotel day-use)
-function isSlotBased(p: Pick<Plan, "product_type" | "plan_type">): boolean {
-  if (PRODUCT_META[p.product_type]?.slotBased) return true;
-  return p.product_type === "hotel_room" && p.plan_type === "hourly";
-}
 
 export default function RoomsPricingTab({ centerId, categoryName }: { centerId: string; categoryName?: string }) {
   const [plans, setPlans] = useState<Plan[]>([]);

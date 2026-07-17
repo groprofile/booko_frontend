@@ -108,7 +108,7 @@ export default function ReviewSubmitPage() {
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#2563EB]">{c.name || `Center ${i + 1}`}</p>
                   <Row label="Type" value={c.type} />
                   <Row label="Location" value={[c.city, c.state].filter(Boolean).join(", ")} />
-                  <Row label="Services" value={c.services.join(", ") || undefined} />
+                  <Row label="Services" value={(c.plans ?? []).filter((p) => p.enabled).map((p) => `${p.name} (₹${p.price})`).join(", ") || undefined} />
                   <Row label="Amenities" value={c.amenities.length > 0 ? `${c.amenities.length} selected` : undefined} />
                   <Row label="Photos" value={c.photoNames.length > 0 ? `${c.photoNames.length} uploaded` : undefined} />
                 </div>
