@@ -9,6 +9,37 @@ interface ApiCategory {
   name: string;
 }
 
+// Signup collects a free-form "Business Type" (e.g. "Coworking Space",
+// "Meeting Room Provider") which doesn't map 1:1 to the real category list
+// (Coworking / Hotel / Gym). Resolve the vendor's signup choice to a real
+// category id so the onboarding "Center Type" comes pre-selected instead of
+// asking the same thing again. Returns "" when nothing matches confidently.
+function resolveCategoryFromBusinessType(businessType: string, categories: ApiCategory[]): string {
+  if (!businessType || !categories.length) return "";
+  const bt = businessType.toLowerCase();
+
+  // 1) Direct / contains match against the actual category names.
+  const direct = categories.find(
+    (c) => bt === c.name.toLowerCase() || bt.includes(c.name.toLowerCase()),
+  );
+  if (direct) return direct.id;
+
+  // 2) Keyword aliases → the category NAME they belong to. Coworking is the
+  //    umbrella for meeting rooms, virtual offices, managed offices, etc.
+  const aliases: Array<[RegExp, string]> = [
+    [/hotel|stay|resort|room/, "hotel"],
+    [/gym|fitness/, "gym"],
+    [/coworking|co-working|meeting|virtual office|managed office|event|desk|cabin|office|workspace/, "coworking"],
+  ];
+  for (const [re, target] of aliases) {
+    if (re.test(bt)) {
+      const cat = categories.find((c) => c.name.toLowerCase().includes(target));
+      if (cat) return cat.id;
+    }
+  }
+  return "";
+}
+
 const SERVICES = ["Day Pass","Meeting Rooms","Monthly Pass","Virtual Office","Hotel Rooms","Hourly Stay","Full Day Stay","Private Cabin","Managed Office"];
 const AMENITIES = ["WiFi","Parking","Power Backup","AC","Reception","Meeting Room","Cafeteria","Security","Lift","Washroom","CCTV","Locker","Gym","Rooftop"];
 const STATES = [
@@ -246,8 +277,20 @@ export default function CenterSetupPage() {
 
   useEffect(() => {
     apiGet<ApiCategory[]>("/categories")
-      .then(setCategories)
+      .then((cats) => {
+        setCategories(cats);
+        // Pre-select the center type from the vendor's signup Business Type so
+        // they don't have to answer it again. Only fills centers that don't
+        // already have a category (e.g. from a saved DB center).
+        const businessType = partner?.businessType || partner?.business?.businessType || "";
+        const resolvedId = resolveCategoryFromBusinessType(businessType, cats);
+        if (resolvedId) {
+          const name = cats.find((c) => c.id === resolvedId)?.name ?? "";
+          setCenters((prev) => prev.map((c) => (c.categoryId ? c : { ...c, categoryId: resolvedId, type: name })));
+        }
+      })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // On mount: fetch DB centers and enrich context data with real backendIds
