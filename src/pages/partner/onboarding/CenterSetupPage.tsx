@@ -203,9 +203,11 @@ function CenterForm({ center, index, categories, onChange, onRemove, canRemove, 
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-[#0F172A]">Google Map Link</label>
+              <label className="mb-1.5 block text-sm font-medium text-[#0F172A]">Google Map Link <span className="text-red-500">*</span></label>
               <input value={center.googleMapUrl} onChange={(e: ChangeEvent<HTMLInputElement>) => set("googleMapUrl", e.target.value)}
-                className={NORMAL} placeholder="https://maps.google.com/..." />
+                className={errors[key("googleMapUrl")] ? ERR : NORMAL} placeholder="https://maps.google.com/..." />
+              {errors[key("googleMapUrl")] && <p className="mt-1 text-xs text-red-500 flex gap-1"><AlertCircle size={11} className="mt-0.5" />{errors[key("googleMapUrl")]}</p>}
+              <p className="mt-1 text-xs text-[#94A3B8]">Used to pin your exact location so customers find you in Nearby search.</p>
             </div>
 
             {/* Services & Pricing — each enabled service becomes a bookable,
@@ -393,12 +395,18 @@ export default function CenterSetupPage() {
         );
 
         setCenters((prev) => {
+          // Centers already saved this session carry a backendId; their DB rows
+          // must NOT be re-added below or the list duplicates on every remount
+          // (each time the vendor leaves the step and comes back).
+          const knownIds = new Set(prev.map((c) => c.backendId).filter(Boolean));
+
           // Enrich existing context centers with backendId where names match
           const enriched = prev.map((c) => {
             if (c.backendId) return c;
             const match = dbByName.get(c.name.toLowerCase());
-            if (match) {
+            if (match && !knownIds.has(match.id)) {
               dbByName.delete(c.name.toLowerCase());
+              knownIds.add(match.id);
               const type = c.type || match.categories?.name || "";
               // DB plans first so they win (carry backendId) over any local drafts.
               return {
@@ -412,9 +420,11 @@ export default function CenterSetupPage() {
             return c;
           });
 
-          // Add DB centers that weren't in context (different device / second session)
+          // Add DB centers that aren't already represented in the list (a center
+          // added on another device/session). Skip any whose id is already shown.
           const extra: CenterData[] = [];
           for (const [, r] of dbByName) {
+            if (knownIds.has(r.id)) continue;
             const type = r.categories?.name ?? "";
             extra.push({
               id: `ctr_${r.id}`,
@@ -436,7 +446,15 @@ export default function CenterSetupPage() {
             });
           }
 
-          return [...enriched, ...extra];
+          // Self-heal: collapse any centers that already share a backendId (e.g.
+          // duplicates persisted by the previous buggy build).
+          const seen = new Set<string>();
+          return [...enriched, ...extra].filter((c) => {
+            if (!c.backendId) return true;
+            if (seen.has(c.backendId)) return false;
+            seen.add(c.backendId);
+            return true;
+          });
         });
       })
       .catch(() => {/* keep context data as-is */})
@@ -471,6 +489,8 @@ export default function CenterSetupPage() {
       if (!c.state) e[`${i}_state`] = "State is required";
       if (!c.contactPerson.trim()) e[`${i}_contactPerson`] = "Contact person is required";
       if (!c.phone || !/^[6-9]\d{9}$/.test(c.phone)) e[`${i}_phone`] = "Valid 10-digit number required";
+      if (!c.googleMapUrl.trim()) e[`${i}_googleMapUrl`] = "Google Map link is required";
+      else if (!/^https?:\/\//i.test(c.googleMapUrl.trim())) e[`${i}_googleMapUrl`] = "Enter a valid link starting with http";
 
       const enabledPlans = c.plans.filter((p) => p.enabled);
       if (enabledPlans.length === 0) {
