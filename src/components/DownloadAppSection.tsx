@@ -1,20 +1,23 @@
 import { Star } from "lucide-react";
 import { GooglePlayBadge, AppStoreBadge } from "./StoreBadges";
+import { useInView } from "../hooks/useInView";
 
 const QR_CODE_URL =
   "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://bokko.app/download&color=0F172A&bgcolor=FFFFFF";
 
 export default function DownloadAppSection() {
+  const { ref, isInView } = useInView<HTMLDivElement>();
+
   return (
     <section className="w-full bg-white py-10 sm:py-14 lg:py-16">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <div className="relative flex flex-col items-center gap-12 overflow-hidden rounded-[32px] border border-[#E2E8F0] bg-white px-6 py-12 sm:px-10 sm:py-14 lg:flex-row lg:justify-between lg:gap-10 lg:px-16 lg:py-0">
           <div
             aria-hidden="true"
             className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#2563EB] opacity-[0.06] blur-3xl"
           />
 
-          <div className="relative z-10 max-w-md text-center lg:text-left">
+          <div className={"relative z-10 max-w-md text-center lg:text-left " + (isInView ? "animate-fade-in-up" : "opacity-0")}>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#2563EB] shadow-soft">
               <Star size={12} className="fill-[#2563EB] text-[#2563EB]" />
               4.8 rated booking experience
@@ -34,7 +37,10 @@ export default function DownloadAppSection() {
             </div>
           </div>
 
-          <div className="relative z-10 flex shrink-0 justify-center py-10 lg:py-16">
+          <div
+            className={"relative z-10 flex shrink-0 justify-center py-10 lg:py-16 " + (isInView ? "animate-fade-in-up" : "opacity-0")}
+            style={{ animationDelay: "120ms" }}
+          >
             <div className="relative h-[380px] w-[200px] rounded-[34px] border-[6px] border-[#0F172A] bg-[#0F172A] shadow-float sm:h-[420px] sm:w-[220px]">
               <span className="absolute left-1/2 top-0 h-1.5 w-16 -translate-x-1/2 rounded-b-md bg-[#0F172A]" />
 

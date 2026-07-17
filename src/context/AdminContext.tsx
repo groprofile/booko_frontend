@@ -256,10 +256,10 @@ interface AdminContextType {
   login: (email: string, password: string, otp?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   hasPermission: (section: string) => boolean;
-  approveVendor: (id: string) => void;
-  rejectVendor: (id: string, reason?: string) => void;
-  blockVendor: (id: string) => void;
-  unblockVendor: (id: string) => void;
+  approveVendor: (id: string) => Promise<void>;
+  rejectVendor: (id: string, reason: string) => Promise<void>;
+  blockVendor: (id: string) => Promise<void>;
+  unblockVendor: (id: string) => Promise<void>;
   createVendor: (data: CreateVendorPayload) => Promise<{ success: boolean; email?: string; password?: string; error?: string }>;
   regenerateVendorPassword: (id: string) => Promise<{ success: boolean; password?: string; error?: string }>;
   updateVendor: (id: string, data: Partial<Vendor>) => void;
@@ -268,7 +268,7 @@ interface AdminContextType {
   blockUser: (id: string) => void;
   unblockUser: (id: string) => void;
   markSettlementPaid: (id: string) => void;
-  approveCenterLive: (id: string) => void;
+  approveCenterLive: (id: string) => Promise<void>;
   addCenter: (data: Partial<Center>) => void;
 }
 
@@ -382,25 +382,26 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   async function approveVendor(id: string) {
     const token = getAdminToken();
-    if (token) await apiPost(`/admin/vendors/${id}/approve`, {}, token).catch(console.error);
+    if (token) await apiPost(`/admin/vendors/${id}/approve`, {}, token);
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "approved" as VendorStatus, approvedAt: new Date().toISOString().slice(0, 10) } : v));
   }
 
   async function rejectVendor(id: string, reason?: string) {
+    if (!reason?.trim()) throw new Error("A rejection reason is required.");
     const token = getAdminToken();
-    if (token && reason) await apiPost(`/admin/vendors/${id}/reject`, { reason }, token).catch(console.error);
-    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "rejected" as VendorStatus, notes: reason ?? v.notes } : v));
+    if (token) await apiPost(`/admin/vendors/${id}/reject`, { reason }, token);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "rejected" as VendorStatus, notes: reason } : v));
   }
 
   async function blockVendor(id: string) {
     const token = getAdminToken();
-    if (token) await apiPost(`/admin/vendors/${id}/block`, {}, token).catch(console.error);
+    if (token) await apiPost(`/admin/vendors/${id}/block`, {}, token);
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "blocked" as VendorStatus } : v));
   }
 
   async function unblockVendor(id: string) {
     const token = getAdminToken();
-    if (token) await apiPost(`/admin/vendors/${id}/unblock`, {}, token).catch(console.error);
+    if (token) await apiPost(`/admin/vendors/${id}/unblock`, {}, token);
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: "approved" as VendorStatus } : v));
   }
 
@@ -465,7 +466,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   async function approveCenterLive(id: string) {
     const token = getAdminToken();
-    if (token) await apiPost(`/admin/centers/${id}/approve`, {}, token).catch(console.error);
+    if (token) await apiPost(`/admin/centers/${id}/approve`, {}, token);
     setCenters(cs => cs.map(c => c.id === id ? { ...c, status: "live" as CenterStatus } : c));
   }
 

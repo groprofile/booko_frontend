@@ -7,7 +7,6 @@ import SectionLabel from "./SectionLabel";
 
 interface SimilarRoomsSectionProps {
   current: MeetingRoomListing;
-  citySlug: string;
   allListings: MeetingRoomListing[];
 }
 
@@ -21,7 +20,7 @@ const tabs: { key: Tab; label: string }[] = [
   { key: "popular", label: "Popular Rooms" },
 ];
 
-export default function SimilarRoomsSection({ current, citySlug, allListings }: SimilarRoomsSectionProps) {
+export default function SimilarRoomsSection({ current, allListings }: SimilarRoomsSectionProps) {
   const [tab, setTab] = useState<Tab>("nearby");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -87,7 +86,7 @@ export default function SimilarRoomsSection({ current, citySlug, allListings }: 
           {candidates.map((listing) => (
             <Link
               key={listing.id}
-              to={`/${citySlug}/meeting-rooms/${slugify(listing.workspaceName)}`}
+              to={`/meeting-rooms/${slugify(listing.workspaceName)}`}
               className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
               <div className="h-[140px] w-full overflow-hidden">

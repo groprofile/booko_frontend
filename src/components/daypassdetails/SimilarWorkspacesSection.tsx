@@ -7,7 +7,6 @@ import SectionLabel from "./SectionLabel";
 interface SimilarWorkspacesSectionProps {
   current: DayPassListing;
   cityName: string;
-  citySlug: string;
   allListings: DayPassListing[];
 }
 
@@ -16,7 +15,6 @@ type Tab = "nearby" | "city";
 export default function SimilarWorkspacesSection({
   current,
   cityName,
-  citySlug,
   allListings,
 }: SimilarWorkspacesSectionProps) {
   const [tab, setTab] = useState<Tab>("nearby");
@@ -100,7 +98,7 @@ export default function SimilarWorkspacesSection({
                 <span className="text-xs text-[#94A3B8] line-through">{listing.price}</span>
               </div>
               <Link
-                to={`/${citySlug}/day-pass/${listing.id}`}
+                to={`/day-pass/${listing.id}`}
                 className="mt-3 text-sm font-semibold text-[#2563EB] hover:underline"
               >
                 View Details →

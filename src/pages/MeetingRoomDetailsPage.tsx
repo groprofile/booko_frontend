@@ -25,6 +25,8 @@ import type { MeetingRoomListing } from "../data/meetingRoomListings";
 import type { MeetingRoomDetails } from "../data/meetingRoomDetails";
 import { apiGet } from "../lib/api";
 import { apiToMeetingRoomListing, apiToMeetingRoomDetails, type CentreApiRow } from "../lib/centreAdapter";
+import { fetchCenterReviews } from "../lib/reviews";
+import DetailPageSkeleton from "../components/ui/DetailPageSkeleton";
 
 function cityLabel(slug: string) {
   return (
@@ -38,8 +40,9 @@ function cityLabel(slug: string) {
 
 export default function MeetingRoomDetailsPage() {
   const params = useParams<{ city: string; roomSlug: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "mumbai";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
 
   const [listing, setListing] = useState<MeetingRoomListing | null>(null);
   const [details, setDetails] = useState<MeetingRoomDetails | null>(null);
@@ -62,6 +65,17 @@ export default function MeetingRoomDetailsPage() {
         setSelectedRoomId(d.siblingRoomTypes[0].id);
         setSelectedDurationKey(d.siblingRoomTypes[0].pricing[0].key);
         setAttendees(d.siblingRoomTypes[0].capacity > 4 ? 4 : d.siblingRoomTypes[0].capacity);
+        fetchCenterReviews(raw.id)
+          .then((r) => {
+            setDetails((prev) => prev ? {
+              ...prev,
+              reviews: r.reviews.map((review) => ({ ...review, useCase: "General" })),
+              ratingBreakdown: r.ratingBreakdown,
+              reviewCount: r.totalReviews,
+              rating: r.avgRating ?? prev.rating,
+            } : prev);
+          })
+          .catch(() => {});
       })
       .catch(() => setListing(null))
       .finally(() => setLoading(false));
@@ -87,15 +101,7 @@ export default function MeetingRoomDetailsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-[#64748B]">Loading…</p>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
 
   if (!listing || !details) {
@@ -148,7 +154,7 @@ export default function MeetingRoomDetailsPage() {
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
       <Header />
 
-      <main className="flex-1 pb-24 sm:pb-0">
+      <main className="flex-1 animate-fade-in-up pb-24 sm:pb-0">
         <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-[#64748B]">
             <Link to="/" className="hover:text-[#2563EB]">
@@ -188,7 +194,7 @@ export default function MeetingRoomDetailsPage() {
 
               <ReviewsSection details={details} />
 
-              <SimilarRoomsSection current={listing} citySlug={citySlug} allListings={sameCityListings} />
+              <SimilarRoomsSection current={listing} allListings={sameCityListings} />
 
               <WorkspaceBundleSection citySlug={citySlug} />
 

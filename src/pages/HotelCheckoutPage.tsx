@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import LoginModal from "../components/LoginModal";
 import TrustStrip from "../components/checkout/TrustStrip";
 import BookingSummaryCard from "../components/checkout/BookingSummaryCard";
-import UrgencySection from "../components/checkout/UrgencySection";
 import GuestDetailsSection from "../components/checkout/GuestDetailsSection";
 import type { AdditionalGuest, PrimaryGuest } from "../components/checkout/GuestDetailsSection";
 import SpecialRequestsSection from "../components/checkout/SpecialRequestsSection";
-import AddOnsSection from "../components/checkout/AddOnsSection";
-import AiRecommendationSection from "../components/checkout/AiRecommendationSection";
-import TravelProtectionSection from "../components/checkout/TravelProtectionSection";
-import PaymentMethodsSection from "../components/checkout/PaymentMethodsSection";
 import OffersCouponSection from "../components/checkout/OffersCouponSection";
 import WhyBookSection from "../components/checkout/WhyBookSection";
 import LoginBenefitsSection from "../components/checkout/LoginBenefitsSection";
@@ -21,23 +16,28 @@ import ConfidenceBar from "../components/checkout/ConfidenceBar";
 import BookingSidebar from "../components/checkout/BookingSidebar";
 import BokkoExpertWidget from "../components/checkout/BokkoExpertWidget";
 import MobileContinueBar from "../components/checkout/MobileContinueBar";
+import { ShieldCheck } from "lucide-react";
+import { apiPost, getUserToken } from "../lib/api";
+import { submitPayuForm } from "../lib/payu";
 import type { Coupon } from "../data/hotelDetails";
-import {
-  autoDiscountPercent,
-  convenienceFee,
-  extraAddOns,
-  getUrgencySignals,
-  mealAddOns,
-  taxRate,
-  travelProtectionPlan,
-} from "../data/checkoutConfig";
 import type { CheckoutBookingState } from "../data/checkoutConfig";
 
-let guestIdCounter = 0;
+interface HotelQuote {
+  nights: number;
+  totalRupees: number;
+  finalTotalRupees?: number;
+  couponDiscountRupees?: number;
+}
+
+function nightsBetween(checkIn: string, checkOut: string): number {
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 1;
+}
 
 export default function HotelCheckoutPage() {
   const location = useLocation();
-  const navigate = useNavigate();
   const booking = (location.state as CheckoutBookingState | undefined) ?? null;
 
   const [primaryGuest, setPrimaryGuest] = useState<PrimaryGuest>({ title: "Mr", firstName: "", lastName: "", email: "", mobile: "" });
@@ -47,32 +47,61 @@ export default function HotelCheckoutPage() {
   const [companyName, setCompanyName] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [specialRequests, setSpecialRequests] = useState<string[]>([]);
-  const [mealAddOnKey, setMealAddOnKey] = useState<string | null>(null);
-  const [extraAddOnKeys, setExtraAddOnKeys] = useState<string[]>([]);
-  const [protectionSelected, setProtectionSelected] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
-
-  const urgencySignals = useMemo(() => (booking ? getUrgencySignals(booking.hotelId) : null), [booking]);
+  const [quote, setQuote] = useState<HotelQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
 
   useEffect(() => {
     document.title = booking ? `Checkout - ${booking.hotelName} | Bokko` : "Checkout | Bokko";
   }, [booking]);
 
+  const nights = useMemo(() => (booking ? nightsBetween(booking.checkIn, booking.checkOut) : 1), [booking]);
+
+  useEffect(() => {
+    if (!booking) return;
+    const token = getUserToken();
+    if (!token) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    setQuoteError("");
+    apiPost<HotelQuote>("/bookings/quote", {
+      centerId: booking.hotelId,
+      productType: "hotel_room",
+      planId: booking.roomId,
+      bookingDate: booking.checkIn,
+      checkoutDate: booking.checkOut,
+      roomCount: booking.roomCount,
+      guestCount: booking.guests,
+      couponCode: appliedCoupon?.code,
+    }, token)
+      .then((result) => {
+        if (!cancelled) setQuote(result);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteError((err as Error).message ?? "Could not calculate the price. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [booking, appliedCoupon]);
+
   function toggleSpecialRequest(request: string) {
     setSpecialRequests((current) => (current.includes(request) ? current.filter((r) => r !== request) : [...current, request]));
   }
 
-  function toggleExtraAddOn(key: string) {
-    setExtraAddOnKeys((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
-  }
-
   function addGuest(type: AdditionalGuest["type"]) {
-    guestIdCounter += 1;
-    setAdditionalGuests((current) => [...current, { id: `guest-${guestIdCounter}`, type }]);
+    setAdditionalGuests((current) => [...current, { id: `guest-${current.length}-${Date.now()}`, type }]);
   }
 
   function removeGuest(id: string) {
@@ -91,64 +120,53 @@ export default function HotelCheckoutPage() {
     setAppliedCoupon(best);
   }
 
-  const selectedMealAddOn = mealAddOns.find((addOn) => addOn.key === mealAddOnKey) ?? null;
-  const selectedExtraAddOns = extraAddOns.filter((addOn) => extraAddOnKeys.includes(addOn.key));
-  const selectedAddOnLabels = [...(selectedMealAddOn ? [selectedMealAddOn.label] : []), ...selectedExtraAddOns.map((addOn) => addOn.label)];
-
-  const roomCost = booking ? booking.stayPrice * booking.roomCount : 0;
-  const addOnsTotal = (selectedMealAddOn?.price ?? 0) + selectedExtraAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
-  const protectionTotal = protectionSelected ? travelProtectionPlan.price : 0;
-  const taxes = Math.round(roomCost * taxRate);
-  const autoDiscount = Math.round(roomCost * (autoDiscountPercent / 100));
-  const preCouponTotal = roomCost + taxes + convenienceFee + addOnsTotal + protectionTotal - autoDiscount;
-  const couponSavings = appliedCoupon ? Math.round((preCouponTotal * appliedCoupon.discountPercent) / 100) : 0;
-  const totalAmount = preCouponTotal - couponSavings;
-  const totalSaved = autoDiscount + couponSavings;
+  const roomCost = booking ? booking.stayPrice * booking.roomCount * nights : 0;
+  const estimatedTotal = roomCost;
+  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : estimatedTotal;
+  const couponSavings = quote?.couponDiscountRupees ?? 0;
 
   const guestDetailsValid = Boolean(
     primaryGuest.firstName.trim() && primaryGuest.lastName.trim() && primaryGuest.email.trim() && primaryGuest.mobile.trim().length >= 10,
   );
-  const canContinue = guestDetailsValid && Boolean(paymentMethod);
+  const canContinue = guestDetailsValid;
 
-  const aiInsights = useMemo(() => {
-    if (!booking) return [];
-    const insights: string[] = [];
-    if (/hr|hour/i.test(booking.stayLabel)) {
-      insights.push(`Guests staying for ${booking.stayLabel} often add Breakfast.`);
-    }
-    if (booking.category === "Business") {
-      insights.push("Guests travelling for Business often choose Airport Pickup.");
-    }
-    if (booking.guests > 2) {
-      insights.push("Guests travelling with Family often add Dinner.");
-    }
-    return insights;
-  }, [booking]);
-
-  function handleContinue() {
+  async function handleContinue() {
     if (!booking) return;
     if (!canContinue) {
-      setValidationMessage("Please fill all guest details and select a payment method.");
+      setValidationMessage("Please fill in all guest details to continue.");
+      return;
+    }
+    const token = getUserToken();
+    if (!token) {
+      setValidationMessage("Please sign in to complete your booking.");
+      setLoginOpen(true);
       return;
     }
     setValidationMessage("");
     setSubmitting(true);
-    setTimeout(() => {
-      navigate("/booking-confirmed", {
-        state: {
-          hotelName: booking.hotelName,
-          cityName: booking.cityName,
-          roomName: booking.roomName,
-          checkIn: booking.checkIn,
-          checkOut: booking.checkOut,
-          guestName: `${primaryGuest.title} ${primaryGuest.firstName} ${primaryGuest.lastName}`.trim(),
-          email: primaryGuest.email,
-          totalAmount,
-          totalSaved,
-          paymentMethod,
-        },
-      });
-    }, 1400);
+    try {
+      const created = await apiPost<{ bookingId?: string; booking?: { id?: string }; payment?: { bookingId?: string } }>("/bookings", {
+        centerId: booking.hotelId,
+        productType: "hotel_room",
+        planId: booking.roomId,
+        bookingDate: booking.checkIn,
+        checkoutDate: booking.checkOut,
+        roomCount: booking.roomCount,
+        guestCount: booking.guests,
+        couponCode: appliedCoupon?.code,
+      }, token);
+      const newBookingId = created.payment?.bookingId ?? created.booking?.id ?? created.bookingId;
+      if (!newBookingId) throw new Error("Booking created but its ID was missing. Please contact support.");
+      const payuParams = await apiPost<Record<string, string>>(
+        `/payments/booking/${newBookingId}/initiate-web`,
+        {},
+        token,
+      );
+      submitPayuForm(payuParams);
+    } catch (err) {
+      setValidationMessage((err as Error).message ?? "Booking failed. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   if (!booking) {
@@ -192,7 +210,6 @@ export default function HotelCheckoutPage() {
           <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
             <div className="flex min-w-0 flex-col gap-10">
               <BookingSummaryCard booking={booking} />
-              {urgencySignals && <UrgencySection signals={urgencySignals} />}
               <GuestDetailsSection
                 primaryGuest={primaryGuest}
                 onChangePrimaryGuest={(patch) => setPrimaryGuest((current) => ({ ...current, ...patch }))}
@@ -209,15 +226,18 @@ export default function HotelCheckoutPage() {
                 onBillingAddressChange={setBillingAddress}
               />
               <SpecialRequestsSection selected={specialRequests} onToggle={toggleSpecialRequest} />
-              <AddOnsSection
-                mealAddOnKey={mealAddOnKey}
-                onSelectMealAddOn={setMealAddOnKey}
-                extraAddOnKeys={extraAddOnKeys}
-                onToggleExtraAddOn={toggleExtraAddOn}
-              />
-              <AiRecommendationSection insights={aiInsights} />
-              <TravelProtectionSection selected={protectionSelected} onToggle={() => setProtectionSelected((v) => !v)} />
-              <PaymentMethodsSection selected={paymentMethod} onSelect={setPaymentMethod} />
+              <div>
+                <h2 className="text-lg font-bold text-[#0F172A]">Payment</h2>
+                <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
+                  <ShieldCheck size={22} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[#16A34A]" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-[#0F172A]">Secure payment via PayU</p>
+                    <p className="mt-0.5 text-[13px] leading-snug text-[#64748B]">
+                      Tap Confirm &amp; Pay to continue to PayU, where you can pay by UPI, card, net banking or wallet. Your booking is confirmed the moment payment succeeds.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <OffersCouponSection
                 coupons={booking.coupons}
                 appliedCoupon={appliedCoupon}
@@ -226,7 +246,7 @@ export default function HotelCheckoutPage() {
                 couponSavings={couponSavings}
               />
               <WhyBookSection />
-              <LoginBenefitsSection onSignIn={() => setLoginOpen(true)} />
+              {!getUserToken() && <LoginBenefitsSection onSignIn={() => setLoginOpen(true)} />}
               <ConfidenceBar freeCancellation={isFreeCancellation} />
             </div>
 
@@ -234,23 +254,18 @@ export default function HotelCheckoutPage() {
               <div className="sticky top-24">
                 <BookingSidebar
                   roomName={booking.roomName}
+                  nights={nights}
                   roomCost={roomCost}
-                  taxes={taxes}
-                  convenienceFee={convenienceFee}
-                  addOnsTotal={addOnsTotal}
-                  protectionTotal={protectionTotal}
-                  autoDiscount={autoDiscount}
                   couponSavings={couponSavings}
                   totalAmount={totalAmount}
-                  totalSaved={totalSaved}
-                  selectedAddOnLabels={selectedAddOnLabels}
-                  protectionSelected={protectionSelected}
+                  isEstimate={!quote}
+                  quoteLoading={quoteLoading}
                   canContinue={canContinue}
                   submitting={submitting}
                   onContinue={handleContinue}
                 />
-                {validationMessage && (
-                  <p className="mt-2 text-center text-xs font-semibold text-[#DC2626]">{validationMessage}</p>
+                {(validationMessage || quoteError) && (
+                  <p className="mt-2 text-center text-xs font-semibold text-[#DC2626]">{validationMessage || quoteError}</p>
                 )}
               </div>
             </aside>
@@ -261,7 +276,7 @@ export default function HotelCheckoutPage() {
       <Footer />
       <BokkoExpertWidget />
       <MobileContinueBar totalAmount={totalAmount} canContinue={canContinue} submitting={submitting} onContinue={handleContinue} />
-      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} onSuccess={handleContinue} />
     </div>
   );
 }

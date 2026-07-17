@@ -184,7 +184,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "dayPass",
       label: "Day Pass",
       priceLabel: `Day Pass from ₹${dp.bestPrice}`,
-      href: `/${city}/day-pass/${dp.id}`,
+      href: `/day-pass/${dp.id}`,
     });
   }
   if (mr) {
@@ -192,7 +192,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "meetingRoom",
       label: "Meeting Rooms",
       priceLabel: `Meeting Room from ₹${mr.bestPrice}/hr`,
-      href: `/${city}/meeting-rooms/${slugify(mr.workspaceName)}`,
+      href: `/meeting-rooms/${slugify(mr.workspaceName)}`,
     });
   }
   if (mp) {
@@ -200,7 +200,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "monthlyPass",
       label: "Monthly Pass",
       priceLabel: `Monthly Pass from ₹${mp.bestPrice.toLocaleString()}`,
-      href: `/${city}/monthly-pass/${slugify(mp.name)}`,
+      href: `/monthly-pass/${slugify(mp.name)}`,
     });
   }
   if (vo) {
@@ -208,7 +208,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "virtualOffice",
       label: "Virtual Office",
       priceLabel: `Virtual Office from ₹${vo.bestPrice}/month`,
-      href: `/${city}/virtual-office/${slugify(vo.centerName)}`,
+      href: `/virtual-office/${slugify(vo.centerName)}`,
     });
   }
   if (mp?.seatingTypes.includes("Private Cabin")) {
@@ -216,14 +216,14 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "privateCabin",
       label: "Private Cabin",
       priceLabel: "Private Cabin Available",
-      href: `/${city}/monthly-pass/${slugify(mp.name)}`,
+      href: `/monthly-pass/${slugify(mp.name)}`,
     });
   } else if (dp?.seatingTypes.includes("Private Cabin")) {
     services.push({
       key: "privateCabin",
       label: "Private Cabin",
       priceLabel: "Private Cabin Available",
-      href: `/${city}/day-pass/${dp.id}`,
+      href: `/day-pass/${dp.id}`,
     });
   }
   if (mp?.spaceType === "Managed Office") {
@@ -231,7 +231,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "managedOffice",
       label: "Managed Office",
       priceLabel: "Managed Office Available",
-      href: `/${city}/monthly-pass/${slugify(mp.name)}`,
+      href: `/monthly-pass/${slugify(mp.name)}`,
     });
   }
   if (mr?.roomType === "Training Room") {
@@ -239,7 +239,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "trainingRoom",
       label: "Training Room",
       priceLabel: `Training Room from ₹${mr.bestPrice}/hr`,
-      href: `/${city}/meeting-rooms/${slugify(mr.workspaceName)}`,
+      href: `/meeting-rooms/${slugify(mr.workspaceName)}`,
     });
   }
   if (mr?.roomType === "Board Room") {
@@ -247,7 +247,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
       key: "boardRoom",
       label: "Board Room",
       priceLabel: `Board Room from ₹${mr.bestPrice}/hr`,
-      href: `/${city}/meeting-rooms/${slugify(mr.workspaceName)}`,
+      href: `/meeting-rooms/${slugify(mr.workspaceName)}`,
     });
   }
 

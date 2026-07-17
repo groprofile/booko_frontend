@@ -77,14 +77,14 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
   }
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
+    <div className="group overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[300px]">
           <img
             src={listing.images[imageIndex]}
             alt={listing.centerName}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 
           {listing.premier && (
@@ -101,7 +101,7 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
                 onClick={showPrev}
                 className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} strokeWidth={1.75} />
               </button>
               <button
                 type="button"
@@ -109,7 +109,7 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
                 onClick={showNext}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -118,7 +118,7 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
         <div className="flex-1 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-[11px] font-bold text-white">
-              <Star size={11} className="fill-[#FBBF24] text-[#FBBF24]" />
+              <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
               {listing.rating.toFixed(1)} ({listing.reviews})
             </span>
             {listing.popularTags.slice(0, 2).map((tag) => (
@@ -133,18 +133,18 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
 
           <h3 className="mt-2 text-lg font-bold text-[#0F172A] sm:text-[20px]">{listing.centerName}</h3>
           <p className="flex items-center gap-1.5 text-sm text-[#64748B]">
-            <MapPin size={14} />
+            <MapPin size={14} strokeWidth={1.75} />
             {listing.address}
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-[#475569]">
             <span className="inline-flex items-center gap-1">
-              <Building2 size={13} className="text-[#64748B]" />
+              <Building2 size={13} strokeWidth={1.75} className="text-[#64748B]" />
               {listing.buildingType}
             </span>
             {listing.metroConnectivity && (
               <span className="inline-flex items-center gap-1">
-                <Train size={13} className="text-[#64748B]" />
+                <Train size={13} strokeWidth={1.75} className="text-[#64748B]" />
                 Metro Connectivity
               </span>
             )}
@@ -153,13 +153,13 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
           <div className="mt-3 flex flex-wrap gap-2">
             {listing.businessAddressAvailable && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] px-2.5 py-1 text-[11px] font-semibold text-[#16A34A]">
-                <ShieldCheck size={12} />
+                <ShieldCheck size={12} strokeWidth={1.75} />
                 Business Address Available
               </span>
             )}
             {listing.gstEligible && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] px-2.5 py-1 text-[11px] font-semibold text-[#16A34A]">
-                <ShieldCheck size={12} />
+                <ShieldCheck size={12} strokeWidth={1.75} />
                 GST Eligible
               </span>
             )}
@@ -201,7 +201,7 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
-              to={`/${listing.city}/virtual-office/${listing.id}`}
+              to={`/virtual-office/${listing.id}`}
               className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
             >
               View Details
@@ -212,18 +212,18 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
             </button>
             <button type="button" onClick={handleAddToCart}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#2563EB] px-4 py-2.5 text-sm font-semibold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]">
-              <ShoppingCart size={14} />
+              <ShoppingCart size={14} strokeWidth={1.75} />
               Cart
             </button>
             <button
               type="button"
               className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
             >
-              <Phone size={14} />
+              <Phone size={14} strokeWidth={1.75} />
               Call Expert
             </button>
             <Link
-              to={`/${listing.city}/virtual-office/${listing.id}`}
+              to={`/virtual-office/${listing.id}`}
               className="rounded-xl bg-[#9333EA] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#7e22ce]"
             >
               Get Consultation

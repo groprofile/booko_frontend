@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, Hotel, SlidersHorizontal, X } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import HotelSearchBar from "../components/hotel/HotelSearchBar";
@@ -21,7 +21,7 @@ import {
 } from "../data/hotelListings";
 import type { HotelFilters, HotelListing, HotelSortOption } from "../data/hotelListings";
 import { apiGet } from "../lib/api";
-import { apiToHotelListing, type CentreApiRow } from "../lib/centreAdapter";
+import { apiToHotelListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 300;
@@ -47,11 +47,12 @@ interface HotelListingPageProps {
 }
 
 export default function HotelListingPage({ presetStayType, presetTag, landingLabel }: HotelListingPageProps) {
-  const params = useParams<{ city: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const params = useParams<{ city?: string }>();
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
   const pageLabel = landingLabel ?? "Hotels";
-  const areas = cityToLocalities[citySlug] ?? [];
+  const areas = lockedCitySlug ? cityToLocalities[lockedCitySlug] ?? [] : [];
 
   const [searchParams, setSearchParams] = useSearchParams();
   const seeded = useRef(false);
@@ -67,13 +68,14 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
 
   useEffect(() => {
     setLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=hotel&city=${encodeURIComponent(cityName)}&pageSize=100`,
+      `/centers/list?productType=${PRODUCT_TYPE.hotel}&pageSize=100${cityParam}`,
     )
       .then((res) => setListings(res.data.map(apiToHotelListing)))
       .catch(() => setListings([]))
       .finally(() => setLoading(false));
-  }, [cityName]);
+  }, [lockedCitySlug, cityName]);
 
   useEffect(() => {
     if (seeded.current) return;
@@ -321,14 +323,16 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-[24px] border border-[#E2E8F0] bg-white text-center">
-                  <span className="text-4xl">🏨</span>
+                  <Hotel size={40} strokeWidth={1.5} className="text-[#94A3B8]" />
                   <p className="text-base font-bold text-[#0F172A]">No Hotels Found</p>
                   <p className="text-sm text-[#64748B]">Try changing filters.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
-                  {visibleListings.map((listing) => (
-                    <HotelListingCard key={listing.id} listing={listing} />
+                  {visibleListings.map((listing, i) => (
+                    <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <HotelListingCard listing={listing} />
+                    </div>
                   ))}
 
                   {visibleCount < filteredListings.length && (

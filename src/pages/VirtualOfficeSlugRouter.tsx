@@ -5,11 +5,11 @@ import { cityToLocalities } from "../data/virtualOfficeListings";
 import { findByDeslug } from "../utils/slug";
 
 export default function VirtualOfficeSlugRouter() {
-  const params = useParams<{ city: string; slug: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
+  const params = useParams<{ city?: string; slug: string }>();
+  const citySlug = params.city?.toLowerCase() ?? null;
   const slug = params.slug ?? "";
-  const areas = cityToLocalities[citySlug] ?? [];
-  const matchedArea = findByDeslug(areas, slug);
+  const areas = citySlug ? cityToLocalities[citySlug] ?? [] : [];
+  const matchedArea = citySlug ? findByDeslug(areas, slug) : null;
 
   if (matchedArea) {
     return <VirtualOfficeListingPage areaSlug={slug} />;

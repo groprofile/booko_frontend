@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Dumbbell,
   MapPin,
+  Percent,
   Star,
   Users,
   UtensilsCrossed,
@@ -50,18 +51,19 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
   const showNext = () => setImageIndex((i) => (i === listing.images.length - 1 ? 0 : i + 1));
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
+    <div className="group overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[300px]">
           <img
             src={listing.images[imageIndex]}
             alt={listing.name}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0F172A] shadow-soft">
-            🤑 Upto 100% OFF on App*
+            <Percent size={12} strokeWidth={2} className="text-[#16A34A]" />
+            Upto 100% OFF on App*
           </span>
 
           {listing.images.length > 1 && (
@@ -72,7 +74,7 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
                 onClick={showPrev}
                 className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} strokeWidth={1.75} />
               </button>
               <button
                 type="button"
@@ -80,7 +82,7 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
                 onClick={showNext}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -89,7 +91,7 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
         <div className="flex-1 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-[11px] font-bold text-white">
-              <Star size={11} className="fill-[#FBBF24] text-[#FBBF24]" />
+              <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
               {listing.rating.toFixed(1)} ({listing.reviews})
             </span>
             {listing.badges.map((badge) => (
@@ -107,14 +109,14 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
 
           <h3 className="mt-2 text-lg font-bold text-[#0F172A] sm:text-[20px]">{listing.name}</h3>
           <p className="flex items-center gap-1.5 text-sm text-[#64748B]">
-            <MapPin size={14} />
+            <MapPin size={14} strokeWidth={1.75} />
             {listing.locality} · {listing.distanceKm} Kms away
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-[#334155]">
             {listing.trustSignals.slice(0, 2).map((signal) => (
               <span key={signal} className="inline-flex items-center gap-1 text-xs font-semibold text-[#475569]">
-                <BadgeCheck size={13} className="text-[#16A34A]" />
+                <BadgeCheck size={13} strokeWidth={1.75} className="text-[#16A34A]" />
                 {signal}
               </span>
             ))}
@@ -129,7 +131,7 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
                   title={item}
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B]"
                 >
-                  <Icon size={16} />
+                  <Icon size={16} strokeWidth={1.75} />
                 </span>
               );
             })}
@@ -194,13 +196,13 @@ export default function HotelListingCard({ listing }: HotelListingCardProps) {
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
-                to={`/${listing.city}/hotels/${listing.id}`}
+                to={`/hotels/${listing.id}`}
                 className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
               >
                 View Details
               </Link>
               <Link
-                to={`/${listing.city}/hotels/${listing.id}`}
+                to={`/hotels/${listing.id}`}
                 className="rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black"
               >
                 Book Now

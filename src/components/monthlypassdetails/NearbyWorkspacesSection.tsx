@@ -7,7 +7,6 @@ import SectionLabel from "./SectionLabel";
 
 interface NearbyWorkspacesSectionProps {
   current: MonthlyPassListing;
-  citySlug: string;
   allListings: MonthlyPassListing[];
 }
 
@@ -21,7 +20,7 @@ const tabs: { key: Tab; label: string }[] = [
   { key: "popular", label: "Popular Workspaces" },
 ];
 
-export default function NearbyWorkspacesSection({ current, citySlug, allListings }: NearbyWorkspacesSectionProps) {
+export default function NearbyWorkspacesSection({ current, allListings }: NearbyWorkspacesSectionProps) {
   const [tab, setTab] = useState<Tab>("area");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -87,7 +86,7 @@ export default function NearbyWorkspacesSection({ current, citySlug, allListings
           {candidates.map((listing) => (
             <Link
               key={listing.id}
-              to={`/${citySlug}/monthly-pass/${slugify(listing.name)}`}
+              to={`/monthly-pass/${slugify(listing.name)}`}
               className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
               <div className="h-[140px] w-full overflow-hidden">

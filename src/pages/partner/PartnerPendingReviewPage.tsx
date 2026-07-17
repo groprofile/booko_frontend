@@ -2,6 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock, FileSearch, Building2, ShieldCheck, LayoutDashboard, Mail, Phone, ArrowRight, RefreshCw } from "lucide-react";
 import { usePartner } from "../../context/PartnerContext";
+import { apiGet, getVendorToken } from "../../lib/api";
+
+interface MyCenter {
+  id: string;
+  center_name: string;
+  approval_status: string;
+  city: string | null;
+}
 
 const timeline = [
   { icon: CheckCircle2, label: "Submitted", desc: "Your application has been received.", done: true },
@@ -15,6 +23,7 @@ export default function PartnerPendingReviewPage() {
   const { partner, refreshStatus } = usePartner();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(false);
+  const [centers, setCenters] = useState<MyCenter[]>([]);
 
   // Once approved, send the vendor straight to the dashboard.
   useEffect(() => {
@@ -27,6 +36,16 @@ export default function PartnerPendingReviewPage() {
     return () => clearInterval(id);
   }, [refreshStatus]);
 
+  // Centers created during onboarding are visible immediately, regardless of
+  // vendor approval status — show them so the vendor knows they were received.
+  useEffect(() => {
+    const token = getVendorToken();
+    if (!token) return;
+    apiGet<MyCenter[]>("/vendor/centers", token)
+      .then((rows) => setCenters(rows ?? []))
+      .catch(() => setCenters([]));
+  }, []);
+
   async function handleCheckNow() {
     setChecking(true);
     const status = await refreshStatus();
@@ -35,6 +54,7 @@ export default function PartnerPendingReviewPage() {
   }
 
   const isRejected = partner?.status === "rejected";
+  const isBlocked = partner?.status === "blocked";
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -94,6 +114,13 @@ export default function PartnerPendingReviewPage() {
               </div>
             )}
 
+            {isBlocked && (
+              <div className="mt-4 rounded-xl bg-[#FEF2F2] px-4 py-3 text-left">
+                <p className="text-xs font-semibold text-[#DC2626]">Your partner account has been blocked.</p>
+                <p className="mt-0.5 text-xs text-[#991B1B]">Please contact our partner team to resolve this.</p>
+              </div>
+            )}
+
             <button
               onClick={handleCheckNow}
               disabled={checking}
@@ -104,6 +131,37 @@ export default function PartnerPendingReviewPage() {
             </button>
             <p className="mt-2 text-[11px] text-[#94A3B8]">Status refreshes automatically every 15 seconds.</p>
           </div>
+
+          {/* Centers submitted during onboarding */}
+          {centers.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-bold text-[#0F172A]">Your Centers</h2>
+              <div className="flex flex-col gap-3">
+                {centers.map((c) => (
+                  <div key={c.id} className="flex items-center gap-3 rounded-xl border border-[#E2E8F0] p-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF]">
+                      <Building2 size={16} className="text-[#2563EB]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#0F172A]">{c.center_name}</p>
+                      {c.city && <p className="text-xs text-[#94A3B8]">{c.city}</p>}
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        c.approval_status === "approved"
+                          ? "bg-[#DCFCE7] text-[#15803D]"
+                          : c.approval_status === "rejected"
+                            ? "bg-[#FEE2E2] text-[#B91C1C]"
+                            : "bg-[#FEF3C7] text-[#D97706]"
+                      }`}
+                    >
+                      {c.approval_status === "approved" ? "Approved" : c.approval_status === "rejected" ? "Rejected" : "Pending Review"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Timeline */}
           <div className="mt-6 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">

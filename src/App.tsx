@@ -35,6 +35,9 @@ import CoworkingSpacesListingPage from "./pages/CoworkingSpacesListingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import BookingConfirmedPage from "./pages/BookingConfirmedPage";
 import BookingFailedPage from "./pages/BookingFailedPage";
+import ProfilePage from "./pages/ProfilePage";
+import MyBookingsPage from "./pages/MyBookingsPage";
+import ReferEarnPage from "./pages/ReferEarnPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
@@ -82,14 +85,18 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/day-pass" element={<DayPassListingPage />} />
       <Route path="/:city/day-pass" element={<DayPassListingPage />} />
-      <Route path="/:city/day-pass/:listingId" element={<DayPassDetailsPage />} />
+      <Route path="/day-pass/:listingId" element={<DayPassDetailsPage />} />
+      <Route path="/monthly-pass" element={<MonthlyPassListingPage />} />
       <Route path="/:city/monthly-pass" element={<MonthlyPassListingPage />} />
-      <Route path="/:city/monthly-pass/:passSlug" element={<MonthlyPassDetailsPage />} />
+      <Route path="/monthly-pass/:passSlug" element={<MonthlyPassDetailsPage />} />
+      <Route path="/meeting-rooms" element={<MeetingRoomListingPage />} />
       <Route path="/:city/meeting-rooms" element={<MeetingRoomListingPage />} />
-      <Route path="/:city/meeting-rooms/:roomSlug" element={<MeetingRoomDetailsPage />} />
+      <Route path="/meeting-rooms/:roomSlug" element={<MeetingRoomDetailsPage />} />
+      <Route path="/hotels" element={<HotelListingPage />} />
       <Route path="/:city/hotels" element={<HotelListingPage />} />
-      <Route path="/:city/hotels/:hotelSlug" element={<HotelDetailsPage />} />
+      <Route path="/hotels/:hotelSlug" element={<HotelDetailsPage />} />
       <Route
         path="/:city/hourly-hotels"
         element={<HotelListingPage presetStayType="Hourly Stay" landingLabel="Hourly Hotels" />}
@@ -106,13 +113,17 @@ function App() {
         path="/:city/business-hotels"
         element={<HotelListingPage presetStayType="Business Hotel" landingLabel="Business Hotels" />}
       />
+      <Route path="/virtual-office" element={<VirtualOfficeListingPage />} />
       <Route path="/:city/virtual-office" element={<VirtualOfficeListingPage />} />
-      <Route path="/:city/virtual-office/:slug" element={<VirtualOfficeSlugRouter />} />
+      <Route path="/virtual-office/:slug" element={<VirtualOfficeSlugRouter />} />
       <Route path="/coworking-spaces" element={<CoworkingSpacesListingPage />} />
       <Route path="/:city/coworking-spaces" element={<CoworkingSpacesListingPage />} />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/booking-confirmed" element={<BookingConfirmedPage />} />
       <Route path="/booking-failed" element={<BookingFailedPage />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/my-bookings" element={<MyBookingsPage />} />
+      <Route path="/refer-earn" element={<ReferEarnPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

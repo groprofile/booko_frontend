@@ -1,7 +1,47 @@
+import { useEffect, useState } from "react";
 import { Gift } from "lucide-react";
-import { offers } from "../data/offers";
+import { apiGet } from "../lib/api";
+
+interface CouponRow {
+  id: string;
+  code: string;
+  description: string;
+  discount_type: "percentage" | "flat";
+  discount_value: number;
+  image_url: string | null;
+  valid_to: string | null;
+}
+
+const GRADIENTS = [
+  "linear-gradient(135deg, #92654B 0%, #4A2E1C 100%)",
+  "linear-gradient(135deg, #3E7C89 0%, #1F4A54 100%)",
+  "linear-gradient(135deg, #6B3A82 0%, #3B1E49 100%)",
+  "linear-gradient(135deg, #3730A3 0%, #1E1B4B 100%)",
+];
+
+function discountLabel(coupon: CouponRow): string {
+  return coupon.discount_type === "percentage"
+    ? `Get ${coupon.discount_value}% Off`
+    : `Get ₹${coupon.discount_value} Off`;
+}
 
 export default function OffersSection() {
+  const [offers, setOffers] = useState<CouponRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<CouponRow[]>("/coupons/active")
+      .then((rows) => {
+        if (!cancelled) setOffers(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setOffers([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (offers.length === 0) return null;
+
   return (
     <section className="w-full bg-[#FFF7ED] py-10 sm:py-14 lg:py-16">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
@@ -13,25 +53,28 @@ export default function OffersSection() {
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {offers.map((offer) => (
-            <a
+          {offers.map((offer, i) => (
+            <div
               key={offer.id}
-              href="#"
               className="group relative h-[170px] overflow-hidden rounded-2xl shadow-soft transition-transform duration-300 hover:-translate-y-1"
-              style={{ background: offer.gradient }}
+              style={{ background: GRADIENTS[i % GRADIENTS.length] }}
             >
               <div className="relative z-10 flex h-full max-w-[68%] flex-col justify-center gap-1.5 p-5">
-                <p className="text-lg font-bold text-white">{offer.discountLabel}</p>
+                <p className="text-lg font-bold text-white">{discountLabel(offer)}</p>
                 <p className="text-xs leading-relaxed text-white/85">
                   {offer.description} <span className="font-bold text-white">{offer.code}</span>
                 </p>
-                {offer.note && <p className="mt-0.5 text-[10px] text-white/60">{offer.note}</p>}
+                {offer.valid_to && (
+                  <p className="mt-0.5 text-[10px] text-white/60">
+                    Valid till {new Date(offer.valid_to).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                  </p>
+                )}
               </div>
 
-              {offer.image ? (
+              {offer.image_url ? (
                 <div className="absolute inset-y-0 right-0 w-[34%]">
                   <img
-                    src={offer.image}
+                    src={offer.image_url}
                     alt=""
                     className="h-full w-full object-cover opacity-90 transition-transform duration-500 ease-out group-hover:scale-105"
                   />
@@ -45,7 +88,7 @@ export default function OffersSection() {
                   <Gift size={56} strokeWidth={1.4} className="text-white/70" />
                 </div>
               )}
-            </a>
+            </div>
           ))}
         </div>
       </div>

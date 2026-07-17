@@ -20,6 +20,7 @@ import type { DayPassListing } from "../data/dayPassListings";
 import type { DayPassDetails } from "../data/dayPassDetails";
 import { apiGet } from "../lib/api";
 import { apiToDayPassListing, apiToDayPassDetails, type CentreApiRow } from "../lib/centreAdapter";
+import DetailPageSkeleton from "../components/ui/DetailPageSkeleton";
 
 function cityLabel(slug: string) {
   return (
@@ -33,8 +34,9 @@ function cityLabel(slug: string) {
 
 export default function DayPassDetailsPage() {
   const params = useParams<{ city: string; listingId: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "mumbai";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
 
   const [listing, setListing] = useState<DayPassListing | null>(null);
   const [details, setDetails] = useState<DayPassDetails | null>(null);
@@ -73,15 +75,7 @@ export default function DayPassDetailsPage() {
   }, [listing, cityName]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-[#64748B]">Loading…</p>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
 
   if (!listing || !details) {
@@ -107,7 +101,7 @@ export default function DayPassDetailsPage() {
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
       <Header />
 
-      <main className="flex-1 pb-24 sm:pb-0">
+      <main className="flex-1 animate-fade-in-up pb-24 sm:pb-0">
         <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-[#64748B]">
             <Link to="/" className="hover:text-[#2563EB]">
@@ -161,7 +155,6 @@ export default function DayPassDetailsPage() {
               <SimilarWorkspacesSection
                 current={listing}
                 cityName={cityName}
-                citySlug={citySlug}
                 allListings={[]}
               />
 

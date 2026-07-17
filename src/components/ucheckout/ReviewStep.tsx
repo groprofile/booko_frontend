@@ -1,13 +1,10 @@
-import { Check } from "lucide-react";
+import { Check, Lightbulb, ShieldCheck } from "lucide-react";
 import type { UniversalCheckoutState } from "../../data/universalCheckout";
-import { universalPaymentMethods } from "../../data/universalCheckout";
 
 interface ReviewStepProps {
   booking: UniversalCheckoutState;
   guestInfo: Record<string, string>;
   addOnLabels: string[];
-  paymentMethod: string | null;
-  onSelectPayment: (key: string) => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -28,11 +25,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function ReviewStep({ booking, guestInfo, addOnLabels, paymentMethod, onSelectPayment }: ReviewStepProps) {
-  const paymentIcons: Record<string, string> = {
-    upi: "📱", card: "💳", netbanking: "🏦", wallet: "👛", emi: "📅", corporate: "🏢",
-  };
-
+export default function ReviewStep({ booking, guestInfo, addOnLabels }: ReviewStepProps) {
   function bookingRows(): { label: string; value: string }[] {
     if (booking.productType === "day-pass") {
       return [
@@ -110,37 +103,26 @@ export default function ReviewStep({ booking, guestInfo, addOnLabels, paymentMet
         </section>
       )}
 
-      {/* Payment Methods */}
+      {/* Payment */}
       <section className="flex flex-col gap-4">
-        <SectionLabel>Payment Method</SectionLabel>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {universalPaymentMethods.map((method) => {
-            const selected = paymentMethod === method.key;
-            return (
-              <button key={method.key} type="button" onClick={() => onSelectPayment(method.key)}
-                className={
-                  "flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all " +
-                  (selected ? "border-[#2563EB] bg-[#EFF6FF] shadow-sm" : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]")
-                }>
-                <span className="text-xl">{paymentIcons[method.key]}</span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-[#0F172A]">{method.label}</p>
-                  <p className="text-[11px] text-[#94A3B8]">{method.description}</p>
-                </div>
-                {selected && (
-                  <div className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2563EB]">
-                    <Check size={11} className="text-white" strokeWidth={3} />
-                  </div>
-                )}
-              </button>
-            );
-          })}
+        <SectionLabel>Payment</SectionLabel>
+        <div className="flex items-start gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
+          <ShieldCheck size={22} strokeWidth={1.75} className="mt-0.5 shrink-0 text-[#16A34A]" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#0F172A]">Secure payment via PayU</p>
+            <p className="mt-0.5 text-[13px] leading-snug text-[#64748B]">
+              Tap Confirm &amp; Pay to continue to PayU, where you can pay by UPI, card, net banking or wallet. Your booking is confirmed the moment payment succeeds.
+            </p>
+          </div>
         </div>
       </section>
 
       {/* AI Recommendation */}
       <section className="rounded-2xl border border-[#E2E8F0] bg-[#FFFBEB] px-4 py-4">
-        <p className="mb-1 text-xs font-bold uppercase tracking-wider text-[#92400E]">💡 Bokko Recommends</p>
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#92400E]">
+          <Lightbulb size={13} strokeWidth={2} />
+          Bokko Recommends
+        </p>
         <p className="text-sm text-[#78350F]">
           {booking.productType === "day-pass" && "Most day pass users also add a Locker and Tea/Coffee package for a comfortable workday."}
           {booking.productType === "meeting-room" && "Teams with 5+ attendees typically add Lunch and Reception Support for smoother meetings."}

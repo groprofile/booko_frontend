@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Briefcase, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import VirtualOfficeSearchBar from "../components/virtualoffice/VirtualOfficeSearchBar";
@@ -10,6 +10,7 @@ import PromoStrip from "../components/virtualoffice/PromoStrip";
 import TrustBadgesRow from "../components/virtualoffice/TrustBadgesRow";
 import VirtualOfficeFilterSidebar from "../components/virtualoffice/VirtualOfficeFilterSidebar";
 import VirtualOfficeListingCard from "../components/virtualoffice/VirtualOfficeListingCard";
+import VirtualOfficeListingCardSkeleton from "../components/virtualoffice/VirtualOfficeListingCardSkeleton";
 import BokkoExpertGlassCard from "../components/virtualoffice/BokkoExpertGlassCard";
 import {
   CITY_NAMES,
@@ -23,7 +24,7 @@ import {
 } from "../data/virtualOfficeListings";
 import type { VirtualOfficeListing, VirtualOfficeFilters, VOSortOption } from "../data/virtualOfficeListings";
 import { apiGet } from "../lib/api";
-import { apiToVirtualOfficeListing, type CentreApiRow } from "../lib/centreAdapter";
+import { apiToVirtualOfficeListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 500;
@@ -47,10 +48,11 @@ interface VirtualOfficeListingPageProps {
 }
 
 export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeListingPageProps = {}) {
-  const params = useParams<{ city: string; area?: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
-  const areas = cityToLocalities[citySlug] ?? [];
+  const params = useParams<{ city?: string; area?: string }>();
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
+  const areas = lockedCitySlug ? cityToLocalities[lockedCitySlug] ?? [] : [];
   const rawAreaSlug = params.area ?? areaSlug;
   const resolvedAreaParam = rawAreaSlug ? findByDeslug(areas, rawAreaSlug) : undefined;
   const pageLabel = "Virtual Office";
@@ -70,13 +72,14 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
 
   useEffect(() => {
     setApiLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=virtual-office&city=${encodeURIComponent(cityName)}&pageSize=100`,
+      `/centers/list?productType=${PRODUCT_TYPE.virtualOffice}&pageSize=100${cityParam}`,
     )
       .then((res) => setListings(res.data.map(apiToVirtualOfficeListing)))
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
-  }, [cityName]);
+  }, [lockedCitySlug, cityName]);
 
   useEffect(() => {
     if (seeded.current) return;
@@ -325,19 +328,23 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
 
             <div className="min-w-0">
               {apiLoading ? (
-                <div className="flex h-[320px] items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
-                  Loading virtual offices…
+                <div className="flex flex-col gap-5">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <VirtualOfficeListingCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-[24px] border border-[#E2E8F0] bg-white text-center">
-                  <span className="text-4xl">🏢</span>
+                  <Briefcase size={40} strokeWidth={1.5} className="text-[#94A3B8]" />
                   <p className="text-base font-bold text-[#0F172A]">No Virtual Offices Found</p>
                   <p className="text-sm text-[#64748B]">Try changing filters</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
-                  {visibleListings.map((listing) => (
-                    <VirtualOfficeListingCard key={listing.id} listing={listing} />
+                  {visibleListings.map((listing, i) => (
+                    <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <VirtualOfficeListingCard listing={listing} />
+                    </div>
                   ))}
 
                   {visibleCount < filteredListings.length && (

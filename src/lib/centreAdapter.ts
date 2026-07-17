@@ -10,6 +10,21 @@ import type { VirtualOfficeListing } from '../data/virtualOfficeListings';
 import type { VirtualOfficeDetails } from '../data/virtualOfficeDetails';
 import type { CoworkingSpace, ServiceKey, ServiceLink } from '../data/coworkingSpaces';
 
+// Canonical product_type values, matching the backend's authoritative enum
+// (backend_bokko1/src/centers/dto/create-membership-plan.dto.ts PRODUCT_TYPES).
+// Every place that filters center_membership_plans by product_type must use
+// these — the web app previously invented its own short-form slugs here that
+// never matched what's actually stored in the database.
+export const PRODUCT_TYPE = {
+  hotel: 'hotel_room',
+  dayPass: 'coworking_day_pass',
+  meetingRoom: 'coworking_meeting_room',
+  monthlyPass: 'coworking_monthly_pass',
+  // Shared with Monthly Pass — the backend has no distinct product_type for
+  // Virtual Office yet, so this intentionally resolves to the same plans.
+  virtualOffice: 'coworking_monthly_pass',
+} as const;
+
 export interface CentreApiRow {
   id: string;
   center_name: string;
@@ -55,6 +70,15 @@ function getImages(c: CentreApiRow): string[] {
   return urls.length > 0 ? urls : [PLACEHOLDER_IMG];
 }
 
+// Postgres NUMERIC columns (rating included) can arrive as strings over the
+// wire in some responses — every consumer downstream calls `.toFixed()` on
+// this value, which throws on a string. Normalize once, here, at the single
+// boundary between raw API rows and the UI models built from them.
+export function toRating(raw: unknown, fallback = 4.0): number {
+  const n = typeof raw === 'number' ? raw : parseFloat(String(raw));
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function getMinPrice(c: CentreApiRow, productType: string): number {
   const plans = (c.center_membership_plans ?? []).filter(
     (p) => p.is_active && p.product_type === productType,
@@ -76,10 +100,10 @@ function getTransitAmenities(c: CentreApiRow): string[] {
 
 export function apiToDayPassListing(c: CentreApiRow): DayPassListing {
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'day-pass' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.dayPass && p.is_active,
   );
   const seatingTypes = [...new Set(plans.map((p) => p.name || 'Hot Desk'))];
-  const price = getMinPrice(c, 'day-pass');
+  const price = getMinPrice(c, PRODUCT_TYPE.dayPass);
   const openTime = c.opening_time ? c.opening_time.slice(0, 5) : '09:00';
   const closeTime = c.closing_time ? c.closing_time.slice(0, 5) : '21:00';
 
@@ -102,23 +126,23 @@ export function apiToDayPassListing(c: CentreApiRow): DayPassListing {
     bestPrice: price,
     offerCode: 'BOKKO10',
     offerCount: Math.max(plans.length, 1),
-    rating: c.rating ?? 4.0,
+    rating: toRating(c.rating),
     reviews: 0,
-    popular: (c.rating ?? 0) >= 4.5,
-    premier: (c.rating ?? 0) >= 4.8,
+    popular: toRating(c.rating, 0) >= 4.5,
+    premier: toRating(c.rating, 0) >= 4.8,
     images: getImages(c),
   };
 }
 
 export function apiToHotelListing(c: CentreApiRow): HotelListing {
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'hotel' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.hotel && p.is_active,
   );
   const pricing = plans.map((p) => {
     const unitKey = p.unit === '3h' ? '3' : p.unit === '6h' ? '6' : p.unit === '12h' ? '12' : 'full-day';
     return { key: unitKey as '3' | '6' | '12' | 'full-day', label: p.name, price: p.price, available: true };
   });
-  const bestPrice = getMinPrice(c, 'hotel');
+  const bestPrice = getMinPrice(c, PRODUCT_TYPE.hotel);
 
   return {
     id: c.id,
@@ -130,7 +154,7 @@ export function apiToHotelListing(c: CentreApiRow): HotelListing {
     stayTypes: ['Hourly Stay'],
     category: c.categories?.name ?? 'Business',
     badges: [],
-    rating: c.rating ?? 4.0,
+    rating: toRating(c.rating),
     reviews: 0,
     amenities: getAmenityLabels(c),
     trustSignals: [],
@@ -140,21 +164,21 @@ export function apiToHotelListing(c: CentreApiRow): HotelListing {
       : [{ key: 'full-day', label: 'Full Day', price: bestPrice, available: true }],
     bestPrice,
     offerCode: 'BOKKO10',
-    popular: (c.rating ?? 0) >= 4.5,
+    popular: toRating(c.rating, 0) >= 4.5,
     images: getImages(c),
   };
 }
 
 export function apiToMeetingRoomListing(c: CentreApiRow): MeetingRoomListing {
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'meeting-room' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.meetingRoom && p.is_active,
   );
   const pricing: HourlyPrice[] = plans.map((p) => ({
     hours: Number(p.unit?.replace('h', '') ?? 1),
     label: p.name,
     price: p.price,
   }));
-  const bestPrice = getMinPrice(c, 'meeting-room');
+  const bestPrice = getMinPrice(c, PRODUCT_TYPE.meetingRoom);
   const amenities = getAmenityLabels(c);
 
   return {
@@ -181,18 +205,18 @@ export function apiToMeetingRoomListing(c: CentreApiRow): MeetingRoomListing {
     bestPrice,
     offerCode: 'BOKKO10',
     offerCount: Math.max(plans.length, 1),
-    popular: (c.rating ?? 0) >= 4.5,
-    premier: (c.rating ?? 0) >= 4.8,
+    popular: toRating(c.rating, 0) >= 4.5,
+    premier: toRating(c.rating, 0) >= 4.8,
     images: getImages(c),
   };
 }
 
 export function apiToMonthlyPassListing(c: CentreApiRow): MonthlyPassListing {
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'monthly-pass' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.monthlyPass && p.is_active,
   );
   const seatingTypes = [...new Set(plans.map((p) => p.name || 'Hot Desk'))];
-  const price = getMinPrice(c, 'monthly-pass');
+  const price = getMinPrice(c, PRODUCT_TYPE.monthlyPass);
 
   return {
     id: c.id,
@@ -209,17 +233,17 @@ export function apiToMonthlyPassListing(c: CentreApiRow): MonthlyPassListing {
     bestPrice: price,
     offerCode: 'BOKKO10',
     offerCount: Math.max(plans.length, 1),
-    rating: c.rating ?? 4.0,
+    rating: toRating(c.rating),
     reviews: 0,
-    popular: (c.rating ?? 0) >= 4.5,
-    premier: (c.rating ?? 0) >= 4.8,
+    popular: toRating(c.rating, 0) >= 4.5,
+    premier: toRating(c.rating, 0) >= 4.8,
     images: getImages(c),
   };
 }
 
 export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing {
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'virtual-office' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.virtualOffice && p.is_active,
   );
   const voPlan = plans.map((p) => ({
     key: p.id,
@@ -228,7 +252,7 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     price: p.price,
     description: p.plan_type ?? '',
   }));
-  const bestPrice = getMinPrice(c, 'virtual-office');
+  const bestPrice = getMinPrice(c, PRODUCT_TYPE.virtualOffice);
 
   return {
     id: c.id,
@@ -238,7 +262,7 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     area: c.locality ?? '',
     buildingType: c.categories?.name ?? 'Business Center',
     address: c.address ?? '',
-    rating: c.rating ?? 4.0,
+    rating: toRating(c.rating),
     reviews: 0,
     popularTags: [],
     servicesIncluded: getAmenityLabels(c),
@@ -246,8 +270,8 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     metroConnectivity: getTransitAmenities(c).some((a) => a.toLowerCase().includes('metro')),
     businessAddressAvailable: true,
     gstEligible: true,
-    premier: (c.rating ?? 0) >= 4.8,
-    popular: (c.rating ?? 0) >= 4.5,
+    premier: toRating(c.rating, 0) >= 4.8,
+    popular: toRating(c.rating, 0) >= 4.5,
     plans: voPlan.length > 0
       ? voPlan
       : [{ key: 'basic', name: 'Basic Plan', price: bestPrice, description: 'Virtual Office' }],
@@ -257,10 +281,11 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
 }
 
 const PRODUCT_TYPE_TO_SK: Record<string, ServiceKey> = {
-  'day-pass': 'dayPass',
-  'meeting-room': 'meetingRoom',
-  'monthly-pass': 'monthlyPass',
-  'virtual-office': 'virtualOffice',
+  [PRODUCT_TYPE.dayPass]: 'dayPass',
+  [PRODUCT_TYPE.meetingRoom]: 'meetingRoom',
+  // Monthly Pass and Virtual Office share PRODUCT_TYPE.monthlyPass (see the
+  // PRODUCT_TYPE comment above) — the key can only map to one ServiceKey.
+  [PRODUCT_TYPE.monthlyPass]: 'monthlyPass',
 };
 
 const SK_LABEL: Record<ServiceKey, string> = {
@@ -275,10 +300,9 @@ const SK_LABEL: Record<ServiceKey, string> = {
 };
 
 const PT_SLUG: Record<string, string> = {
-  'day-pass': 'day-pass',
-  'meeting-room': 'meeting-rooms',
-  'monthly-pass': 'monthly-pass',
-  'virtual-office': 'virtual-office',
+  [PRODUCT_TYPE.dayPass]: 'day-pass',
+  [PRODUCT_TYPE.meetingRoom]: 'meeting-rooms',
+  [PRODUCT_TYPE.monthlyPass]: 'monthly-pass',
 };
 
 export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
@@ -300,18 +324,18 @@ export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
       const typePlans = activePlans.filter((p) => p.product_type === pt);
       const minPrice = typePlans.length > 0 ? Math.min(...typePlans.map((p) => p.price)) : (c.min_price ?? 0);
       const label = SK_LABEL[sk];
-      const unit = pt === 'meeting-room' ? '/hr' : '';
+      const unit = pt === PRODUCT_TYPE.meetingRoom ? '/hr' : '';
       return {
         key: sk,
         label,
         priceLabel: `${label} from ₹${minPrice}${unit}`,
-        href: `/${citySlug}/${PT_SLUG[pt]}/${c.id}`,
+        href: `/${PT_SLUG[pt]}/${c.id}`,
       } as ServiceLink;
     });
 
   const allPrices = activePlans.map((p) => p.price).filter((p) => p != null);
   const startingPrice = allPrices.length > 0 ? Math.min(...allPrices) : (c.min_price ?? 0);
-  const rating = c.rating ?? 4.0;
+  const rating = toRating(c.rating);
 
   return {
     id: c.id,
@@ -346,7 +370,7 @@ export function apiToDayPassDetails(c: CentreApiRow): DayPassDetails {
   const images = getImages(c);
   const amenities = getAmenityLabels(c);
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'day-pass' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.dayPass && p.is_active,
   );
   const hasParking = amenities.some((a) => a.toLowerCase().includes('parking'));
   const hasFood = amenities.some((a) => a.toLowerCase().includes('cafe') || a.toLowerCase().includes('food'));
@@ -408,7 +432,7 @@ export function apiToHotelDetails(c: CentreApiRow): HotelDetails {
   const images = getImages(c);
   const amenities = getAmenityLabels(c);
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'hotel-room' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.hotel && p.is_active,
   );
 
   const rooms: RoomOption[] = plans.map((p, i) => ({
@@ -497,9 +521,9 @@ export function apiToMeetingRoomDetails(c: CentreApiRow): MeetingRoomDetails {
   const images = getImages(c);
   const amenities = getAmenityLabels(c);
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'meeting-room' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.meetingRoom && p.is_active,
   );
-  const rating = c.rating ?? 4.5;
+  const rating = toRating(c.rating, 4.5);
   const hasParking = amenities.some((a) => a.toLowerCase().includes('parking'));
 
   const siblingRoomTypes: SiblingRoom[] = plans.map((p) => ({
@@ -587,9 +611,9 @@ export function apiToMonthlyPassDetails(c: CentreApiRow): MonthlyPassDetails {
   const images = getImages(c);
   const amenities = getAmenityLabels(c);
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'monthly-pass' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.monthlyPass && p.is_active,
   );
-  const rating = c.rating ?? 4.5;
+  const rating = toRating(c.rating, 4.5);
 
   const membershipTypes: MembershipType[] = plans.map((p) => ({
     key: p.plan_type || p.id,
@@ -682,9 +706,9 @@ export function apiToVirtualOfficeDetails(c: CentreApiRow): VirtualOfficeDetails
   const images = getImages(c);
   const amenities = getAmenityLabels(c);
   const plans = (c.center_membership_plans ?? []).filter(
-    (p) => p.product_type === 'virtual-office' && p.is_active,
+    (p) => p.product_type === PRODUCT_TYPE.virtualOffice && p.is_active,
   );
-  const rating = c.rating ?? 4.5;
+  const rating = toRating(c.rating, 4.5);
   const hasBusiness = plans.some((p) => /business/i.test(p.name));
   const hasPremium = plans.some((p) => /premium/i.test(p.name));
 

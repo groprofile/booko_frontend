@@ -8,8 +8,10 @@ import {
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import GeneratedCredentialsModal from "../../components/admin/GeneratedCredentialsModal";
+import RejectReasonModal from "../../components/admin/RejectReasonModal";
+import { showToast } from "../../components/admin/Toast";
 import { useAdmin } from "../../context/AdminContext";
-import { apiGet, getAdminToken, ApiError } from "../../lib/api";
+import { apiGet, apiPost, getAdminToken, ApiError } from "../../lib/api";
 
 const fmt = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
@@ -197,6 +199,9 @@ export default function AdminVendorDetailPage() {
   const [loadingViewKey, setLoadingViewKey] = useState<string | null>(null);
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectCenterTarget, setRejectCenterTarget] = useState<string | null>(null);
+  const [centerActionId, setCenterActionId] = useState<string | null>(null);
 
   const vendor = vendors.find((v) => v.id === vendorId);
 
@@ -279,6 +284,77 @@ export default function AdminVendorDetailPage() {
     }
   }
 
+  async function handleApprove() {
+    if (!vendor) return;
+    try {
+      await approveVendor(vendor.id);
+      showToast("Vendor approved", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to approve vendor", "error");
+    }
+  }
+
+  async function handleReject(reason: string) {
+    if (!vendor) return;
+    try {
+      await rejectVendor(vendor.id, reason);
+      showToast("Vendor rejected", "success");
+      setShowRejectModal(false);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to reject vendor", "error");
+    }
+  }
+
+  async function handleBlock() {
+    if (!vendor) return;
+    try {
+      await blockVendor(vendor.id);
+      showToast("Vendor blocked", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to block vendor", "error");
+    }
+  }
+
+  async function handleUnblock() {
+    if (!vendor) return;
+    try {
+      await unblockVendor(vendor.id);
+      showToast("Vendor unblocked", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to unblock vendor", "error");
+    }
+  }
+
+  async function handleCenterApprove(centerId: string) {
+    const token = getAdminToken();
+    if (!token) return;
+    setCenterActionId(centerId);
+    try {
+      await apiPost(`/admin/centers/${centerId}/approve`, {}, token);
+      setRealCenters((cs) => cs.map((c) => c.id === centerId ? { ...c, approval_status: "approved", is_active: true } : c));
+      showToast("Center approved", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to approve center", "error");
+    } finally {
+      setCenterActionId(null);
+    }
+  }
+
+  async function handleCenterReject(centerId: string, reason: string) {
+    const token = getAdminToken();
+    if (!token) return;
+    setCenterActionId(centerId);
+    try {
+      await apiPost(`/admin/centers/${centerId}/reject`, { reason }, token);
+      setRealCenters((cs) => cs.map((c) => c.id === centerId ? { ...c, approval_status: "rejected" } : c));
+      showToast("Center rejected", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to reject center", "error");
+    } finally {
+      setCenterActionId(null);
+    }
+  }
+
   if (!vendor) return (
     <AdminLayout title="Vendor Detail">
       <div className="text-center py-24 text-[#94A3B8]">Vendor not found.</div>
@@ -330,21 +406,21 @@ export default function AdminVendorDetailPage() {
             </div>
             <div className="flex gap-2">
               {vendor.status !== "approved" && (
-                <button onClick={() => approveVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
+                <button onClick={handleApprove} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
                   <CheckCircle size={13} /> Approve
                 </button>
               )}
               {vendor.status !== "rejected" && (
-                <button onClick={() => rejectVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
+                <button onClick={() => setShowRejectModal(true)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
                   <XCircle size={13} /> Reject
                 </button>
               )}
               {vendor.status === "blocked" ? (
-                <button onClick={() => unblockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
+                <button onClick={handleUnblock} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
                   <Shield size={13} /> Unblock
                 </button>
               ) : (
-                <button onClick={() => blockVendor(vendor.id)} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
+                <button onClick={handleBlock} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
                   <ShieldOff size={13} /> Block
                 </button>
               )}
@@ -502,6 +578,24 @@ export default function AdminVendorDetailPage() {
                       </p>
                     </div>
                     <StatusBadge status={c.approval_status} size="sm" />
+                    {c.approval_status !== "approved" && (
+                      <button
+                        onClick={() => handleCenterApprove(c.id)}
+                        disabled={centerActionId === c.id}
+                        className="rounded-lg bg-[#DCFCE7] px-2.5 py-1.5 text-[11px] font-bold text-[#15803D] hover:bg-[#BBF7D0] disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {c.approval_status !== "rejected" && (
+                      <button
+                        onClick={() => setRejectCenterTarget(c.id)}
+                        disabled={centerActionId === c.id}
+                        className="rounded-lg bg-[#FEE2E2] px-2.5 py-1.5 text-[11px] font-bold text-[#B91C1C] hover:bg-[#FECACA] disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -565,6 +659,23 @@ export default function AdminVendorDetailPage() {
           onClose={() => setCredentials(null)}
         />
       )}
+
+      <RejectReasonModal
+        open={showRejectModal}
+        title="Reject Vendor"
+        onCancel={() => setShowRejectModal(false)}
+        onConfirm={handleReject}
+      />
+
+      <RejectReasonModal
+        open={!!rejectCenterTarget}
+        title="Reject Center"
+        onCancel={() => setRejectCenterTarget(null)}
+        onConfirm={async (reason) => {
+          if (rejectCenterTarget) await handleCenterReject(rejectCenterTarget, reason);
+          setRejectCenterTarget(null);
+        }}
+      />
     </>
   );
 }

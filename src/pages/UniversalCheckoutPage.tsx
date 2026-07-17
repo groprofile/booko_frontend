@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiPost, apiGet, getUserToken } from "../lib/api";
+import { submitPayuForm } from "../lib/payu";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import LoginModal from "../components/LoginModal";
 import ProgressBar from "../components/ucheckout/ProgressBar";
 import UniversalSidebar from "../components/ucheckout/UniversalSidebar";
 import UniversalMobileCTA from "../components/ucheckout/UniversalMobileCTA";
@@ -106,9 +108,9 @@ export default function UniversalCheckoutPage({ booking }: Props) {
   const [voContactPhone, setVoContactPhone] = useState("");
 
   // ─── Shared state ───
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<UCoupon | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [bookingId] = useState(() => {
     const prefix = { "day-pass": "DP", "meeting-room": "MR", "virtual-office": "VO", "monthly-pass": "MP" }[booking.productType] ?? "BK";
     return `BOKK${prefix}${Date.now() % 100000}`;
@@ -162,16 +164,16 @@ export default function UniversalCheckoutPage({ booking }: Props) {
         return Boolean(dpPrimaryName.trim() && dpPrimaryEmail.trim() && dpPrimaryPhone.trim().length >= 10);
       }
     }
-    if (step === 3) return Boolean(paymentMethod);
+    if (step === 3) return true; // Review step — payment is handled by PayU after Confirm & Pay
     return false;
-  }, [step, booking.productType, dpPrimaryName, dpPrimaryEmail, dpPrimaryPhone, mrOrgName, mrOrgEmail, mrOrgPhone, voBusinessName, voFounderName, voBusinessType, voContactEmail, voContactPhone, paymentMethod]);
+  }, [step, booking.productType, dpPrimaryName, dpPrimaryEmail, dpPrimaryPhone, mrOrgName, mrOrgEmail, mrOrgPhone, voBusinessName, voFounderName, voBusinessType, voContactEmail, voContactPhone]);
 
   async function handleNext() {
     if (!canAdvance || step >= 4) return;
     if (step === 3) {
       const token = getUserToken();
       if (!token) {
-        alert("Please sign in to complete your booking.");
+        setLoginOpen(true);
         return;
       }
       setSubmitting(true);
@@ -217,28 +219,24 @@ export default function UniversalCheckoutPage({ booking }: Props) {
           createDto = { ...createDto, slotIds: needed.map((s) => s.id), bookingDate: mrDate, guestCount: mrAttendees };
         }
 
-        const created = await apiPost<{ id: string }>("/bookings", createDto, token);
+        // The create-booking response shape differs by product: plan-based
+        // (day pass / monthly / VO) returns { booking, payment: { bookingId } };
+        // slot-based (meeting room) returns { bookingId } at the top level.
+        const created = await apiPost<{ bookingId?: string; booking?: { id?: string }; payment?: { bookingId?: string } }>(
+          "/bookings",
+          createDto,
+          token,
+        );
+        const newBookingId = created.payment?.bookingId ?? created.booking?.id ?? created.bookingId;
+        if (!newBookingId) throw new Error("Booking created but its ID was missing. Please contact support.");
+
         const payuParams = await apiPost<Record<string, string>>(
-          `/payments/booking/${created.id}/initiate-web`,
+          `/payments/booking/${newBookingId}/initiate-web`,
           {},
           token,
         );
 
-        // Build and auto-submit a hidden PayU form
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = payuParams["url"] ?? "https://test.payu.in/_payment";
-        const skip = new Set(["url"]);
-        Object.entries(payuParams).forEach(([k, v]) => {
-          if (skip.has(k) || typeof v !== "string") return;
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = k;
-          input.value = v;
-          form.appendChild(input);
-        });
-        document.body.appendChild(form);
-        form.submit();
+        submitPayuForm(payuParams);
       } catch (err) {
         alert((err as Error).message ?? "Booking failed. Please try again.");
         setSubmitting(false);
@@ -418,14 +416,13 @@ export default function UniversalCheckoutPage({ booking }: Props) {
       );
     }
     if (step === 3) return (
-      <ReviewStep booking={booking} guestInfo={guestInfoForReview()} addOnLabels={addOnLabels()}
-        paymentMethod={paymentMethod} onSelectPayment={setPaymentMethod} />
+      <ReviewStep booking={booking} guestInfo={guestInfoForReview()} addOnLabels={addOnLabels()} />
     );
     if (step === 4) return (
       <ConfirmationStep booking={booking} bookingId={bookingId}
         totalAmount={prices.totalAmount} totalSaved={prices.totalSaved}
         guestName={guestDisplayName || "Guest"} guestEmail={guestDisplayEmail}
-        paymentMethod={paymentMethod ?? "upi"} />
+        paymentMethod="Online" />
     );
     return null;
   };
@@ -537,6 +534,8 @@ export default function UniversalCheckoutPage({ booking }: Props) {
           onClick={handleNext}
         />
       )}
+
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} onSuccess={handleNext} />
     </div>
   );
 }

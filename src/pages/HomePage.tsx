@@ -1,6 +1,5 @@
 import Header from "../components/Header";
 import Hero from "../components/Hero";
-import PopularCitiesSection from "../components/PopularCitiesSection";
 import ExploreCategoriesSection from "../components/ExploreCategoriesSection";
 import FindYourSpaceSection from "../components/FindYourSpaceSection";
 import RecommendedSpacesSection from "../components/RecommendedSpacesSection";
@@ -18,7 +17,6 @@ export default function HomePage() {
       <Header />
       <main className="flex flex-1 flex-col">
         <Hero />
-        <PopularCitiesSection />
         <ExploreCategoriesSection />
         <FindYourSpaceSection />
         <RecommendedSpacesSection />

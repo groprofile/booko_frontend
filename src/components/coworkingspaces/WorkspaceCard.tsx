@@ -33,10 +33,10 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
   const secondaryServices = space.services.filter((service) => !primaryCtaLabels[service.key]);
 
   return (
-    <div className="overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
+    <div className="group overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[280px]">
-          <img src={space.image} alt={space.name} loading="lazy" className="h-full w-full object-cover" />
+          <img src={space.image} alt={space.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
           <span className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-base font-extrabold text-[#2563EB] shadow-soft">
             {space.brand.charAt(0)}
@@ -52,16 +52,16 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
         <div className="flex-1 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-[11px] font-bold text-white">
-              <Star size={11} className="fill-[#FBBF24] text-[#FBBF24]" />
+              <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
               {Number(space.rating ?? 0).toFixed(1)} ({Number(space.reviews ?? 0).toLocaleString()})
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#64748B]">
-              <Train size={12} />
+              <Train size={12} strokeWidth={1.75} />
               {space.distanceKm} km from Metro
             </span>
             {space.gstCompliant && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[11px] font-semibold text-[#16A34A]">
-                <ShieldCheck size={11} />
+                <ShieldCheck size={11} strokeWidth={1.75} />
                 GST Ready
               </span>
             )}
@@ -70,7 +70,7 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
           <h3 className="mt-2 text-lg font-bold text-[#0F172A] sm:text-[20px]">{space.name}</h3>
           <p className="text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">{space.brand}</p>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-[#64748B]">
-            <MapPin size={14} />
+            <MapPin size={14} strokeWidth={1.75} />
             {space.locality}, {cityName}
           </p>
 
@@ -90,22 +90,29 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
             onClick={() => setMatchExpanded((v) => !v)}
             className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-[#2563EB]/20 bg-[#EFF6FF] px-3 py-1.5 text-xs font-bold text-[#2563EB]"
           >
-            <Sparkles size={12} />
+            <Sparkles size={12} strokeWidth={1.75} />
             {space.matchScore}/100 Match
             <span className="text-[#2563EB]/60">{matchExpanded ? "Hide" : "Why?"}</span>
           </button>
 
-          {matchExpanded && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {space.matchScoreItems
-                .filter((item) => item.achieved)
-                .map((item) => (
-                  <span key={item.label} className="rounded-full bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-semibold text-[#334155]">
-                    {item.label}
-                  </span>
-                ))}
+          <div
+            className={
+              "grid transition-[grid-template-rows] duration-300 ease-out " +
+              (matchExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")
+            }
+          >
+            <div className="overflow-hidden">
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {space.matchScoreItems
+                  .filter((item) => item.achieved)
+                  .map((item) => (
+                    <span key={item.label} className="rounded-full bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-semibold text-[#334155]">
+                      {item.label}
+                    </span>
+                  ))}
+              </div>
             </div>
-          )}
+          </div>
 
           {secondaryServices.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#64748B]">

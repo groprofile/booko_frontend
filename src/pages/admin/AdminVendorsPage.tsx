@@ -4,7 +4,10 @@ import { Search, Plus, Filter, MoreVertical, Eye, CheckCircle, XCircle, ShieldOf
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import GeneratedCredentialsModal from "../../components/admin/GeneratedCredentialsModal";
+import RejectReasonModal from "../../components/admin/RejectReasonModal";
+import { showToast } from "../../components/admin/Toast";
 import { useAdmin, type VendorStatus } from "../../context/AdminContext";
+import { ApiError } from "../../lib/api";
 
 const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
@@ -29,6 +32,7 @@ export default function AdminVendorsPage() {
   const [addForm, setAddForm] = useState({ businessName: "", ownerName: "", email: "", mobile: "", businessType: "Coworking Space", city: "", state: "Maharashtra", gstin: "", centerType: "single" as "single" | "multiple" });
   const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
   const filtered = vendors.filter((v) => {
     const q = search.toLowerCase();
@@ -74,6 +78,44 @@ export default function AdminVendorsPage() {
     if (result.success && result.password) {
       const vendor = vendors.find((v) => v.id === id);
       setCredentials({ email: vendor?.email ?? "", password: result.password });
+    }
+  }
+
+  async function handleApprove(id: string) {
+    try {
+      await approveVendor(id);
+      showToast("Vendor approved", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to approve vendor", "error");
+    }
+  }
+
+  async function handleReject(reason: string) {
+    if (!rejectTarget) return;
+    try {
+      await rejectVendor(rejectTarget, reason);
+      showToast("Vendor rejected", "success");
+      setRejectTarget(null);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to reject vendor", "error");
+    }
+  }
+
+  async function handleBlock(id: string) {
+    try {
+      await blockVendor(id);
+      showToast("Vendor blocked", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to block vendor", "error");
+    }
+  }
+
+  async function handleUnblock(id: string) {
+    try {
+      await unblockVendor(id);
+      showToast("Vendor unblocked", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to unblock vendor", "error");
     }
   }
 
@@ -165,21 +207,21 @@ export default function AdminVendorsPage() {
                         {menuOpen === v.id && (
                           <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[#E2E8F0] bg-white shadow-xl">
                             {v.status !== "approved" && (
-                              <button onClick={() => { approveVendor(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#15803D] hover:bg-[#DCFCE7]">
+                              <button onClick={() => { handleApprove(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#15803D] hover:bg-[#DCFCE7]">
                                 <CheckCircle size={13} /> Approve Vendor
                               </button>
                             )}
                             {v.status !== "rejected" && (
-                              <button onClick={() => { rejectVendor(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
+                              <button onClick={() => { setRejectTarget(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
                                 <XCircle size={13} /> Reject Vendor
                               </button>
                             )}
                             {v.status === "blocked" ? (
-                              <button onClick={() => { unblockVendor(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#2563EB] hover:bg-[#EFF6FF]">
+                              <button onClick={() => { handleUnblock(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#2563EB] hover:bg-[#EFF6FF]">
                                 <Shield size={13} /> Unblock Vendor
                               </button>
                             ) : (
-                              <button onClick={() => { blockVendor(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#64748B] hover:bg-[#F1F5F9]">
+                              <button onClick={() => { handleBlock(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#64748B] hover:bg-[#F1F5F9]">
                                 <ShieldOff size={13} /> Block Vendor
                               </button>
                             )}
@@ -264,6 +306,13 @@ export default function AdminVendorsPage() {
           onClose={() => setCredentials(null)}
         />
       )}
+
+      <RejectReasonModal
+        open={!!rejectTarget}
+        title="Reject Vendor"
+        onCancel={() => setRejectTarget(null)}
+        onConfirm={handleReject}
+      />
     </AdminLayout>
   );
 }

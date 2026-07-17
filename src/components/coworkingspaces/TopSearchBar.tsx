@@ -1,5 +1,4 @@
 import { Building2, MapPin, Search } from "lucide-react";
-import { CITY_NAMES } from "../../data/coworkingSpaces";
 
 interface TopSearchBarProps {
   query: string;
@@ -7,11 +6,12 @@ interface TopSearchBarProps {
   area: string;
   onAreaChange: (value: string) => void;
   citySlug: string | null;
+  cityOptions: { slug: string; label: string }[];
   selectedCity: string;
   onCityChange: (value: string) => void;
 }
 
-export default function TopSearchBar({ query, onQueryChange, area, onAreaChange, citySlug, selectedCity, onCityChange }: TopSearchBarProps) {
+export default function TopSearchBar({ query, onQueryChange, area, onAreaChange, citySlug, cityOptions, selectedCity, onCityChange }: TopSearchBarProps) {
   return (
     <div className="sticky top-20 z-30 rounded-[20px] border border-[#E2E8F0] bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:divide-x sm:divide-[#E2E8F0]">
@@ -54,7 +54,7 @@ export default function TopSearchBar({ query, onQueryChange, area, onAreaChange,
                 className="w-full bg-transparent text-sm font-medium text-[#0F172A] focus:outline-none"
               >
                 <option value="">All Cities</option>
-                {Object.entries(CITY_NAMES).map(([slug, label]) => (
+                {cityOptions.map(({ slug, label }) => (
                   <option key={slug} value={slug}>
                     {label}
                   </option>

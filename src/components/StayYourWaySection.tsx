@@ -1,12 +1,62 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { stayModes } from "../data/stayYourWay";
-import type { StayMode } from "../data/stayYourWay";
+import type { StayHotel, StayMode } from "../data/stayYourWay";
 import StayHotelCard from "./StayHotelCard";
+import { apiGet } from "../lib/api";
+import { apiToHotelListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
+
+const HOURLY_KEYS = new Set(["3", "6", "12"]);
 
 export default function StayYourWaySection() {
   const [activeMode, setActiveMode] = useState<StayMode>("hourly");
+  const [hourlyHotels, setHourlyHotels] = useState<StayHotel[]>([]);
+  const [fullDayHotels, setFullDayHotels] = useState<StayHotel[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const active = stayModes.find((mode) => mode.id === activeMode) ?? stayModes[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiGet<{ data: CentreApiRow[] }>(`/centers/list?productType=${PRODUCT_TYPE.hotel}&sort=rating&pageSize=20`)
+      .then((res) => {
+        if (cancelled) return;
+        const hourly: StayHotel[] = [];
+        const fullDay: StayHotel[] = [];
+        res.data.forEach((row) => {
+          const listing = apiToHotelListing(row);
+          const isHourly = listing.pricing.some((p) => HOURLY_KEYS.has(p.key));
+          const hotel: StayHotel = {
+            id: listing.id,
+            name: listing.name,
+            location: listing.locality,
+            image: listing.images[0],
+            rating: listing.rating,
+            price: `₹${listing.bestPrice.toLocaleString("en-IN")}`,
+            priceUnit: isHourly ? "/ Stay" : "/ Day",
+            href: `/hotels/${listing.id}`,
+          };
+          if (isHourly && hourly.length < 4) hourly.push(hotel);
+          else if (!isHourly && fullDay.length < 4) fullDay.push(hotel);
+        });
+        setHourlyHotels(hourly);
+        setFullDayHotels(fullDay);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHourlyHotels([]);
+          setFullDayHotels([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const hotels = activeMode === "hourly" ? hourlyHotels : fullDayHotels;
 
   return (
     <section
@@ -68,24 +118,36 @@ export default function StayYourWaySection() {
               ))}
             </ul>
 
-            <a
-              href="#"
+            <Link
+              to={active.ctaHref}
               className="cta-gradient mt-8 inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-white shadow-soft transition-transform hover:scale-[1.02]"
             >
               {active.ctaLabel}
               <ArrowRight size={16} />
-            </a>
+            </Link>
           </div>
 
           <div className="lg:col-span-7">
-            <div
-              key={active.id}
-              className="scrollbar-hide flex gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-2 lg:gap-5 lg:overflow-visible"
-            >
-              {active.hotels.map((hotel) => (
-                <StayHotelCard key={hotel.id} hotel={hotel} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[220px] animate-pulse rounded-[24px] bg-[#F1F5F9]" />
+                ))}
+              </div>
+            ) : hotels.length > 0 ? (
+              <div
+                key={active.id}
+                className="scrollbar-hide flex gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-2 lg:gap-5 lg:overflow-visible"
+              >
+                {hotels.map((hotel, i) => (
+                  <div key={hotel.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
+                    <StayHotelCard hotel={hotel} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-[#64748B]">No hotels available right now.</p>
+            )}
           </div>
         </div>
       </div>

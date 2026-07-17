@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CheckCircle2, Download, Calendar, Share2, Sparkles, ExternalLink, KeyRound, Copy } from "lucide-react";
+import { CheckCircle2, Download, Calendar, Share2, Sparkles, ExternalLink, KeyRound, Copy, Building2, CreditCard, Landmark, Smartphone, Wallet, type LucideIcon } from "lucide-react";
 import type { UniversalCheckoutState } from "../../data/universalCheckout";
 
 interface ConfirmationStepProps {
@@ -86,7 +86,7 @@ export default function ConfirmationStep({
   const hasCalendar = booking.productType === "day-pass" || booking.productType === "meeting-room";
   const hasQR = booking.productType === "day-pass" || booking.productType === "meeting-room";
   const qrData = encodeURIComponent(`${bookingId}|${workspaceName}|${guestName}`);
-  const payIcon: Record<string, string> = { upi: "📱", card: "💳", netbanking: "🏦", wallet: "👛", emi: "📅", corporate: "🏢" };
+  const payIcon: Record<string, LucideIcon> = { upi: Smartphone, card: CreditCard, netbanking: Landmark, wallet: Wallet, emi: Calendar, corporate: Building2 };
 
   const checkinOtp = useMemo(() => {
     const hash = bookingId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -141,18 +141,23 @@ export default function ConfirmationStep({
           <p className="mt-0.5 text-lg font-extrabold text-white">{bookingId}</p>
         </div>
         <div className="divide-y divide-[#F8FAFC] px-6">
-          {[
-            { label: "Workspace", value: workspaceName },
-            { label: "City", value: booking.cityName },
-            ...(bookingDate ? [{ label: "Date", value: bookingDate }] : []),
-            { label: "Guest", value: guestName || "—" },
-            { label: "Email", value: guestEmail || "—" },
-            { label: "Payment", value: `${payIcon[paymentMethod] ?? "💳"} ${paymentMethod.toUpperCase()}` },
-            { label: "Status", value: "✅ Confirmed" },
-          ].map(({ label, value }) => (
+          {(
+            [
+              { label: "Workspace", value: workspaceName },
+              { label: "City", value: booking.cityName },
+              ...(bookingDate ? [{ label: "Date", value: bookingDate }] : []),
+              { label: "Guest", value: guestName || "—" },
+              { label: "Email", value: guestEmail || "—" },
+              { label: "Payment", value: paymentMethod.toUpperCase(), icon: payIcon[paymentMethod] ?? CreditCard },
+              { label: "Status", value: "Confirmed", icon: CheckCircle2 },
+            ] as { label: string; value: string; icon?: LucideIcon }[]
+          ).map(({ label, value, icon: RowIcon }) => (
             <div key={label} className="flex items-center justify-between py-3 text-sm">
               <span className="text-[#64748B]">{label}</span>
-              <span className="text-right font-semibold text-[#0F172A]">{value}</span>
+              <span className="flex items-center gap-1.5 text-right font-semibold text-[#0F172A]">
+                {RowIcon && <RowIcon size={14} strokeWidth={2} className={label === "Status" ? "text-[#16A34A]" : ""} />}
+                {value}
+              </span>
             </div>
           ))}
         </div>

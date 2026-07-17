@@ -11,12 +11,14 @@ const PRODUCT_LABEL: Record<string, string> = {
   "day-pass": "Day Pass",
   "meeting-room": "Meeting Room",
   "virtual-office": "Virtual Office",
+  "monthly-pass": "Monthly Pass",
 };
 
 const PRODUCT_COLOR: Record<string, string> = {
   "day-pass": "bg-[#ECFDF5] text-[#16A34A]",
   "meeting-room": "bg-[#EFF6FF] text-[#2563EB]",
   "virtual-office": "bg-[#FDF4FF] text-[#9333EA]",
+  "monthly-pass": "bg-[#F0FDF4] text-[#16A34A]",
 };
 
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {

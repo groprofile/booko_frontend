@@ -3,17 +3,12 @@ import { ChevronDown, Sparkles } from "lucide-react";
 
 interface BookingSidebarProps {
   roomName: string;
+  nights: number;
   roomCost: number;
-  taxes: number;
-  convenienceFee: number;
-  addOnsTotal: number;
-  protectionTotal: number;
-  autoDiscount: number;
   couponSavings: number;
   totalAmount: number;
-  totalSaved: number;
-  selectedAddOnLabels: string[];
-  protectionSelected: boolean;
+  isEstimate: boolean;
+  quoteLoading: boolean;
   canContinue: boolean;
   submitting: boolean;
   onContinue: () => void;
@@ -33,17 +28,12 @@ function Row({ label, value, isDiscount = false }: { label: string; value: numbe
 
 export default function BookingSidebar({
   roomName,
+  nights,
   roomCost,
-  taxes,
-  convenienceFee,
-  addOnsTotal,
-  protectionTotal,
-  autoDiscount,
   couponSavings,
   totalAmount,
-  totalSaved,
-  selectedAddOnLabels,
-  protectionSelected,
+  isEstimate,
+  quoteLoading,
   canContinue,
   submitting,
   onContinue,
@@ -53,6 +43,9 @@ export default function BookingSidebar({
   return (
     <div className="rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
       <p className="text-sm font-bold text-[#0F172A]">Booking Summary</p>
+      <p className="mt-1 text-xs text-[#64748B]">
+        {roomName} · {nights} night{nights > 1 ? "s" : ""}
+      </p>
 
       <button
         type="button"
@@ -63,45 +56,32 @@ export default function BookingSidebar({
         <ChevronDown size={14} className={breakdownOpen ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
 
-      {breakdownOpen && (
-        <div className="mt-2 flex flex-col gap-1.5 border-b border-[#E2E8F0] pb-3">
-          <Row label="Room Cost" value={roomCost} />
-          <Row label="Taxes" value={taxes} />
-          <Row label="Convenience Fee" value={convenienceFee} />
-          <Row label="Add-ons" value={addOnsTotal} />
-          <Row label="Travel Protection" value={protectionTotal} />
-          <Row label="Discount" value={autoDiscount} isDiscount />
-          <Row label="Coupon Savings" value={couponSavings} isDiscount />
+      <div
+        className={
+          "grid transition-[grid-template-rows] duration-300 ease-out " +
+          (breakdownOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")
+        }
+      >
+        <div className="overflow-hidden">
+          <div className="mt-2 flex flex-col gap-1.5 border-b border-[#E2E8F0] pb-3">
+            <Row label={`Room Cost (${nights} night${nights > 1 ? "s" : ""})`} value={roomCost} />
+            <Row label="Coupon Savings" value={couponSavings} isDiscount />
+          </div>
         </div>
-      )}
-
-      {(selectedAddOnLabels.length > 0 || protectionSelected) && (
-        <div className="mt-3 flex flex-col gap-1 border-b border-[#E2E8F0] pb-3 text-xs text-[#64748B]">
-          <p>
-            <span className="font-semibold text-[#334155]">Selected Room:</span> {roomName}
-          </p>
-          {selectedAddOnLabels.length > 0 && (
-            <p>
-              <span className="font-semibold text-[#334155]">Selected Add-ons:</span> {selectedAddOnLabels.join(", ")}
-            </p>
-          )}
-          {protectionSelected && (
-            <p>
-              <span className="font-semibold text-[#334155]">Selected Protection:</span> Bokko Travel Protection
-            </p>
-          )}
-        </div>
-      )}
+      </div>
 
       <div className="mt-3 flex items-center justify-between text-lg font-extrabold text-[#0F172A]">
         <span>Total Amount</span>
-        <span>₹{totalAmount.toLocaleString()}</span>
+        <span>{quoteLoading ? "…" : `₹${totalAmount.toLocaleString()}`}</span>
       </div>
+      {isEstimate && (
+        <p className="mt-1 text-xs text-[#94A3B8]">Estimated — taxes and fees are confirmed after sign-in.</p>
+      )}
 
-      {totalSaved > 0 && (
+      {couponSavings > 0 && (
         <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#ECFDF5] px-3.5 py-2.5 text-sm font-bold text-[#16A34A]">
           <Sparkles size={15} />
-          You Saved ₹{totalSaved.toLocaleString()} with Bokko
+          You Saved ₹{couponSavings.toLocaleString()} with Bokko
         </div>
       )}
 

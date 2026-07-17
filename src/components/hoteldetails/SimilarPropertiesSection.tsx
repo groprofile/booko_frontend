@@ -7,7 +7,6 @@ import SectionLabel from "./SectionLabel";
 
 interface SimilarPropertiesSectionProps {
   current: HotelListing;
-  citySlug: string;
   allListings: HotelListing[];
 }
 
@@ -20,7 +19,7 @@ const tabs: { key: Tab; label: string }[] = [
   { key: "hourly", label: "Hourly Hotels Nearby" },
 ];
 
-export default function SimilarPropertiesSection({ current, citySlug, allListings }: SimilarPropertiesSectionProps) {
+export default function SimilarPropertiesSection({ current, allListings }: SimilarPropertiesSectionProps) {
   const [tab, setTab] = useState<Tab>("nearby");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -86,7 +85,7 @@ export default function SimilarPropertiesSection({ current, citySlug, allListing
           {candidates.map((listing) => (
             <Link
               key={listing.id}
-              to={`/${citySlug}/hotels/${slugify(listing.name)}`}
+              to={`/hotels/${slugify(listing.name)}`}
               className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
               <div className="h-[140px] w-full overflow-hidden">

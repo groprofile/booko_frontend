@@ -135,15 +135,6 @@ export const meetingRequirementOptions = [
   "Recording Setup",
 ];
 
-export const universalPaymentMethods = [
-  { key: "upi", label: "UPI", description: "GPay · PhonePe · Paytm · BHIM" },
-  { key: "card", label: "Credit / Debit Card", description: "Visa · Mastercard · RuPay · Amex" },
-  { key: "netbanking", label: "Net Banking", description: "All major Indian banks" },
-  { key: "wallet", label: "Wallets", description: "Paytm · Amazon Pay · Mobikwik" },
-  { key: "emi", label: "EMI", description: "No-cost EMI on select cards" },
-  { key: "corporate", label: "Corporate Billing", description: "Invoice-based for enterprises" },
-];
-
 export const businessTypes = [
   "Sole Proprietorship",
   "Partnership",

@@ -1,4 +1,4 @@
-import { allServiceOptions, allProviders, CITY_NAMES } from "../../data/coworkingSpaces";
+import { allServiceOptions, allProviders } from "../../data/coworkingSpaces";
 import type { ServiceKey, SortOption } from "../../data/coworkingSpaces";
 
 export interface ToggleFilters {
@@ -13,6 +13,7 @@ export interface ToggleFilters {
 
 interface FilterSidebarProps {
   showCityFilter: boolean;
+  cityOptions: { slug: string; label: string }[];
   selectedCities: string[];
   onToggleCity: (citySlug: string) => void;
   providers: string[];
@@ -60,6 +61,7 @@ function CheckboxRow({ label, checked, onChange }: { label: string; checked: boo
 
 export default function FilterSidebar({
   showCityFilter,
+  cityOptions,
   selectedCities,
   onToggleCity,
   providers,
@@ -95,7 +97,7 @@ export default function FilterSidebar({
         <div className="border-t border-[#E2E8F0] pt-6">
           <h3 className="text-sm font-bold text-[#0F172A]">City</h3>
           <div className="mt-2 flex flex-col">
-            {Object.entries(CITY_NAMES).map(([slug, label]) => (
+            {cityOptions.map(({ slug, label }) => (
               <CheckboxRow key={slug} label={label} checked={selectedCities.includes(slug)} onChange={() => onToggleCity(slug)} />
             ))}
           </div>

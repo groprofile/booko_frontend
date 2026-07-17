@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, MapPin, ShieldCheck, ShoppingCart, Star, Timer, Train } from "lucide-react";
 import type { MonthlyPassListing } from "../../data/monthlyPassListings";
 import { CITY_NAMES } from "../../data/dayPassListings";
-import { getMonthlyPassDetails } from "../../data/monthlyPassDetails";
+import { apiGet } from "../../lib/api";
+import { apiToMonthlyPassDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import { useCart } from "../../context/CartContext";
 
 interface MonthlyPassListingCardProps {
@@ -16,14 +17,16 @@ function cityLabel(slug: string) {
 
 export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
+  const [bookingLoading, setBookingLoading] = useState(false);
   const navigate = useNavigate();
   const params = useParams<{ city: string }>();
   const { addItem } = useCart();
   const citySlug = params.city ?? listing.city;
   const cityName = cityLabel(citySlug);
 
-  function buildCheckoutState() {
-    const details = getMonthlyPassDetails(listing);
+  async function buildCheckoutState() {
+    const raw = await apiGet<CentreApiRow>(`/centers/${listing.id}`);
+    const details = apiToMonthlyPassDetails(raw);
     return {
       productType: "monthly-pass" as const,
       listingId: listing.id,
@@ -42,35 +45,50 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
     };
   }
 
-  function handleBookNow() {
-    navigate("/checkout", { state: buildCheckoutState() });
+  async function handleBookNow() {
+    setBookingLoading(true);
+    try {
+      const state = await buildCheckoutState();
+      navigate("/checkout", { state });
+    } catch {
+      alert("Couldn't load this workspace right now. Please try again.");
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
-  function handleAddToCart() {
-    const state = buildCheckoutState();
-    addItem({
-      id: listing.id,
-      productType: "day-pass",
-      workspaceName: listing.name,
-      cityName,
-      locality: listing.locality,
-      image: listing.images[0],
-      price: listing.price,
-      checkoutState: state,
-    });
+  async function handleAddToCart() {
+    setBookingLoading(true);
+    try {
+      const state = await buildCheckoutState();
+      addItem({
+        id: listing.id,
+        productType: "monthly-pass",
+        workspaceName: listing.name,
+        cityName,
+        locality: listing.locality,
+        image: listing.images[0],
+        price: listing.price,
+        checkoutState: state,
+      });
+    } catch {
+      alert("Couldn't load this workspace right now. Please try again.");
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
   const showPrev = () => setImageIndex((i) => (i === 0 ? listing.images.length - 1 : i - 1));
   const showNext = () => setImageIndex((i) => (i === listing.images.length - 1 ? 0 : i + 1));
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)] transition-transform duration-300 hover:-translate-y-[3px] sm:flex-row">
+    <div className="group flex flex-col overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)] transition-transform duration-300 hover:-translate-y-[3px] sm:flex-row">
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[280px]">
-        <img src={listing.images[imageIndex]} alt={listing.name} className="h-full w-full object-cover" />
+        <img src={listing.images[imageIndex]} alt={listing.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
         {listing.popular && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#F97316] shadow-soft">
-            <Star size={11} className="fill-[#F97316] text-[#F97316]" />
+            <Star size={11} strokeWidth={1.75} className="fill-[#F97316] text-[#F97316]" />
             Popular
           </span>
         )}
@@ -83,7 +101,7 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
               onClick={showPrev}
               className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft transition-colors hover:bg-white"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} strokeWidth={1.75} />
             </button>
             <button
               type="button"
@@ -91,7 +109,7 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
               onClick={showNext}
               className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft transition-colors hover:bg-white"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={16} strokeWidth={1.75} />
             </button>
             <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
               {listing.images.map((_, i) => (
@@ -114,7 +132,7 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
               </span>
             )}
             <span className="inline-flex items-center gap-1 text-sm font-bold text-[#0F172A]">
-              <Star size={14} className="fill-[#FBBF24] text-[#FBBF24]" />
+              <Star size={14} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
               {listing.rating.toFixed(2)}
             </span>
             <span className="text-xs text-[#94A3B8]">({listing.reviews.toLocaleString()} Brand Reviews)</span>
@@ -125,25 +143,25 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
 
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[#64748B]">
             <span className="inline-flex items-center gap-1.5">
-              <MapPin size={14} className="shrink-0" />
+              <MapPin size={14} strokeWidth={1.75} className="shrink-0" />
               {listing.locality}
             </span>
             <span>{listing.distanceKm} Kms away</span>
             <span className="inline-flex items-center gap-1.5">
-              <Timer size={14} className="shrink-0" />
+              <Timer size={14} strokeWidth={1.75} className="shrink-0" />
               {listing.lockIn} lock-in
             </span>
           </div>
 
           {listing.accessibility.length > 0 && (
             <div className="mt-1.5 flex items-center gap-1.5 text-sm text-[#64748B]">
-              <Train size={14} className="shrink-0" />
+              <Train size={14} strokeWidth={1.75} className="shrink-0" />
               {listing.accessibility.join(" • ")}
             </div>
           )}
 
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2 text-sm text-[#334155]">
-            <ShieldCheck size={14} className="shrink-0 text-[#64748B]" />
+            <ShieldCheck size={14} strokeWidth={1.75} className="shrink-0 text-[#64748B]" />
             <span className="font-semibold">Seating Types:</span>
             {listing.seatingTypes.join(" • ")}
           </div>
@@ -164,18 +182,18 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:items-end">
-            <button type="button" onClick={handleBookNow}
-              className="w-full rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black sm:w-auto">
-              Book Monthly Pass
+            <button type="button" onClick={handleBookNow} disabled={bookingLoading}
+              className="w-full rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
+              {bookingLoading ? "Loading…" : "Book Monthly Pass"}
             </button>
-            <Link to={`/${listing.city}/monthly-pass/${listing.id}`}
+            <Link to={`/monthly-pass/${listing.id}`}
               className="w-full rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] sm:w-auto">
               View Details
             </Link>
-            <button type="button" onClick={handleAddToCart}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#2563EB] bg-white px-5 py-2 text-sm font-semibold text-[#2563EB] transition-colors hover:bg-[#EFF6FF] sm:w-auto">
-              <ShoppingCart size={14} />
-              Add to Cart
+            <button type="button" onClick={handleAddToCart} disabled={bookingLoading}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#2563EB] bg-white px-5 py-2 text-sm font-semibold text-[#2563EB] transition-colors hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
+              <ShoppingCart size={14} strokeWidth={1.75} />
+              {bookingLoading ? "Loading…" : "Add to Cart"}
             </button>
           </div>
         </div>

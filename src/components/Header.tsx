@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, User, BookOpen, Headphones, LogOut, ShoppingCart } from "lucide-react";
+import { Menu, X, ChevronDown, User, BookOpen, Headphones, LogOut, ShoppingCart, Gift } from "lucide-react";
 import Logo from "./Logo";
 import LoginModal from "./LoginModal";
 import CartDrawer from "./cart/CartDrawer";
@@ -8,12 +8,12 @@ import { useCart } from "../context/CartContext";
 import { useUser } from "../context/UserAuthContext";
 
 const navLinks = [
-  { label: "Hotels", to: "/mumbai/hotels" },
-  { label: "Coworking", to: "/mumbai/coworking-spaces" },
-  { label: "Day Pass", to: "/mumbai/day-pass" },
-  { label: "Meeting Rooms", to: "/mumbai/meeting-rooms" },
-  { label: "Virtual Office", to: "/mumbai/virtual-office" },
-  { label: "Monthly Pass", to: "/mumbai/monthly-pass" },
+  { label: "Hotels", to: "/hotels" },
+  { label: "Coworking", to: "/coworking-spaces" },
+  { label: "Day Pass", to: "/day-pass" },
+  { label: "Meeting Rooms", to: "/meeting-rooms" },
+  { label: "Virtual Office", to: "/virtual-office" },
+  { label: "Monthly Pass", to: "/monthly-pass" },
 ];
 
 export default function Header() {
@@ -62,7 +62,7 @@ export default function Header() {
                 aria-haspopup="menu"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-sm font-semibold text-[#2563EB]">
-                  {user?.name ? user.name[0].toUpperCase() : user?.phone?.slice(-2) ?? "U"}
+                  {user?.full_name ? user.full_name[0].toUpperCase() : user?.phone?.slice(-2) ?? "U"}
                 </span>
                 <ChevronDown size={16} className="text-[#64748B]" />
               </button>
@@ -71,22 +71,33 @@ export default function Header() {
                   role="menu"
                   className="absolute right-0 top-[calc(100%+8px)] w-56 rounded-2xl border border-[#E2E8F0] bg-white p-2 shadow-soft-lg"
                 >
-                  <a
-                    href="#bookings"
+                  <Link
+                    to="/my-bookings"
                     role="menuitem"
+                    onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
                   >
                     <BookOpen size={18} className="text-[#64748B]" />
                     My Bookings
-                  </a>
-                  <a
-                    href="#profile"
+                  </Link>
+                  <Link
+                    to="/profile"
                     role="menuitem"
+                    onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
                   >
                     <User size={18} className="text-[#64748B]" />
                     Profile
-                  </a>
+                  </Link>
+                  <Link
+                    to="/refer-earn"
+                    role="menuitem"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#334155] hover:bg-[#F8FAFC]"
+                  >
+                    <Gift size={18} className="text-[#64748B]" />
+                    Refer &amp; Earn
+                  </Link>
                   <a
                     href="#support"
                     role="menuitem"

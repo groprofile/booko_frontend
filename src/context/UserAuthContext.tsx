@@ -3,9 +3,15 @@ import { apiPost, apiGet } from '../lib/api';
 
 export interface UserProfile {
   id: string;
-  name?: string;
   phone: string;
+  full_name?: string;
   email?: string;
+  avatar_url?: string;
+  date_of_birth?: string;
+  gender?: string;
+  referral_code?: string;
+  walletBalance?: number;
+  onboarding_completed?: boolean;
 }
 
 interface UserAuthState {
@@ -15,6 +21,7 @@ interface UserAuthState {
   sendOtp: (phone: string) => Promise<void>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const UserAuthContext = createContext<UserAuthState>({
@@ -24,6 +31,7 @@ const UserAuthContext = createContext<UserAuthState>({
   sendOtp: async () => {},
   verifyOtp: async () => {},
   logout: async () => {},
+  refreshUser: async () => {},
 });
 
 export function UserAuthProvider({ children }: { children: ReactNode }) {
@@ -67,8 +75,15 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  async function refreshUser(): Promise<void> {
+    const token = sessionStorage.getItem('bokko_user_token');
+    if (!token) return;
+    const profile = await apiGet<UserProfile>('/users/me', token);
+    setUser(profile);
+  }
+
   return (
-    <UserAuthContext.Provider value={{ isLoggedIn: !!user, user, loading, sendOtp, verifyOtp, logout }}>
+    <UserAuthContext.Provider value={{ isLoggedIn: !!user, user, loading, sendOtp, verifyOtp, logout, refreshUser }}>
       {children}
     </UserAuthContext.Provider>
   );

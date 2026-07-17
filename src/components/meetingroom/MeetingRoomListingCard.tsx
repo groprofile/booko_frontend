@@ -18,8 +18,9 @@ import {
   Video,
 } from "lucide-react";
 import type { MeetingRoomListing } from "../../data/meetingRoomListings";
-import { getMeetingRoomDetails } from "../../data/meetingRoomDetails";
 import { CITY_NAMES } from "../../data/dayPassListings";
+import { apiGet } from "../../lib/api";
+import { apiToMeetingRoomDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import { useCart } from "../../context/CartContext";
 
 interface MeetingRoomListingCardProps {
@@ -44,6 +45,7 @@ function cityLabel(slug: string) {
 
 export default function MeetingRoomListingCard({ listing, defaultHours }: MeetingRoomListingCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
+  const [bookingLoading, setBookingLoading] = useState(false);
   const defaultTier = listing.pricing.find((tier) => tier.hours === defaultHours) ?? listing.pricing[0];
   const [selectedHours, setSelectedHours] = useState(defaultTier.hours);
   const selectedTier = listing.pricing.find((tier) => tier.hours === selectedHours) ?? listing.pricing[0];
@@ -57,8 +59,9 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
   const showPrev = () => setImageIndex((i) => (i === 0 ? listing.images.length - 1 : i - 1));
   const showNext = () => setImageIndex((i) => (i === listing.images.length - 1 ? 0 : i + 1));
 
-  function buildCheckoutState() {
-    const details = getMeetingRoomDetails(listing);
+  async function buildCheckoutState() {
+    const raw = await apiGet<CentreApiRow>(`/centers/${listing.id}`);
+    const details = apiToMeetingRoomDetails(raw);
     const firstRoom = details.siblingRoomTypes[0];
     return {
       productType: "meeting-room" as const,
@@ -83,12 +86,29 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
     };
   }
 
-  function handleBookNow() {
-    navigate("/checkout", { state: buildCheckoutState() });
+  async function handleBookNow() {
+    setBookingLoading(true);
+    try {
+      const state = await buildCheckoutState();
+      navigate("/checkout", { state });
+    } catch {
+      alert("Couldn't load this room right now. Please try again.");
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
-  function handleAddToCart() {
-    const state = buildCheckoutState();
+  async function handleAddToCart() {
+    setBookingLoading(true);
+    let state;
+    try {
+      state = await buildCheckoutState();
+    } catch {
+      alert("Couldn't load this room right now. Please try again.");
+      setBookingLoading(false);
+      return;
+    }
+    setBookingLoading(false);
     addItem({
       id: listing.id,
       productType: "meeting-room",
@@ -103,14 +123,14 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
   }
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
+    <div className="group overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[280px]">
-          <img src={listing.images[imageIndex]} alt={listing.name} className="h-full w-full object-cover" />
+          <img src={listing.images[imageIndex]} alt={listing.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
           {listing.popular && (
             <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#F97316] shadow-soft">
-              <Star size={11} className="fill-[#F97316] text-[#F97316]" />
+              <Star size={11} strokeWidth={1.75} className="fill-[#F97316] text-[#F97316]" />
               Popular
             </span>
           )}
@@ -123,7 +143,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
                 onClick={showPrev}
                 className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} strokeWidth={1.75} />
               </button>
               <button
                 type="button"
@@ -131,7 +151,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
                 onClick={showNext}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-soft hover:bg-white"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -140,7 +160,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
         <div className="flex-1 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md bg-[#ECFDF5] px-2.5 py-1 text-[11px] font-bold text-[#16A34A]">
-              <CheckCircle2 size={12} />
+              <CheckCircle2 size={12} strokeWidth={1.75} />
               Instant Confirmation
             </span>
             {listing.premier && (
@@ -155,11 +175,11 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
 
           <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[#64748B]">
             <span className="inline-flex items-center gap-1.5">
-              <MapPin size={14} className="shrink-0" />
+              <MapPin size={14} strokeWidth={1.75} className="shrink-0" />
               {listing.locality}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Users size={14} className="shrink-0" />
+              <Users size={14} strokeWidth={1.75} className="shrink-0" />
               Up to {listing.capacity} people
             </span>
           </div>
@@ -173,7 +193,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
                   title={item}
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#64748B]"
                 >
-                  <Icon size={16} />
+                  <Icon size={16} strokeWidth={1.75} />
                 </span>
               );
             })}
@@ -237,19 +257,19 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
-                to={`/${listing.city}/meeting-rooms/${listing.id}`}
+                to={`/meeting-rooms/${listing.id}`}
                 className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
               >
                 View Details
               </Link>
-              <button type="button" onClick={handleBookNow}
-                className="rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black">
-                Book Now
+              <button type="button" onClick={handleBookNow} disabled={bookingLoading}
+                className="rounded-xl bg-[#111111] px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60">
+                {bookingLoading ? "Loading…" : "Book Now"}
               </button>
-              <button type="button" onClick={handleAddToCart}
-                className="flex items-center gap-1.5 rounded-xl border border-[#2563EB] px-4 py-2.5 text-sm font-semibold text-[#2563EB] hover:bg-[#EFF6FF]">
-                <ShoppingCart size={14} />
-                Cart
+              <button type="button" onClick={handleAddToCart} disabled={bookingLoading}
+                className="flex items-center gap-1.5 rounded-xl border border-[#2563EB] px-4 py-2.5 text-sm font-semibold text-[#2563EB] hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:opacity-60">
+                <ShoppingCart size={14} strokeWidth={1.75} />
+                {bookingLoading ? "Loading…" : "Cart"}
               </button>
             </div>
           </div>

@@ -30,7 +30,7 @@ export default function Hero() {
           className="absolute right-0 top-1/3 h-[360px] w-[360px] translate-x-1/3 rounded-full bg-[#06B6D4] opacity-[0.10] blur-[90px]"
         />
 
-        <div className="relative mx-auto flex max-w-[1280px] flex-col items-center px-4 text-center sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex max-w-[1280px] flex-col items-center px-4 text-center sm:px-6 lg:px-8 animate-fade-in-up">
           <h1 className="text-[34px] font-extrabold leading-[1.15] tracking-tight text-[#0F172A] sm:text-5xl lg:text-[64px]">
             India's All-in-One<br />
             <span className="text-[#2563EB]">Space Booking</span> Platform
@@ -41,7 +41,7 @@ export default function Hero() {
           </p>
         </div>
 
-        <div className="relative z-10 mx-auto mt-10 max-w-[1280px] px-4 sm:mt-12 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto mt-10 max-w-[1280px] px-4 sm:mt-12 sm:px-6 lg:px-8 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
           <div className="rounded-[24px] border border-[#E2E8F0] bg-white shadow-float">
             <div className="flex justify-center overflow-x-auto p-3 sm:p-4">
               <CategoryTabs activeKey={activeKey} onSelect={setActiveKey} />

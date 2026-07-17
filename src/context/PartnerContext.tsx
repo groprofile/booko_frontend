@@ -8,13 +8,15 @@ export type PartnerStatus =
   | "submitted_for_review"
   | "under_review"
   | "approved"
-  | "rejected";
+  | "rejected"
+  | "blocked";
 
 export interface CenterData {
   id: string;
   backendId?: string;
   name: string;
   type: string;
+  categoryId: string;
   address: string;
   city: string;
   state: string;
@@ -112,6 +114,7 @@ const STATUS_MAP: Record<string, PartnerStatus> = {
   under_review:   'under_review',
   approved:       'approved',
   rejected:       'rejected',
+  blocked:        'blocked',
 };
 
 export function defaultKycDocs(): KycDocumentRecord[] {

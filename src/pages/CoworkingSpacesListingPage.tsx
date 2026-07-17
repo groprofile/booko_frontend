@@ -9,6 +9,7 @@ import type { Persona } from "../components/coworkingspaces/RecommendedSection";
 import FilterSidebar from "../components/coworkingspaces/FilterSidebar";
 import type { ToggleFilters } from "../components/coworkingspaces/FilterSidebar";
 import WorkspaceCard from "../components/coworkingspaces/WorkspaceCard";
+import WorkspaceCardSkeleton from "../components/coworkingspaces/WorkspaceCardSkeleton";
 import TrustSection from "../components/coworkingspaces/TrustSection";
 import BokkoExpertCard from "../components/coworkingspaces/BokkoExpertCard";
 import BokkoExpertWidget from "../components/coworkingspaces/BokkoExpertWidget";
@@ -39,6 +40,21 @@ export default function CoworkingSpacesListingPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listings, setListings] = useState<CoworkingSpace[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
+  const [cityOptions, setCityOptions] = useState<{ slug: string; label: string }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<{ cities: { city: string; center_count: number }[] }>("/cities")
+      .then((res) => {
+        if (!cancelled) {
+          setCityOptions(res.cities.map((row) => ({ slug: row.city.toLowerCase().replace(/\s+/g, "-"), label: row.city })));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCityOptions([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const fetchListings = useCallback(() => {
     setApiLoading(true);
@@ -208,6 +224,7 @@ export default function CoworkingSpacesListingPage() {
 
   const sidebarProps = {
     showCityFilter: !lockedCitySlug,
+    cityOptions,
     selectedCities,
     onToggleCity: toggleCity,
     providers: selectedProviders,
@@ -248,6 +265,7 @@ export default function CoworkingSpacesListingPage() {
               area={area}
               onAreaChange={setArea}
               citySlug={lockedCitySlug}
+              cityOptions={cityOptions}
               selectedCity={selectedCities[0] ?? ""}
               onCityChange={setSingleCity}
             />
@@ -286,8 +304,10 @@ export default function CoworkingSpacesListingPage() {
 
             <div className="flex min-w-0 flex-col gap-12">
               {apiLoading ? (
-                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
-                  Loading workspaces…
+                <div className="flex flex-col gap-5">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <WorkspaceCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : filteredSpaces.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
@@ -296,8 +316,10 @@ export default function CoworkingSpacesListingPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
-                  {filteredSpaces.map((space) => (
-                    <WorkspaceCard key={space.id} space={space} />
+                  {filteredSpaces.map((space, i) => (
+                    <div key={space.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <WorkspaceCard space={space} />
+                    </div>
                   ))}
                 </div>
               )}

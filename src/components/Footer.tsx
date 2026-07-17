@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Lock, ShieldCheck, Zap, Heart } from "lucide-react";
 import Logo from "./Logo";
 import { LinkedInIcon, InstagramIcon, YoutubeIcon, FacebookIcon, XIcon } from "./SocialIcons";
 import { GooglePlayBadge, AppStoreBadge } from "./StoreBadges";
@@ -19,12 +20,12 @@ const columns = [
   {
     title: "Products",
     links: [
-      { label: "Day Pass", to: "/mumbai/day-pass" },
-      { label: "Meeting Rooms", to: "/mumbai/meeting-rooms" },
-      { label: "Virtual Office", to: "/mumbai/virtual-office" },
-      { label: "Monthly Pass", to: "/mumbai/monthly-pass" },
-      { label: "Hotels", to: "/mumbai/hotels" },
-      { label: "Coworking Spaces", to: "/mumbai/coworking-spaces" },
+      { label: "Day Pass", to: "/day-pass" },
+      { label: "Meeting Rooms", to: "/meeting-rooms" },
+      { label: "Virtual Office", to: "/virtual-office" },
+      { label: "Monthly Pass", to: "/monthly-pass" },
+      { label: "Hotels", to: "/hotels" },
+      { label: "Coworking Spaces", to: "/coworking-spaces" },
       { label: "List Your Space", to: "/list-your-space" },
     ],
   },
@@ -147,9 +148,15 @@ export default function Footer() {
 
         {/* Trust badges */}
         <div className="mt-10 flex flex-wrap items-center gap-3 border-t border-white/10 pt-8">
-          {["🔒 SSL Secured", "✅ 10,000+ Verified Spaces", "⚡ Instant Confirmation", "🇮🇳 100% Made in India"].map((badge) => (
-            <span key={badge} className="rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-slate-300">
-              {badge}
+          {[
+            { icon: Lock, label: "SSL Secured" },
+            { icon: ShieldCheck, label: "10,000+ Verified Spaces" },
+            { icon: Zap, label: "Instant Confirmation" },
+            { icon: Heart, label: "100% Made in India" },
+          ].map(({ icon: Icon, label }) => (
+            <span key={label} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-slate-300">
+              <Icon size={14} strokeWidth={1.75} />
+              {label}
             </span>
           ))}
         </div>

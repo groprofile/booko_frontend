@@ -8,6 +8,7 @@ import DayPassOffersRail from "../components/daypass/DayPassOffersRail";
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import FilterSidebar from "../components/daypass/FilterSidebar";
 import ListingCard from "../components/daypass/ListingCard";
+import ListingCardSkeleton from "../components/daypass/ListingCardSkeleton";
 import {
   CITY_NAMES,
   allAccessibility,
@@ -17,7 +18,7 @@ import {
 } from "../data/dayPassListings";
 import type { DayPassFilters, DayPassListing, SortOption } from "../data/dayPassListings";
 import { apiGet } from "../lib/api";
-import { apiToDayPassListing, type CentreApiRow } from "../lib/centreAdapter";
+import { apiToDayPassListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 function cityLabel(slug: string) {
@@ -31,9 +32,10 @@ function cityLabel(slug: string) {
 }
 
 export default function DayPassListingPage() {
-  const params = useParams<{ city: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const params = useParams<{ city?: string }>();
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -46,13 +48,14 @@ export default function DayPassListingPage() {
 
   const fetchListings = useCallback(() => {
     setApiLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=day-pass&city=${encodeURIComponent(cityName)}&pageSize=100`,
+      `/centers/list?productType=${PRODUCT_TYPE.dayPass}&pageSize=100${cityParam}`,
     )
       .then((res) => setListings(res.data.map(apiToDayPassListing)))
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
-  }, [cityName]);
+  }, [lockedCitySlug, cityName]);
 
   useEffect(() => {
     fetchListings();
@@ -313,8 +316,10 @@ export default function DayPassListingPage() {
                   Map view coming soon for {cityName}.
                 </div>
               ) : apiLoading ? (
-                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
-                  Loading workspaces…
+                <div className="flex flex-col gap-5 pb-16 lg:pb-0">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <ListingCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
@@ -323,8 +328,10 @@ export default function DayPassListingPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-5 pb-16 lg:pb-0">
-                  {filteredListings.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} />
+                  {filteredListings.map((listing, i) => (
+                    <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <ListingCard listing={listing} />
+                    </div>
                   ))}
                 </div>
               )}

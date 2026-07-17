@@ -64,9 +64,16 @@ export default function FAQSection() {
                     }
                   />
                 </button>
-                {isOpen && (
-                  <div className="px-5 pb-4 text-sm text-[#64748B] sm:px-6">{faq.answer}</div>
-                )}
+                <div
+                  className={
+                    "grid transition-[grid-template-rows] duration-300 ease-out " +
+                    (isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")
+                  }
+                >
+                  <div className="overflow-hidden">
+                    <div className="px-5 pb-4 text-sm text-[#64748B] sm:px-6">{faq.answer}</div>
+                  </div>
+                </div>
               </div>
             );
           })}

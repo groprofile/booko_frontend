@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { MapPin, ShieldCheck, Star, Zap } from "lucide-react";
 import type { StayHotel } from "../data/stayYourWay";
 
@@ -42,18 +43,12 @@ export default function StayHotelCard({ hotel }: StayHotelCardProps) {
           </p>
 
           <div className="mt-3 flex gap-2">
-            <a
-              href="#"
+            <Link
+              to={hotel.href}
               className="flex-1 rounded-lg bg-[#111111] px-2 py-2 text-center text-xs font-semibold text-white transition-colors hover:bg-[#222222]"
             >
-              Book Now
-            </a>
-            <a
-              href="#"
-              className="flex-1 rounded-lg border border-[#E2E8F0] px-2 py-2 text-center text-xs font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
-            >
               View Details
-            </a>
+            </Link>
           </div>
         </div>
       </div>

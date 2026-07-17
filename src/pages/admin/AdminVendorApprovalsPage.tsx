@@ -3,22 +3,41 @@ import { useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, MessageSquare, Eye, Clock, FileText, CreditCard, Building2 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
+import RejectReasonModal from "../../components/admin/RejectReasonModal";
+import { showToast } from "../../components/admin/Toast";
 import { useAdmin, type Vendor } from "../../context/AdminContext";
+import { ApiError } from "../../lib/api";
 
 export default function AdminVendorApprovalsPage() {
   const { vendors, approveVendor, rejectVendor, centers } = useAdmin();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Vendor | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
   const pending = vendors.filter((v) => v.status === "pending" || v.status === "under_review");
 
-  function handleReject() {
-    if (rejectTarget) { rejectVendor(rejectTarget, rejectReason); }
-    setShowRejectModal(false); setRejectReason(""); setRejectTarget(null);
-    if (selected?.id === rejectTarget) setSelected(null);
+  async function handleApprove(id: string) {
+    try {
+      await approveVendor(id);
+      showToast("Vendor approved", "success");
+      setSelected(null);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to approve vendor", "error");
+    }
+  }
+
+  async function handleReject(reason: string) {
+    if (!rejectTarget) return;
+    try {
+      await rejectVendor(rejectTarget, reason);
+      showToast("Vendor rejected", "success");
+      setShowRejectModal(false);
+      if (selected?.id === rejectTarget) setSelected(null);
+      setRejectTarget(null);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to reject vendor", "error");
+    }
   }
 
   return (
@@ -119,7 +138,7 @@ export default function AdminVendorApprovalsPage() {
 
               {/* Actions */}
               <div className="mt-6 flex flex-wrap gap-2 border-t border-[#F1F5F9] pt-5">
-                <button onClick={() => { approveVendor(selected.id); setSelected(null); }}
+                <button onClick={() => handleApprove(selected.id)}
                   className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1d4ed8]">
                   <CheckCircle size={15} /> Approve Vendor
                 </button>
@@ -144,26 +163,11 @@ export default function AdminVendorApprovalsPage() {
         </div>
       )}
 
-      {/* Reject modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-[400px] rounded-2xl bg-white shadow-2xl">
-            <div className="border-b border-[#F1F5F9] px-6 py-4">
-              <h3 className="font-bold text-[#0F172A]">Reject Vendor</h3>
-              <p className="mt-1 text-xs text-[#64748B]">Provide a reason that will be communicated to the vendor.</p>
-            </div>
-            <div className="p-6">
-              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4}
-                placeholder="e.g. KYC documents could not be verified. Please re-upload with valid documents."
-                className="w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-sm outline-none focus:border-[#2563EB] resize-none" />
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[#F1F5F9] px-6 py-4">
-              <button onClick={() => { setShowRejectModal(false); setRejectReason(""); }} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-sm text-[#64748B]">Cancel</button>
-              <button onClick={handleReject} className="rounded-xl bg-[#DC2626] px-5 py-2 text-sm font-bold text-white hover:bg-[#B91C1C]">Confirm Reject</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RejectReasonModal
+        open={showRejectModal}
+        onCancel={() => { setShowRejectModal(false); setRejectTarget(null); }}
+        onConfirm={handleReject}
+      />
     </AdminLayout>
   );
 }

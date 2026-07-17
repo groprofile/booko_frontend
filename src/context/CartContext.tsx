@@ -3,7 +3,7 @@ import type { UniversalCheckoutState } from "../data/universalCheckout";
 
 export interface CartItem {
   id: string;
-  productType: "day-pass" | "meeting-room" | "virtual-office";
+  productType: "day-pass" | "meeting-room" | "virtual-office" | "monthly-pass";
   workspaceName: string;
   cityName: string;
   locality: string;

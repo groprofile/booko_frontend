@@ -8,6 +8,7 @@ import MonthlyPassOffersRail from "../components/monthlypass/MonthlyPassOffersRa
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import MonthlyPassFilterSidebar from "../components/monthlypass/MonthlyPassFilterSidebar";
 import MonthlyPassListingCard from "../components/monthlypass/MonthlyPassListingCard";
+import MonthlyPassListingCardSkeleton from "../components/monthlypass/MonthlyPassListingCardSkeleton";
 import TalkToExpertCard from "../components/monthlypass/TalkToExpertCard";
 import {
   CITY_NAMES,
@@ -19,7 +20,7 @@ import {
 } from "../data/monthlyPassListings";
 import type { MonthlyPassFilters, MonthlyPassListing, MonthlySortOption } from "../data/monthlyPassListings";
 import { apiGet } from "../lib/api";
-import { apiToMonthlyPassListing, type CentreApiRow } from "../lib/centreAdapter";
+import { apiToMonthlyPassListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 function cityLabel(slug: string) {
@@ -33,9 +34,10 @@ function cityLabel(slug: string) {
 }
 
 export default function MonthlyPassListingPage() {
-  const params = useParams<{ city: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const params = useParams<{ city?: string }>();
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -47,13 +49,14 @@ export default function MonthlyPassListingPage() {
 
   useEffect(() => {
     setApiLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=monthly-pass&city=${encodeURIComponent(cityName)}&pageSize=100`,
+      `/centers/list?productType=${PRODUCT_TYPE.monthlyPass}&pageSize=100${cityParam}`,
     )
       .then((res) => setListings(res.data.map(apiToMonthlyPassListing)))
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
-  }, [cityName]);
+  }, [lockedCitySlug, cityName]);
 
   useEffect(() => {
     document.title = `Monthly Pass in ${cityName} | Bokko`;
@@ -279,8 +282,10 @@ export default function MonthlyPassListingPage() {
 
             <div>
               {apiLoading ? (
-                <div className="flex h-[300px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
-                  Loading workspaces…
+                <div className="flex flex-col gap-5 pb-16 lg:pb-0">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <MonthlyPassListingCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
@@ -289,8 +294,10 @@ export default function MonthlyPassListingPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-5 pb-16 lg:pb-0">
-                  {filteredListings.map((listing) => (
-                    <MonthlyPassListingCard key={listing.id} listing={listing} />
+                  {filteredListings.map((listing, i) => (
+                    <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <MonthlyPassListingCard listing={listing} />
+                    </div>
                   ))}
                 </div>
               )}

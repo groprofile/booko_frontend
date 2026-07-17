@@ -1,4 +1,5 @@
 import { Zap, ShieldCheck, SlidersHorizontal, Lock, Receipt, LayoutGrid } from "lucide-react";
+import { useInView } from "../hooks/useInView";
 
 const benefits = [
   {
@@ -46,9 +47,11 @@ const benefits = [
 ];
 
 export default function WhyChooseBokkoSection() {
+  const { ref, isInView } = useInView<HTMLDivElement>();
+
   return (
     <section className="w-full bg-[#ECFDF5] py-10 sm:py-14 lg:py-16">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+      <div ref={ref} className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="overflow-hidden rounded-[24px]">
             <img
@@ -68,10 +71,14 @@ export default function WhyChooseBokkoSection() {
             </p>
 
             <div className="mt-10 grid grid-cols-1 gap-7 sm:grid-cols-2">
-              {benefits.map((benefit) => (
-                <div key={benefit.title} className="flex items-start gap-3.5">
+              {benefits.map((benefit, i) => (
+                <div
+                  key={benefit.title}
+                  className={"flex items-start gap-3.5 " + (isInView ? "animate-fade-in-up" : "opacity-0")}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
                   <span
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 hover:scale-110"
                     style={{ backgroundColor: benefit.bg, color: benefit.color }}
                   >
                     <benefit.icon size={22} strokeWidth={1.8} />

@@ -93,8 +93,11 @@ export default function BookingConfirmedPage() {
 
       <main className="flex flex-1 items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg rounded-[24px] border border-[#E2E8F0] bg-white p-8 text-center shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ECFDF5] text-[#16A34A]">
-            <CheckCircle2 size={32} />
+          <span className="relative mx-auto flex h-16 w-16 items-center justify-center">
+            <span className="absolute inset-0 rounded-full bg-[#16A34A] animate-check-ring" />
+            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#ECFDF5] text-[#16A34A] animate-check-pop">
+              <CheckCircle2 size={32} />
+            </span>
           </span>
           <h1 className="mt-4 text-2xl font-extrabold text-[#0F172A]">Booking Confirmed!</h1>
 
@@ -164,10 +167,18 @@ export default function BookingConfirmedPage() {
                 {booking.check_in_otp && (
                   <div className="mt-1 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-3 text-center">
                     <p className="text-xs font-medium text-[#166534]">Check-in OTP</p>
-                    <p className="mt-0.5 text-2xl font-bold tracking-widest text-[#16A34A]">
-                      {booking.check_in_otp}
-                    </p>
-                    <p className="mt-0.5 text-xs text-[#4B7A55]">Show this at the centre reception</p>
+                    <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                      {booking.check_in_otp.split("").map((digit, i) => (
+                        <span
+                          key={i}
+                          style={{ animationDelay: `${i * 70}ms` }}
+                          className="flex h-9 w-7 animate-otp-digit items-center justify-center rounded-lg bg-white text-xl font-bold text-[#16A34A] shadow-sm"
+                        >
+                          {digit}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs text-[#4B7A55]">Show this at the centre reception</p>
                   </div>
                 )}
               </div>

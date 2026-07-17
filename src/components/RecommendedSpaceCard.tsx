@@ -1,8 +1,20 @@
+import { Link } from "react-router-dom";
 import { Heart, MapPin, Star } from "lucide-react";
-import type { RecommendedSpace } from "../data/recommendedSpaces";
+
+export interface RecommendedSpaceCardData {
+  id: string;
+  title: string;
+  location: string;
+  image: string;
+  rating: number;
+  reviews: number;
+  price: number;
+  priceUnit: string;
+  href: string;
+}
 
 interface RecommendedSpaceCardProps {
-  space: RecommendedSpace;
+  space: RecommendedSpaceCardData;
 }
 
 export default function RecommendedSpaceCard({ space }: RecommendedSpaceCardProps) {
@@ -26,7 +38,7 @@ export default function RecommendedSpaceCard({ space }: RecommendedSpaceCardProp
         <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-[#0F172A]/90 px-2.5 py-1 text-[11px] font-semibold text-white">
           <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
           {space.rating.toFixed(1)}
-          <span className="font-normal text-white/70">({space.reviews})</span>
+          {space.reviews > 0 && <span className="font-normal text-white/70">({space.reviews})</span>}
         </span>
       </div>
 
@@ -40,39 +52,22 @@ export default function RecommendedSpaceCard({ space }: RecommendedSpaceCardProp
           <span className="truncate">{space.location}</span>
         </p>
 
-        <div className="mt-3 flex min-h-[28px] flex-wrap items-center gap-1.5">
-          {space.amenities.slice(0, 3).map((amenity) => (
-            <span
-              key={amenity}
-              className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-medium text-[#334155]"
-            >
-              {amenity}
-            </span>
-          ))}
-        </div>
-
         <div className="mt-auto border-t border-[#E2E8F0] pt-4">
           <p className="text-[11px] font-medium uppercase tracking-wide text-[#94A3B8]">
             Starting from
           </p>
           <p className="text-lg font-extrabold text-[#0F172A]">
-            {space.price}
+            ₹{space.price.toLocaleString()}
             <span className="text-sm font-semibold text-[#64748B]">{space.priceUnit}</span>
           </p>
 
           <div className="mt-3 flex gap-2">
-            <a
-              href="#"
+            <Link
+              to={space.href}
               className="flex-1 rounded-lg bg-[#111111] px-3 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#222222]"
             >
-              Book Now
-            </a>
-            <a
-              href="#"
-              className="flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-center text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8]"
-            >
               View Details
-            </a>
+            </Link>
           </div>
         </div>
       </div>

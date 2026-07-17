@@ -90,25 +90,32 @@ export default function UniversalSidebar({
           <ChevronDown size={16} className={breakdownOpen ? "rotate-180 transition-transform" : "transition-transform"} />
         </button>
 
-        {breakdownOpen && (
-          <div className="flex flex-col gap-2 border-t border-[#E2E8F0] px-4 py-3">
-            {rows.map((row) => (
-              <div key={row.label} className="flex items-center justify-between text-sm">
-                <span className={row.muted ? "text-[#94A3B8]" : row.isDiscount ? "text-[#16A34A]" : "text-[#64748B]"}>
-                  {row.label}
-                </span>
-                <span className={row.isDiscount ? "font-semibold text-[#16A34A]" : row.muted ? "text-[#94A3B8]" : "font-medium text-[#0F172A]"}>
-                  {row.isDiscount ? "−" : ""}₹{row.value.toLocaleString()}
-                </span>
-              </div>
-            ))}
+        <div
+          className={
+            "grid transition-[grid-template-rows] duration-300 ease-out " +
+            (breakdownOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")
+          }
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-col gap-2 border-t border-[#E2E8F0] px-4 py-3">
+              {rows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between text-sm">
+                  <span className={row.muted ? "text-[#94A3B8]" : row.isDiscount ? "text-[#16A34A]" : "text-[#64748B]"}>
+                    {row.label}
+                  </span>
+                  <span className={row.isDiscount ? "font-semibold text-[#16A34A]" : row.muted ? "text-[#94A3B8]" : "font-medium text-[#0F172A]"}>
+                    {row.isDiscount ? "−" : ""}₹{row.value.toLocaleString()}
+                  </span>
+                </div>
+              ))}
 
-            <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-3 text-base font-extrabold text-[#0F172A]">
-              <span>Total Payable</span>
-              <span>₹{totalAmount.toLocaleString()}</span>
+              <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-3 text-base font-extrabold text-[#0F172A]">
+                <span>Total Payable</span>
+                <span>₹{totalAmount.toLocaleString()}</span>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
         {totalSaved > 0 && (
           <div className="flex items-center gap-2 border-t border-[#DCFCE7] bg-[#F0FDF4] px-4 py-2.5">
@@ -161,7 +168,13 @@ export default function UniversalSidebar({
                 <ChevronDown size={12} className={offersOpen ? "rotate-180 transition-transform" : "transition-transform"} />
               </button>
 
-              {offersOpen && (
+              <div
+                className={
+                  "grid transition-[grid-template-rows] duration-300 ease-out " +
+                  (offersOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")
+                }
+              >
+                <div className="overflow-hidden">
                 <div className="mt-2 flex flex-col gap-1.5">
                   {universalCoupons.map((coupon) => (
                     <button
@@ -178,7 +191,8 @@ export default function UniversalSidebar({
                     </button>
                   ))}
                 </div>
-              )}
+                </div>
+              </div>
             </>
           )}
         </div>

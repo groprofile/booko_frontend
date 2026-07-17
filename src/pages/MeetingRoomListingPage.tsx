@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import MeetingRoomSearchBar from "../components/meetingroom/MeetingRoomSearchBar";
 import MeetingRoomFilterSidebar from "../components/meetingroom/MeetingRoomFilterSidebar";
 import MeetingRoomListingCard from "../components/meetingroom/MeetingRoomListingCard";
+import MeetingRoomListingCardSkeleton from "../components/meetingroom/MeetingRoomListingCardSkeleton";
 import PromoBanner from "../components/meetingroom/PromoBanner";
 import {
   CITY_NAMES,
@@ -18,7 +19,7 @@ import {
 } from "../data/meetingRoomListings";
 import type { MeetingRoomFilters, MeetingRoomListing, MeetingSortOption } from "../data/meetingRoomListings";
 import { apiGet } from "../lib/api";
-import { apiToMeetingRoomListing, type CentreApiRow } from "../lib/centreAdapter";
+import { apiToMeetingRoomListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
 
 const PRICE_MIN = 200;
@@ -38,9 +39,10 @@ function cityLabel(slug: string) {
 }
 
 export default function MeetingRoomListingPage() {
-  const params = useParams<{ city: string }>();
-  const citySlug = (params.city ?? "mumbai").toLowerCase();
-  const cityName = cityLabel(citySlug);
+  const params = useParams<{ city?: string }>();
+  const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
+  const citySlug = lockedCitySlug ?? "";
+  const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -55,13 +57,14 @@ export default function MeetingRoomListingPage() {
 
   useEffect(() => {
     setApiLoading(true);
+    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=meeting-room&city=${encodeURIComponent(cityName)}&pageSize=100`,
+      `/centers/list?productType=${PRODUCT_TYPE.meetingRoom}&pageSize=100${cityParam}`,
     )
       .then((res) => setListings(res.data.map(apiToMeetingRoomListing)))
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
-  }, [cityName]);
+  }, [lockedCitySlug, cityName]);
 
   useEffect(() => {
     document.title = `Meeting Rooms in ${cityName} | Book Hourly Meeting Rooms | Bokko`;
@@ -262,8 +265,10 @@ export default function MeetingRoomListingPage() {
 
             <div className="min-w-0">
               {apiLoading ? (
-                <div className="flex h-[300px] items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-sm text-[#64748B]">
-                  Loading meeting rooms…
+                <div className="flex flex-col gap-5">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <MeetingRoomListingCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-[24px] border border-[#E2E8F0] bg-white text-center">
@@ -273,7 +278,11 @@ export default function MeetingRoomListingPage() {
               ) : (
                 <div className="flex flex-col gap-5">
                   {visibleListings.map((listing, index) => (
-                    <div key={listing.id} className="flex flex-col gap-5">
+                    <div
+                      key={listing.id}
+                      className="flex animate-fade-in-up flex-col gap-5"
+                      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                    >
                       <MeetingRoomListingCard listing={listing} defaultHours={duration} />
                       {index === 3 && <PromoBanner />}
                     </div>

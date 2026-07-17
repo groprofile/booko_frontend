@@ -4,7 +4,11 @@ import { Plus, Trash2, ChevronDown, ChevronUp, AlertCircle, Building2, Loader2 }
 import { usePartner, type CenterData, type BusinessDetails } from "../../../context/PartnerContext";
 import { apiGet, apiPost, apiPut, apiUploadFile, ApiError, getVendorToken } from "../../../lib/api";
 
-const CENTER_TYPES = ["Coworking Space","Hotel","Meeting Room","Virtual Office","Managed Office","Event Space","Training Room","Board Room"];
+interface ApiCategory {
+  id: string;
+  name: string;
+}
+
 const SERVICES = ["Day Pass","Meeting Rooms","Monthly Pass","Virtual Office","Hotel Rooms","Hourly Stay","Full Day Stay","Private Cabin","Managed Office"];
 const AMENITIES = ["WiFi","Parking","Power Backup","AC","Reception","Meeting Room","Cafeteria","Security","Lift","Washroom","CCTV","Locker","Gym","Rooftop"];
 const STATES = [
@@ -24,7 +28,7 @@ function makeCenter(
 ): CenterData {
   return {
     id: `ctr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    name: "", type: "",
+    name: "", type: "", categoryId: "",
     address: opts.fullAddress ? (business.registeredAddress ?? "") : "",
     city: opts.fullAddress ? (business.city ?? "") : "",
     state: opts.fullAddress ? (business.state ?? "") : "",
@@ -35,14 +39,18 @@ function makeCenter(
   };
 }
 
-function CenterForm({ center, index, onChange, onRemove, canRemove, errors, onPhotosAdded }:{
-  center: CenterData; index: number; onChange: (c: CenterData) => void;
+function CenterForm({ center, index, categories, onChange, onRemove, canRemove, errors, onPhotosAdded }:{
+  center: CenterData; index: number; categories: ApiCategory[]; onChange: (c: CenterData) => void;
   onRemove: () => void; canRemove: boolean; errors: Record<string, string>;
   onPhotosAdded: (files: File[]) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
 
   function set(k: keyof CenterData, v: string) { onChange({ ...center, [k]: v }); }
+  function setCategory(categoryId: string) {
+    const name = categories.find((cat) => cat.id === categoryId)?.name ?? "";
+    onChange({ ...center, categoryId, type: name });
+  }
   function toggleService(s: string) {
     onChange({ ...center, services: center.services.includes(s) ? center.services.filter((x) => x !== s) : [...center.services, s] });
   }
@@ -90,9 +98,9 @@ function CenterForm({ center, index, onChange, onRemove, canRemove, errors, onPh
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[#0F172A]">Center Type <span className="text-red-500">*</span></label>
-                <select value={center.type} onChange={(e: ChangeEvent<HTMLSelectElement>) => set("type", e.target.value)} className={errors[key("type")] ? ERR : NORMAL}>
+                <select value={center.categoryId} onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)} className={errors[key("type")] ? ERR : NORMAL}>
                   <option value="">Select type</option>
-                  {CENTER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {errors[key("type")] && <p className="mt-1 text-xs text-red-500 flex gap-1"><AlertCircle size={11} className="mt-0.5" />{errors[key("type")]}</p>}
               </div>
@@ -233,7 +241,14 @@ export default function CenterSetupPage() {
   const [apiError, setApiError] = useState("");
   // Keyed by center.id (temp ID), holds File[] pending upload
   const [pendingFiles, setPendingFiles] = useState<Map<string, File[]>>(new Map());
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
   const isMultiple = partner?.centerType === "multiple";
+
+  useEffect(() => {
+    apiGet<ApiCategory[]>("/categories")
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   // On mount: fetch DB centers and enrich context data with real backendIds
   useEffect(() => {
@@ -256,7 +271,12 @@ export default function CenterSetupPage() {
             const match = dbByName.get(c.name.toLowerCase());
             if (match) {
               dbByName.delete(c.name.toLowerCase());
-              return { ...c, backendId: match.id };
+              return {
+                ...c,
+                backendId: match.id,
+                categoryId: c.categoryId || match.category_id || "",
+                type: c.type || match.categories?.name || "",
+              };
             }
             return c;
           });
@@ -268,7 +288,8 @@ export default function CenterSetupPage() {
               id: `ctr_${r.id}`,
               backendId: r.id,
               name: r.center_name ?? "",
-              type: "",
+              type: r.categories?.name ?? "",
+              categoryId: r.category_id ?? "",
               address: r.address ?? "",
               city: r.city ?? "",
               state: r.state ?? "",
@@ -333,10 +354,12 @@ export default function CenterSetupPage() {
     setApiError("");
     try {
       const saved: CenterData[] = [];
+      const uncoordinated: string[] = [];
       for (const c of centers) {
         let centerId = c.backendId;
         const payload = {
           centerName: c.name,
+          categoryId: c.categoryId || undefined,
           address: c.address,
           locality: c.locality || undefined,
           city: c.city,
@@ -346,12 +369,16 @@ export default function CenterSetupPage() {
           contactPhone: c.phone || undefined,
         };
 
+        let hasCoordinates = false;
         if (!centerId) {
-          const res = await apiPost<{ centre: { id: string } }>('/vendor/centers', payload, token);
+          const res = await apiPost<{ centre: { id: string; latitude: number | null; longitude: number | null } }>('/vendor/centers', payload, token);
           centerId = res.centre.id;
+          hasCoordinates = res.centre.latitude != null && res.centre.longitude != null;
         } else {
-          await apiPut(`/vendor/centers/${centerId}`, payload, token);
+          const res = await apiPut<{ message: string; latitude: number | null; longitude: number | null }>(`/vendor/centers/${centerId}`, payload, token);
+          hasCoordinates = res.latitude != null && res.longitude != null;
         }
+        if (!hasCoordinates) uncoordinated.push(c.name || "your center");
 
         // Upload any photos queued for this center
         const files = pendingFiles.get(c.id) ?? [];
@@ -366,6 +393,15 @@ export default function CenterSetupPage() {
 
       updatePartner({ centers: saved });
       markStepComplete(2);
+
+      if (uncoordinated.length > 0) {
+        setApiError(
+          `Saved, but we couldn't pinpoint the exact location for: ${uncoordinated.join(", ")}. Add a more specific address or Google Maps link later from your dashboard so customers can find you in Nearby search.`,
+        );
+        setTimeout(() => navigate("/partner/onboarding/kyc"), 2500);
+        return;
+      }
+
       navigate("/partner/onboarding/kyc");
     } catch (err) {
       setApiError((err as ApiError).message ?? "Save failed");
@@ -400,7 +436,7 @@ export default function CenterSetupPage() {
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         {centers.map((c, i) => (
-          <CenterForm key={c.id} center={c} index={i} errors={errors}
+          <CenterForm key={c.id} center={c} index={i} categories={categories} errors={errors}
             onChange={(updated) => updateCenter(i, updated)}
             onRemove={() => setCenters((prev) => prev.filter((_, idx) => idx !== i))}
             onPhotosAdded={(files) => addPendingFiles(c.id, files)}
