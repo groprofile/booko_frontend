@@ -1,5 +1,6 @@
 import { Clock, MapPin, ShieldCheck, Star, Train } from "lucide-react";
 import type { DayPassListing } from "../../data/dayPassListings";
+import RecommendedBadge from "../RecommendedBadge";
 
 interface WorkspaceHeaderProps {
   listing: DayPassListing;
@@ -14,15 +15,47 @@ function formatTime(time: string) {
   return `${displayHour}:${minute} ${period}`;
 }
 
+// Minutes-since-midnight for an "HH:MM" string, or null if unparseable.
+function toMinutes(time: string): number | null {
+  const [h, m] = time.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+// Real open/closed status from the center's timings vs. the viewer's clock —
+// replaces the hardcoded `openNow: false` that listing cards carry. Handles
+// overnight windows (close < open, e.g. 24x7-ish or late-night centers).
+function isOpenNow(openTime: string, closeTime: string): boolean {
+  const open = toMinutes(openTime);
+  const close = toMinutes(closeTime);
+  if (open === null || close === null) return false;
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  if (close <= open) return cur >= open || cur < close; // wraps past midnight
+  return cur >= open && cur < close;
+}
+
 export default function WorkspaceHeader({ listing, cityName }: WorkspaceHeaderProps) {
+  const openNow = isOpenNow(listing.openTime, listing.closeTime);
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
+        {listing.isFeatured && <RecommendedBadge size="sm" />}
         {listing.premier && (
           <span className="rounded-md bg-[#EFF6FF] px-2.5 py-1 text-xs font-bold text-[#2563EB]">
             Premier
           </span>
         )}
+        <span
+          className={
+            "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold " +
+            (openNow ? "bg-[#ECFDF5] text-[#16A34A]" : "bg-[#FEF2F2] text-[#DC2626]")
+          }
+        >
+          <span className={"h-1.5 w-1.5 rounded-full " + (openNow ? "bg-[#16A34A]" : "bg-[#DC2626]")} />
+          {openNow ? "Open now" : "Closed"}
+        </span>
         <span className="inline-flex items-center gap-1 rounded-md bg-[#FFFBEB] px-2.5 py-1 text-xs font-bold text-[#B45309]">
           <Star size={13} className="fill-[#FBBF24] text-[#FBBF24]" />
           {listing.rating.toFixed(2)} ({listing.reviews.toLocaleString()} Brand Reviews)

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, MapPin, ShieldCheck, Sparkles, Star, Train } from "lucide-react";
 import type { CoworkingSpace } from "../../data/coworkingSpaces";
 import { CITY_NAMES } from "../../data/coworkingSpaces";
+import RecommendedBadge from "../RecommendedBadge";
 
 interface WorkspaceCardProps {
   space: CoworkingSpace;
@@ -52,6 +53,8 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
               Premium
             </span>
           )}
+
+          {space.isFeatured && <RecommendedBadge size="sm" className="absolute bottom-3 left-3" />}
 
           {images.length > 1 && (
             <>

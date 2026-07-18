@@ -14,6 +14,7 @@ import {
 import type { VirtualOfficeListing } from "../../data/virtualOfficeListings";
 import { CITY_NAMES } from "../../data/dayPassListings";
 import { useCart } from "../../context/CartContext";
+import RecommendedBadge from "../RecommendedBadge";
 
 interface VirtualOfficeListingCardProps {
   listing: VirtualOfficeListing;
@@ -87,11 +88,14 @@ export default function VirtualOfficeListingCard({ listing }: VirtualOfficeListi
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 
-          {listing.premier && (
-            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-[#2563EB] shadow-soft">
-              Premium
-            </span>
-          )}
+          <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+            {listing.isFeatured && <RecommendedBadge size="sm" />}
+            {listing.premier && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-[#2563EB] shadow-soft">
+                Premium
+              </span>
+            )}
+          </div>
 
           {listing.images.length > 1 && (
             <>

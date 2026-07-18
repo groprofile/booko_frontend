@@ -22,6 +22,7 @@ import { CITY_NAMES } from "../../data/dayPassListings";
 import { apiGet } from "../../lib/api";
 import { apiToMeetingRoomDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import { useCart } from "../../context/CartContext";
+import RecommendedBadge from "../RecommendedBadge";
 
 interface MeetingRoomListingCardProps {
   listing: MeetingRoomListing;
@@ -128,12 +129,15 @@ export default function MeetingRoomListingCard({ listing, defaultHours }: Meetin
         <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:w-[280px]">
           <img src={listing.images[imageIndex]} alt={listing.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
-          {listing.popular && (
-            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#F97316] shadow-soft">
-              <Star size={11} strokeWidth={1.75} className="fill-[#F97316] text-[#F97316]" />
-              Popular
-            </span>
-          )}
+          <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+            {listing.isFeatured && <RecommendedBadge size="sm" />}
+            {listing.popular && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#F97316] shadow-soft">
+                <Star size={11} strokeWidth={1.75} className="fill-[#F97316] text-[#F97316]" />
+                Popular
+              </span>
+            )}
+          </div>
 
           {listing.images.length > 1 && (
             <>
