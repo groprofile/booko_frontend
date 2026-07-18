@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { apiGet } from "../lib/api";
+import { fetchFeaturedFirst } from "../lib/centreFeed";
 import {
   apiToDayPassListing,
   apiToMeetingRoomListing,
@@ -63,21 +63,30 @@ export default function RecommendedSpacesSection() {
     let cancelled = false;
     setLoading(true);
     const config = TAB_CONFIG[activeCategory];
-    apiGet<{ data: CentreApiRow[] }>(`/centers/list?productType=${config.productType}&sort=rating&pageSize=4`)
-      .then((res) => {
+
+    // Admin-promoted centers lead the rail; top-rated centers backfill the
+    // remaining slots so it's never empty (and never shows the same center
+    // twice). Promoted rows keep their "Bokko Recommended" badge.
+    fetchFeaturedFirst(config.productType, 4)
+      .then((merged) => {
         if (cancelled) return;
-        const items = res.data.map(config.adapter);
-        setSpaces(items.map((item) => ({
-          id: item.id,
-          title: item.name,
-          location: item.locality,
-          image: item.images[0],
-          rating: item.rating,
-          reviews: item.reviews,
-          price: item.bestPrice,
-          priceUnit: config.priceUnit,
-          href: config.hrefFor(item),
-        })));
+        setSpaces(
+          merged.map((row) => {
+            const item = config.adapter(row);
+            return {
+              id: item.id,
+              title: item.name,
+              location: item.locality,
+              image: item.images[0],
+              rating: item.rating,
+              reviews: item.reviews,
+              price: item.bestPrice,
+              priceUnit: config.priceUnit,
+              href: config.hrefFor(item),
+              isFeatured: Boolean(row.is_featured),
+            };
+          }),
+        );
       })
       .catch(() => {
         if (!cancelled) setSpaces([]);

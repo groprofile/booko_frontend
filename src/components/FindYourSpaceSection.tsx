@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Star, MapPin, ArrowRight, TrendingUp, Ticket, MonitorPlay, Briefcase, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { apiGet } from "../lib/api";
+import { fetchFeaturedFirst } from "../lib/centreFeed";
 import {
   apiToDayPassListing,
   apiToMeetingRoomListing,
@@ -10,6 +10,7 @@ import {
   toRating,
   type CentreApiRow,
 } from "../lib/centreAdapter";
+import RecommendedBadge from "./RecommendedBadge";
 
 type Category = "day-pass" | "meeting-room" | "virtual-office";
 
@@ -24,6 +25,7 @@ interface DisplaySpace {
   image: string;
   href: string;
   amenities: string[];
+  isFeatured: boolean;
 }
 
 const TAB_CONFIG: Record<Category, { productType: string; unit: string; toDisplay: (c: CentreApiRow) => DisplaySpace }> = {
@@ -35,7 +37,7 @@ const TAB_CONFIG: Record<Category, { productType: string; unit: string; toDispla
       return {
         id: item.id, name: item.name, location: item.locality, rating: item.rating, reviews: item.reviews,
         price: item.bestPrice, unit: "/ day", image: item.images[0], href: `/day-pass/${item.id}`,
-        amenities: item.accessibility,
+        amenities: item.accessibility, isFeatured: Boolean(c.is_featured),
       };
     },
   },
@@ -47,7 +49,7 @@ const TAB_CONFIG: Record<Category, { productType: string; unit: string; toDispla
       return {
         id: item.id, name: item.name, location: item.locality, rating: toRating(c.rating), reviews: 0,
         price: item.bestPrice, unit: "/ hr", image: item.images[0], href: `/meeting-rooms/${item.id}`,
-        amenities: item.amenities,
+        amenities: item.amenities, isFeatured: Boolean(c.is_featured),
       };
     },
   },
@@ -59,7 +61,7 @@ const TAB_CONFIG: Record<Category, { productType: string; unit: string; toDispla
       return {
         id: item.id, name: item.centerName, location: item.area, rating: item.rating, reviews: item.reviews,
         price: item.bestPrice, unit: "/ mo", image: item.images[0], href: `/virtual-office/${item.id}`,
-        amenities: item.servicesIncluded,
+        amenities: item.servicesIncluded, isFeatured: Boolean(c.is_featured),
       };
     },
   },
@@ -86,9 +88,10 @@ export default function FindYourSpaceSection() {
     let cancelled = false;
     setLoading(true);
     const config = TAB_CONFIG[active];
-    apiGet<{ data: CentreApiRow[] }>(`/centers/list?productType=${config.productType}&sort=rating&pageSize=4`)
-      .then((res) => {
-        if (!cancelled) setSpaces(res.data.map(config.toDisplay));
+    // Admin-promoted centers lead; top-rated centers backfill the rest.
+    fetchFeaturedFirst(config.productType, 4)
+      .then((rows) => {
+        if (!cancelled) setSpaces(rows.map(config.toDisplay));
       })
       .catch(() => {
         if (!cancelled) setSpaces([]);
@@ -166,6 +169,7 @@ export default function FindYourSpaceSection() {
                     alt={space.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
+                  {space.isFeatured && <RecommendedBadge size="sm" className="absolute left-3 top-3" />}
                   <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 backdrop-blur-sm">
                     <Star size={11} className="fill-[#FBBF24] text-[#FBBF24]" />
                     <span className="text-[11px] font-bold text-white">{space.rating.toFixed(1)}</span>

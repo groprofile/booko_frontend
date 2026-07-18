@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Heart, MapPin, Star } from "lucide-react";
+import RecommendedBadge from "./RecommendedBadge";
 
 export interface RecommendedSpaceCardData {
   id: string;
@@ -11,6 +12,9 @@ export interface RecommendedSpaceCardData {
   price: number;
   priceUnit: string;
   href: string;
+  // True when the center is admin-promoted. Only then do we show the
+  // "Bokko Recommended" badge — otherwise the badge would be meaningless.
+  isFeatured?: boolean;
 }
 
 interface RecommendedSpaceCardProps {
@@ -23,9 +27,7 @@ export default function RecommendedSpaceCard({ space }: RecommendedSpaceCardProp
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
         <img src={space.image} alt={space.title} className="h-full w-full object-cover" />
 
-        <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0F172A] shadow-soft">
-          Bokko Recommended
-        </span>
+        {space.isFeatured && <RecommendedBadge className="absolute left-3 top-3" />}
 
         <button
           type="button"

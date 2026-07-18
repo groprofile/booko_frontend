@@ -6,6 +6,7 @@ import { CITY_NAMES } from "../../data/dayPassListings";
 import { apiGet } from "../../lib/api";
 import { apiToDayPassDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import { useCart } from "../../context/CartContext";
+import RecommendedBadge from "../RecommendedBadge";
 
 interface ListingCardProps {
   listing: DayPassListing;

@@ -195,7 +195,12 @@ export default function MonthlyPassListingPage() {
     if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
     else if (filters.sort === "price-asc") sorted.sort((a, b) => a.price - b.price);
     else if (filters.sort === "price-desc") sorted.sort((a, b) => b.price - a.price);
-    else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
+    // Default ("recommended"): admin-promoted centers lead, then popular, then rating.
+    else sorted.sort((a, b) =>
+      Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
+      Number(b.popular) - Number(a.popular) ||
+      b.rating - a.rating,
+    );
 
     return sorted;
   }, [citySlug, filters, location, listings]);

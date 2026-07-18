@@ -44,6 +44,9 @@ export interface VirtualOfficeListing {
   gstEligible: boolean;
   premier: boolean;
   popular: boolean;
+  // Admin-promoted center — pins to the top of default-sorted results and
+  // shows the "Bokko Recommended" badge. Optional: mock data omits it.
+  isFeatured?: boolean;
   plans: VOPlan[];
   bestPrice: number;
   images: string[];

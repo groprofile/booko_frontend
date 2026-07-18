@@ -52,6 +52,10 @@ export interface CentreApiRow {
   categories: { id: string; name: string; slug: string } | null;
   distance_km: number | null;
   min_price: number | null;
+  // Admin-controlled promotion. Present on list rows; drives the "Bokko
+  // Recommended" rails and the promoted badge on cards.
+  is_featured?: boolean;
+  featured_rank?: number | null;
 }
 
 const PLACEHOLDER_IMG =
@@ -130,6 +134,7 @@ export function apiToDayPassListing(c: CentreApiRow): DayPassListing {
     reviews: 0,
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
+    isFeatured: Boolean(c.is_featured),
     images: getImages(c),
   };
 }
@@ -207,6 +212,7 @@ export function apiToMeetingRoomListing(c: CentreApiRow): MeetingRoomListing {
     offerCount: Math.max(plans.length, 1),
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
+    isFeatured: Boolean(c.is_featured),
     images: getImages(c),
   };
 }
@@ -237,6 +243,7 @@ export function apiToMonthlyPassListing(c: CentreApiRow): MonthlyPassListing {
     reviews: 0,
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
+    isFeatured: Boolean(c.is_featured),
     images: getImages(c),
   };
 }
@@ -272,6 +279,7 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     gstEligible: true,
     premier: toRating(c.rating, 0) >= 4.8,
     popular: toRating(c.rating, 0) >= 4.5,
+    isFeatured: Boolean(c.is_featured),
     plans: voPlan.length > 0
       ? voPlan
       : [{ key: 'basic', name: 'Basic Plan', price: bestPrice, description: 'Virtual Office' }],
@@ -362,6 +370,7 @@ export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
     serviceKeys,
     matchScoreItems: [],
     matchScore: Math.round(50 + rating * 10),
+    isFeatured: Boolean(c.is_featured),
   };
 }
 

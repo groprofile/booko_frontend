@@ -189,7 +189,11 @@ export default function MeetingRoomListingPage() {
     else if (filters.sort === "price-desc") sorted.sort((a, b) => b.bestPrice - a.bestPrice);
     else if (filters.sort === "capacity-asc") sorted.sort((a, b) => a.capacity - b.capacity);
     else if (filters.sort === "capacity-desc") sorted.sort((a, b) => b.capacity - a.capacity);
-    else sorted.sort((a, b) => Number(b.popular) - Number(a.popular));
+    // Default ("popularity"): admin-promoted centers lead, then popular.
+    else sorted.sort((a, b) =>
+      Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
+      Number(b.popular) - Number(a.popular),
+    );
 
     return sorted;
   }, [citySlug, filters, listings]);

@@ -58,6 +58,9 @@ export interface CoworkingSpace {
   serviceKeys: ServiceKey[];
   matchScoreItems: MatchScoreItem[];
   matchScore: number;
+  // Admin-promoted center — pins to the top of default-sorted results and
+  // shows the "Bokko Recommended" badge. Optional: mock data omits it.
+  isFeatured?: boolean;
 }
 
 export const allServiceOptions: { key: ServiceKey; label: string }[] = [
@@ -337,6 +340,13 @@ export function sortSpaces(list: CoworkingSpace[], sort: SortOption): CoworkingS
   else if (sort === "newest") sorted.sort((a, b) => hashSeed(b.id) - hashSeed(a.id));
   else if (sort === "price-asc") sorted.sort((a, b) => a.startingPrice - b.startingPrice);
   else if (sort === "price-desc") sorted.sort((a, b) => b.startingPrice - a.startingPrice);
-  else sorted.sort((a, b) => Number(b.popular) - Number(a.popular) || b.rating - a.rating);
+  // Default ("popularity"): admin-promoted centers lead, then popular, then
+  // rating. Explicit sorts (price/top-rated/most-booked) are left untouched so
+  // an intentional choice like "price low to high" is always respected.
+  else sorted.sort((a, b) =>
+    Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
+    Number(b.popular) - Number(a.popular) ||
+    b.rating - a.rating,
+  );
   return sorted;
 }

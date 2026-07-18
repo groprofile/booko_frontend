@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus } from "lucide-react";
+import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus, Sparkles } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
-import { apiGet, apiPost, getAdminToken, ApiError } from "../../lib/api";
+import { apiGet, apiPost, apiPatch, getAdminToken, ApiError } from "../../lib/api";
 
 interface ApiCenter {
   id: string;
@@ -14,6 +14,8 @@ interface ApiCenter {
   is_active: boolean;
   created_at: string;
   contact_phone?: string;
+  is_featured?: boolean;
+  featured_rank?: number | null;
   vendors?: { business_name?: string; email?: string };
   categories?: { name?: string; commission_percent?: string | number | null };
 }
@@ -112,16 +114,62 @@ interface VendorOption {
   status?: string;
 }
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+// Products an admin can attach while creating a center, keyed by category slug —
+// mirrors the backend CATEGORY_PRODUCT_TYPES map. Without at least one product a
+// center has no plans and is untappable on the customer side, so the modal
+// requires one. `unit` matches the price-display unit ("/day", "/hour", …).
+interface ProductChoice {
+  productType: string;
+  label: string;
+  unit: string;
+  defaultName: string;
+  pricePrefix: string;
+}
+
+const PRODUCT_CATALOG: Record<string, ProductChoice[]> = {
+  coworking: [
+    { productType: "coworking_day_pass", label: "Day Pass", unit: "day", defaultName: "Day Pass", pricePrefix: "₹ / day" },
+    { productType: "coworking_monthly_pass", label: "Monthly Pass", unit: "month", defaultName: "Monthly Pass", pricePrefix: "₹ / month" },
+    { productType: "coworking_meeting_room", label: "Meeting Room", unit: "hour", defaultName: "Meeting Room", pricePrefix: "₹ / hour" },
+  ],
+  hotel: [{ productType: "hotel_room", label: "Hotel Room", unit: "night", defaultName: "Standard Room", pricePrefix: "₹ / night" }],
+  work_stay: [{ productType: "hotel_room", label: "Room", unit: "night", defaultName: "Standard Room", pricePrefix: "₹ / night" }],
+  gym: [{ productType: "gym_slot", label: "Gym Session", unit: "slot", defaultName: "Gym Session", pricePrefix: "₹ / session" }],
+  turf: [{ productType: "turf_slot", label: "Turf Slot", unit: "slot", defaultName: "Turf Slot", pricePrefix: "₹ / slot" }],
+};
+
+function catalogForSlug(slug: string | undefined): ProductChoice[] {
+  if (slug && PRODUCT_CATALOG[slug]) return PRODUCT_CATALOG[slug];
+  return PRODUCT_CATALOG.coworking;
+}
+
+interface ProductState {
+  enabled: boolean;
+  name: string;
+  price: string;
+}
+
 function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    vendorId: "", centerName: "", address: "", city: "", state: "",
+    vendorId: "", categoryId: "", centerName: "", address: "", city: "", state: "",
     locality: "", pincode: "", contactName: "", contactPhone: "",
     openingTime: "", closingTime: "", description: "", googleMapUrl: "",
   });
+  const [products, setProducts] = useState<Record<string, ProductState>>({});
+
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  const productChoices = catalogForSlug(selectedCategory?.slug);
 
   useEffect(() => {
     const token = getAdminToken();
@@ -133,18 +181,52 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
       .then((r) => setVendors((r.vendors ?? []).filter((v) => v.status !== "rejected" && v.status !== "blocked")))
       .catch(() => setVendors([]))
       .finally(() => setLoadingVendors(false));
+    apiGet<CategoryOption[]>("/admin/categories", token)
+      .then((r) => setCategories(r ?? []))
+      .catch(() => setCategories([]));
   }, []);
+
+  // Reset the product rows whenever the category changes — the valid products
+  // depend on it, and a stale selection would send an invalid product type.
+  useEffect(() => {
+    const initial: Record<string, ProductState> = {};
+    for (const pc of catalogForSlug(selectedCategory?.slug)) {
+      initial[pc.productType] = { enabled: false, name: pc.defaultName, price: "" };
+    }
+    setProducts(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.categoryId]);
 
   function set(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function setProduct(productType: string, patch: Partial<ProductState>) {
+    setProducts((prev) => ({ ...prev, [productType]: { ...prev[productType], ...patch } }));
+  }
+
   async function handleSubmit() {
     if (!form.vendorId) { setError("Please select a vendor"); return; }
+    if (!form.categoryId) { setError("Please select a category"); return; }
     if (!form.centerName.trim()) { setError("Center name is required"); return; }
     if (!form.address.trim()) { setError("Address is required"); return; }
     if (!form.city.trim()) { setError("City is required"); return; }
     if (!form.state.trim()) { setError("State is required"); return; }
+
+    // Build the products list from the enabled rows. At least one is required —
+    // a center with no products has no plans and can't be opened by customers.
+    const enabled = productChoices.filter((pc) => products[pc.productType]?.enabled);
+    if (enabled.length === 0) { setError("Add at least one product (e.g. Day Pass) with a price"); return; }
+    const plans: { name: string; productType: string; price: number; unit: string }[] = [];
+    for (const pc of enabled) {
+      const row = products[pc.productType];
+      const price = Number(row.price);
+      if (!row.price.trim() || !Number.isFinite(price) || price < 0) {
+        setError(`Enter a valid price for ${pc.label}`);
+        return;
+      }
+      plans.push({ name: row.name.trim() || pc.defaultName, productType: pc.productType, price, unit: pc.unit });
+    }
 
     const token = getAdminToken();
     if (!token) return;
@@ -153,6 +235,7 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
     try {
       await apiPost("/admin/centers", {
         vendorId: form.vendorId,
+        categoryId: form.categoryId,
         centerName: form.centerName.trim(),
         description: form.description.trim() || undefined,
         address: form.address.trim(),
@@ -165,6 +248,7 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
         openingTime: form.openingTime || undefined,
         closingTime: form.closingTime || undefined,
         googleMapUrl: form.googleMapUrl.trim() || undefined,
+        plans,
       }, token);
       onCreated();
     } catch (err) {
@@ -205,6 +289,17 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
                 ))}
               </select>
             )}
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className={lbl}>Category <span className="text-red-500">*</span></label>
+            <select value={form.categoryId} onChange={(e) => set("categoryId", e.target.value)} className={inp}>
+              <option value="">Select category…</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Center name */}
@@ -275,6 +370,51 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
             <input className={inp} placeholder="https://maps.google.com/…" value={form.googleMapUrl} onChange={(e) => set("googleMapUrl", e.target.value)} />
           </div>
 
+          {/* Products — at least one required so the center is bookable/tappable */}
+          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+            <label className={lbl}>Products <span className="text-red-500">*</span></label>
+            {!form.categoryId ? (
+              <p className="text-xs text-[#94A3B8]">Select a category first to choose products.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {productChoices.map((pc) => {
+                  const row = products[pc.productType] ?? { enabled: false, name: pc.defaultName, price: "" };
+                  return (
+                    <div key={pc.productType} className={`rounded-lg border p-2.5 transition-colors ${row.enabled ? "border-[#2563EB] bg-white" : "border-[#E2E8F0] bg-white"}`}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={row.enabled}
+                          onChange={(e) => setProduct(pc.productType, { enabled: e.target.checked })}
+                          className="h-4 w-4 rounded border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
+                        />
+                        <span className="text-sm font-semibold text-[#0F172A]">{pc.label}</span>
+                      </label>
+                      {row.enabled && (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <input
+                            className={inp}
+                            placeholder="Plan name"
+                            value={row.name}
+                            onChange={(e) => setProduct(pc.productType, { name: e.target.value })}
+                          />
+                          <input
+                            className={inp}
+                            type="number"
+                            min={0}
+                            placeholder={pc.pricePrefix}
+                            value={row.price}
+                            onChange={(e) => setProduct(pc.productType, { price: e.target.value })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
 
@@ -299,6 +439,7 @@ export default function AdminCentersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [featuringId, setFeaturingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiCenter | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -328,6 +469,24 @@ export default function AdminCentersPage() {
       setError(err instanceof ApiError ? err.message : "Failed to approve center");
     } finally {
       setApprovingId(null);
+    }
+  }
+
+  async function handleToggleFeatured(center: ApiCenter) {
+    const token = getAdminToken();
+    if (!token) return;
+    setFeaturingId(center.id);
+    setError(null);
+    // Optimistic flip — reverted on failure so the toggle never lies.
+    const next = !center.is_featured;
+    setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_featured: next } : c)));
+    try {
+      await apiPatch(`/admin/centers/${center.id}/featured`, { isFeatured: next }, token);
+    } catch (err) {
+      setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_featured: !next } : c)));
+      setError(err instanceof ApiError ? err.message : "Failed to update promotion");
+    } finally {
+      setFeaturingId(null);
     }
   }
 
@@ -397,6 +556,7 @@ export default function AdminCentersPage() {
             { label: "Pending", count: centers.filter((c) => c.approval_status === "pending").length, color: "text-amber-600" },
             { label: "Approved", count: centers.filter((c) => c.approval_status === "approved").length, color: "text-emerald-600" },
             { label: "Rejected", count: centers.filter((c) => c.approval_status === "rejected").length, color: "text-red-600" },
+            { label: "Promoted", count: centers.filter((c) => c.is_featured).length, color: "text-[#2563EB]" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-center shadow-sm">
               <p className={`text-lg font-extrabold ${s.color}`}>{s.count}</p>
@@ -421,7 +581,14 @@ export default function AdminCentersPage() {
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[#0F172A] truncate">{c.center_name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-[#0F172A] truncate">{c.center_name}</p>
+                    {c.is_featured && (
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#2563EB] px-1.5 py-0.5 text-[9px] font-semibold text-white" title="Promoted — appears in Bokko Recommended">
+                        <Sparkles size={9} /> Promoted
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-0.5 text-xs text-[#64748B] truncate">
                     {c.vendors?.business_name ?? "Unknown vendor"}
                   </p>
@@ -493,8 +660,28 @@ export default function AdminCentersPage() {
               )}
 
               {c.approval_status === "approved" && (
-                <div className="mt-4 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] px-3 py-2 text-xs text-emerald-700 text-center font-semibold">
-                  ✓ Live
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex flex-1 items-center justify-center rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] px-3 py-2 text-xs text-emerald-700 text-center font-semibold">
+                    ✓ Live
+                  </div>
+                  <button
+                    onClick={() => handleToggleFeatured(c)}
+                    disabled={featuringId === c.id}
+                    aria-pressed={Boolean(c.is_featured)}
+                    title={c.is_featured ? "Remove from Bokko Recommended" : "Promote to Bokko Recommended"}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50 ${
+                      c.is_featured
+                        ? "border-[#2563EB] bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
+                        : "border-[#E2E8F0] text-[#2563EB] hover:bg-[#EFF6FF]"
+                    }`}
+                  >
+                    <Sparkles size={12} />
+                    {featuringId === c.id
+                      ? "Saving…"
+                      : c.is_featured
+                      ? "Promoted"
+                      : "Promote"}
+                  </button>
                 </div>
               )}
 

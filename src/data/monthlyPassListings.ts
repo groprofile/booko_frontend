@@ -33,6 +33,9 @@ export interface MonthlyPassListing {
   reviews: number;
   popular: boolean;
   premier: boolean;
+  // Admin-promoted center — pins to the top of default-sorted results and
+  // shows the "Bokko Recommended" badge. Optional: mock data omits it.
+  isFeatured?: boolean;
   images: string[];
 }
 
