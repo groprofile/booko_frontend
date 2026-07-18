@@ -20,12 +20,10 @@ const columns = [
   {
     title: "Products",
     links: [
+      { label: "Coworking Spaces", to: "/coworking-spaces" },
       { label: "Day Pass", to: "/day-pass" },
       { label: "Meeting Rooms", to: "/meeting-rooms" },
       { label: "Virtual Office", to: "/virtual-office" },
-      { label: "Monthly Pass", to: "/monthly-pass" },
-      { label: "Hotels", to: "/hotels" },
-      { label: "Coworking Spaces", to: "/coworking-spaces" },
       { label: "List Your Space", to: "/list-your-space" },
     ],
   },

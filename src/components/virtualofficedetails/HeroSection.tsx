@@ -17,7 +17,7 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
 
   return (
     <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-soft-lg">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4 p-6 sm:p-8">
           <div className="h-[200px] w-full overflow-hidden rounded-[18px] sm:h-[240px]">
             <img src={details.heroImage} alt={listing.centerName} className="h-full w-full object-cover" />

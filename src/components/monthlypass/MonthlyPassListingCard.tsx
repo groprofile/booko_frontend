@@ -83,8 +83,8 @@ export default function MonthlyPassListingCard({ listing }: MonthlyPassListingCa
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)] transition-transform duration-300 hover:-translate-y-[3px] sm:flex-row">
-      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[280px]">
-        <img src={listing.images[imageIndex]} alt={listing.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:w-[280px]">
+        <img src={listing.images[imageIndex]} alt={listing.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
         {listing.popular && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#F97316] shadow-soft">

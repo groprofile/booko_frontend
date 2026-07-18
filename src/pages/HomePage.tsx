@@ -3,7 +3,6 @@ import Hero from "../components/Hero";
 import ExploreCategoriesSection from "../components/ExploreCategoriesSection";
 import FindYourSpaceSection from "../components/FindYourSpaceSection";
 import RecommendedSpacesSection from "../components/RecommendedSpacesSection";
-import StayYourWaySection from "../components/StayYourWaySection";
 import OffersSection from "../components/OffersSection";
 import WhyChooseBokkoSection from "../components/WhyChooseBokkoSection";
 import DownloadAppSection from "../components/DownloadAppSection";
@@ -20,7 +19,6 @@ export default function HomePage() {
         <ExploreCategoriesSection />
         <FindYourSpaceSection />
         <RecommendedSpacesSection />
-        <StayYourWaySection />
         <OffersSection />
         <WhyChooseBokkoSection />
         <DownloadAppSection />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, ShieldCheck, Sparkles, Star, Train } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, ShieldCheck, Sparkles, Star, Train } from "lucide-react";
 import type { CoworkingSpace } from "../../data/coworkingSpaces";
 import { CITY_NAMES } from "../../data/coworkingSpaces";
 
@@ -28,15 +28,20 @@ const primaryCtaLabels: Record<string, string> = {
 
 export default function WorkspaceCard({ space }: WorkspaceCardProps) {
   const [matchExpanded, setMatchExpanded] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
   const cityName = CITY_NAMES[space.city] ?? space.city;
   const primaryServices = space.services.filter((service) => primaryCtaLabels[service.key]);
   const secondaryServices = space.services.filter((service) => !primaryCtaLabels[service.key]);
+  const images = space.images?.length ? space.images : [space.image];
+
+  const showPrev = () => setImageIndex((i) => (i === 0 ? images.length - 1 : i - 1));
+  const showNext = () => setImageIndex((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
     <div className="group overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-300 hover:-translate-y-1">
       <div className="flex flex-col sm:flex-row">
-        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[280px]">
-          <img src={space.image} alt={space.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:w-[280px]">
+          <img src={images[imageIndex]} alt={space.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
           <span className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-base font-extrabold text-[#2563EB] shadow-soft">
             {space.brand.charAt(0)}
@@ -46,6 +51,24 @@ export default function WorkspaceCard({ space }: WorkspaceCardProps) {
             <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-[#2563EB] shadow-soft">
               Premium
             </span>
+          )}
+
+          {images.length > 1 && (
+            <>
+              <button type="button" aria-label="Previous image" onClick={showPrev}
+                className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] opacity-0 shadow-soft transition-opacity hover:bg-white group-hover:opacity-100">
+                <ChevronLeft size={16} strokeWidth={1.75} />
+              </button>
+              <button type="button" aria-label="Next image" onClick={showNext}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#0F172A] opacity-0 shadow-soft transition-opacity hover:bg-white group-hover:opacity-100">
+                <ChevronRight size={16} strokeWidth={1.75} />
+              </button>
+              <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+                {images.map((_, i) => (
+                  <span key={i} className={"h-1.5 w-1.5 rounded-full transition-colors " + (i === imageIndex ? "bg-white" : "bg-white/50")} />
+                ))}
+              </div>
+            </>
           )}
         </div>
 

@@ -3,9 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { apiGet } from "../lib/api";
 import {
   apiToDayPassListing,
-  apiToHotelListing,
   apiToMeetingRoomListing,
-  apiToMonthlyPassListing,
+  apiToVirtualOfficeListing,
   PRODUCT_TYPE,
   toRating,
   type CentreApiRow,
@@ -13,9 +12,9 @@ import {
 import RecommendedSpaceCard from "./RecommendedSpaceCard";
 import type { RecommendedSpaceCardData } from "./RecommendedSpaceCard";
 
-type RecommendedCategory = "Hotel" | "Day Pass" | "Meeting Room" | "Monthly Pass";
+type RecommendedCategory = "Day Pass" | "Meeting Room" | "Virtual Office";
 
-const categoryTabs: RecommendedCategory[] = ["Hotel", "Day Pass", "Meeting Room", "Monthly Pass"];
+const categoryTabs: RecommendedCategory[] = ["Day Pass", "Meeting Room", "Virtual Office"];
 
 interface CommonListing {
   id: string;
@@ -35,7 +34,6 @@ const TAB_CONFIG: Record<RecommendedCategory, {
   hrefFor: (item: CommonListing) => string;
   priceUnit: string;
 }> = {
-  Hotel: { productType: PRODUCT_TYPE.hotel, routeSlug: "hotels", adapter: apiToHotelListing, hrefFor: (i) => `/hotels/${i.id}`, priceUnit: "/night" },
   "Day Pass": { productType: PRODUCT_TYPE.dayPass, routeSlug: "day-pass", adapter: apiToDayPassListing, hrefFor: (i) => `/day-pass/${i.id}`, priceUnit: "/day" },
   "Meeting Room": {
     productType: PRODUCT_TYPE.meetingRoom,
@@ -44,7 +42,16 @@ const TAB_CONFIG: Record<RecommendedCategory, {
     hrefFor: (i) => `/meeting-rooms/${i.id}`,
     priceUnit: "/hour",
   },
-  "Monthly Pass": { productType: PRODUCT_TYPE.monthlyPass, routeSlug: "monthly-pass", adapter: apiToMonthlyPassListing, hrefFor: (i) => `/monthly-pass/${i.id}`, priceUnit: "/month" },
+  "Virtual Office": {
+    productType: PRODUCT_TYPE.virtualOffice,
+    routeSlug: "virtual-office",
+    adapter: (c) => {
+      const i = apiToVirtualOfficeListing(c);
+      return { id: i.id, city: i.city, name: i.centerName, locality: i.area, rating: i.rating, reviews: i.reviews, images: i.images, bestPrice: i.bestPrice };
+    },
+    hrefFor: (i) => `/virtual-office/${i.id}`,
+    priceUnit: "/month",
+  },
 };
 
 export default function RecommendedSpacesSection() {
@@ -90,7 +97,7 @@ export default function RecommendedSpacesSection() {
               Bokko Recommended Spaces
             </h2>
             <p className="mt-3 max-w-xl text-base text-[#64748B] sm:text-lg">
-              Handpicked hotels, coworking spaces, meeting rooms and day passes across India.
+              Handpicked coworking spaces, day passes, meeting rooms and virtual offices across India.
             </p>
           </div>
           <a

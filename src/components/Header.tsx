@@ -8,12 +8,10 @@ import { useCart } from "../context/CartContext";
 import { useUser } from "../context/UserAuthContext";
 
 const navLinks = [
-  { label: "Hotels", to: "/hotels" },
   { label: "Coworking", to: "/coworking-spaces" },
   { label: "Day Pass", to: "/day-pass" },
   { label: "Meeting Rooms", to: "/meeting-rooms" },
   { label: "Virtual Office", to: "/virtual-office" },
-  { label: "Monthly Pass", to: "/monthly-pass" },
 ];
 
 export default function Header() {

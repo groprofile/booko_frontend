@@ -3,11 +3,18 @@ import { useState } from "react";
 interface RejectReasonModalProps {
   open: boolean;
   title?: string;
+  description?: string;
   onCancel: () => void;
   onConfirm: (reason: string) => void | Promise<void>;
 }
 
-export default function RejectReasonModal({ open, title = "Reject Vendor", onCancel, onConfirm }: RejectReasonModalProps) {
+export default function RejectReasonModal({
+  open,
+  title = "Reject Vendor",
+  description = "Provide a reason that will be communicated to the vendor.",
+  onCancel,
+  onConfirm,
+}: RejectReasonModalProps) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,7 +41,7 @@ export default function RejectReasonModal({ open, title = "Reject Vendor", onCan
       <div className="w-full max-w-[400px] rounded-2xl bg-white shadow-2xl">
         <div className="border-b border-[#F1F5F9] px-6 py-4">
           <h3 className="font-bold text-[#0F172A]">{title}</h3>
-          <p className="mt-1 text-xs text-[#64748B]">Provide a reason that will be communicated to the vendor.</p>
+          <p className="mt-1 text-xs text-[#64748B]">{description}</p>
         </div>
         <div className="p-6">
           <textarea

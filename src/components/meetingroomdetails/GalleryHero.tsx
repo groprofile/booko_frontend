@@ -34,7 +34,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px]">
+      <div className={`grid grid-cols-1 gap-3 ${thumbs.length > 0 ? "sm:grid-cols-[minmax(0,1fr)_240px]" : ""}`}>
         <button
           type="button"
           onClick={() => openLightbox(0)}
@@ -43,7 +43,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
           <img
             src={images[0]}
             alt={name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#0F172A]/70 px-3 py-1.5 text-xs font-semibold text-white">
             <Camera size={13} />
@@ -51,6 +51,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
           </span>
         </button>
 
+        {thumbs.length > 0 && (
         <div className="hidden grid-rows-4 gap-3 sm:grid">
           {thumbs.map((src, index) => (
             <button
@@ -72,7 +73,9 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
             </button>
           ))}
         </div>
+        )}
 
+        {images.length > 1 && (
         <div className="flex gap-3 overflow-x-auto sm:hidden">
           {images.slice(1, 6).map((src, index) => (
             <button
@@ -85,6 +88,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

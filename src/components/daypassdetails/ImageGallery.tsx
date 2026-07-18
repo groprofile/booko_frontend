@@ -27,7 +27,7 @@ export default function ImageGallery({ images, name }: ImageGalleryProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px]">
+      <div className={`grid grid-cols-1 gap-3 ${thumbs.length > 0 ? "sm:grid-cols-[minmax(0,1fr)_240px]" : ""}`}>
         <button
           type="button"
           onClick={() => openLightbox(0)}
@@ -36,10 +36,11 @@ export default function ImageGallery({ images, name }: ImageGalleryProps) {
           <img
             src={images[0]}
             alt={name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         </button>
 
+        {thumbs.length > 0 && (
         <div className="hidden grid-rows-4 gap-3 sm:grid">
           {thumbs.map((src, index) => (
             <button
@@ -61,7 +62,9 @@ export default function ImageGallery({ images, name }: ImageGalleryProps) {
             </button>
           ))}
         </div>
+        )}
 
+        {images.length > 1 && (
         <div className="flex gap-3 overflow-x-auto sm:hidden">
           {images.slice(1, 6).map((src, index) => (
             <button
@@ -74,16 +77,19 @@ export default function ImageGallery({ images, name }: ImageGalleryProps) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => openLightbox(0)}
-        className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft transition-colors hover:border-[#94A3B8]"
-      >
-        <Images size={16} />
-        View all {images.length} photos
-      </button>
+      {images.length > 1 && (
+        <button
+          type="button"
+          onClick={() => openLightbox(0)}
+          className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft transition-colors hover:border-[#94A3B8]"
+        >
+          <Images size={16} />
+          View all {images.length} photos
+        </button>
+      )}
 
       {lightboxOpen && (
         <div className="fixed inset-0 z-[200] flex flex-col bg-[#0F172A]/95">

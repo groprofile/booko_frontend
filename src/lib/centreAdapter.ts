@@ -349,6 +349,7 @@ export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
     reviews: 0,
     startingPrice,
     image: getImages(c)[0],
+    images: getImages(c),
     premium: rating >= 4.8,
     popular: rating >= 4.5,
     metroConnectivity: transitAmenities.some((a) => a.toLowerCase().includes('metro')),

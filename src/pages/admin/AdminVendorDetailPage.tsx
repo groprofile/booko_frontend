@@ -407,21 +407,21 @@ export default function AdminVendorDetailPage() {
             <div className="flex gap-2">
               {vendor.status !== "approved" && (
                 <button onClick={handleApprove} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
-                  <CheckCircle size={13} /> Approve
+                  <CheckCircle size={13} /> Approve vendor
                 </button>
               )}
               {vendor.status !== "rejected" && (
                 <button onClick={() => setShowRejectModal(true)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
-                  <XCircle size={13} /> Reject
+                  <XCircle size={13} /> Reject vendor
                 </button>
               )}
               {vendor.status === "blocked" ? (
                 <button onClick={handleUnblock} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
-                  <Shield size={13} /> Unblock
+                  <Shield size={13} /> Unblock vendor
                 </button>
               ) : (
                 <button onClick={handleBlock} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
-                  <ShieldOff size={13} /> Block
+                  <ShieldOff size={13} /> Block vendor
                 </button>
               )}
               {vendor.source === "admin_created" && vendor.mustChangePassword && (
@@ -560,7 +560,10 @@ export default function AdminVendorDetailPage() {
 
           {/* Centers */}
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-            <p className="mb-4 font-bold text-[#0F172A]">Centers ({realCenters.length})</p>
+            <p className="font-bold text-[#0F172A]">Centers ({realCenters.length})</p>
+            <p className="mb-4 mt-0.5 text-[11px] text-[#94A3B8]">
+              Approve/Reject here affects only that single center. To hide every center from this vendor, reject or block the vendor above.
+            </p>
             {realCenters.length === 0 ? (
               <p className="py-6 text-center text-sm text-[#94A3B8]">No centers added yet.</p>
             ) : (
@@ -584,7 +587,7 @@ export default function AdminVendorDetailPage() {
                         disabled={centerActionId === c.id}
                         className="rounded-lg bg-[#DCFCE7] px-2.5 py-1.5 text-[11px] font-bold text-[#15803D] hover:bg-[#BBF7D0] disabled:opacity-50"
                       >
-                        Approve
+                        Approve center
                       </button>
                     )}
                     {c.approval_status !== "rejected" && (
@@ -593,7 +596,7 @@ export default function AdminVendorDetailPage() {
                         disabled={centerActionId === c.id}
                         className="rounded-lg bg-[#FEE2E2] px-2.5 py-1.5 text-[11px] font-bold text-[#B91C1C] hover:bg-[#FECACA] disabled:opacity-50"
                       >
-                        Reject
+                        Reject center
                       </button>
                     )}
                   </div>
@@ -663,13 +666,15 @@ export default function AdminVendorDetailPage() {
       <RejectReasonModal
         open={showRejectModal}
         title="Reject Vendor"
+        description="This hides ALL of this vendor's centers from users and blocks their account. You can reverse it later by approving the vendor again."
         onCancel={() => setShowRejectModal(false)}
         onConfirm={handleReject}
       />
 
       <RejectReasonModal
         open={!!rejectCenterTarget}
-        title="Reject Center"
+        title="Reject This Center"
+        description="This hides only this one center from users. The vendor and their other centers are unaffected. You can reverse it by approving this center again."
         onCancel={() => setRejectCenterTarget(null)}
         onConfirm={async (reason) => {
           if (rejectCenterTarget) await handleCenterReject(rejectCenterTarget, reason);

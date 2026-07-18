@@ -45,6 +45,7 @@ export interface CoworkingSpace {
   reviews: number;
   startingPrice: number;
   image: string;
+  images: string[];
   premium: boolean;
   popular: boolean;
   metroConnectivity: boolean;
@@ -133,7 +134,8 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
 
   const localities = cityToLocalities[city];
   const locality = dp?.locality ?? mr?.locality ?? mp?.locality ?? vo?.area ?? localities[Math.floor(r1 * localities.length)];
-  const image = dp?.images[0] ?? mr?.images[0] ?? vo?.images[0] ?? mp?.images[0] ?? "";
+  const images = [...new Set([...(dp?.images ?? []), ...(mr?.images ?? []), ...(vo?.images ?? []), ...(mp?.images ?? [])])].filter(Boolean);
+  const image = images[0] ?? "";
   const distanceKm = dp?.distanceKm ?? mr?.distanceKm ?? mp?.distanceKm ?? Math.round((2 + r1 * 18) * 10) / 10;
 
   const realRatings: number[] = [];
@@ -277,6 +279,7 @@ function buildSpace(city: string, key: string, entry: JoinEntry): CoworkingSpace
     reviews,
     startingPrice,
     image,
+    images: images.length ? images : [image],
     premium,
     popular: popularFlag,
     metroConnectivity,

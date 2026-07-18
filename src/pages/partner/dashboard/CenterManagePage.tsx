@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Building2, Clock, Camera, Calendar,
-  Check, X, Upload, Loader2, Plus, BedDouble,
+  Check, X, Upload, Loader2, Plus, BedDouble, Trash2, Star,
 } from "lucide-react";
 import SuperPartnerLayout from "../../../components/partner/SuperPartnerLayout";
 import CenterLayout from "../../../components/partner/CenterLayout";
 import SlotManagementPanel from "../../../components/partner/SlotManagementPanel";
 import { usePartner } from "../../../context/PartnerContext";
-import { apiGet, apiPut, apiUploadFile, getVendorToken } from "../../../lib/api";
+import { apiGet, apiPut, apiDelete, apiPatch, apiUploadFile, getVendorToken } from "../../../lib/api";
 import RoomsPricingTab from "./RoomsPricingTab";
 
 interface CenterDetail {
@@ -70,6 +70,7 @@ export default function CenterManagePage() {
 
   // Photos
   const [uploading, setUploading] = useState(false);
+  const [photoActionId, setPhotoActionId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -157,6 +158,35 @@ export default function CenterManagePage() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleDeletePhoto(photoId: string) {
+    if (!window.confirm("Delete this photo? This can't be undone.")) return;
+    setPhotoActionId(photoId);
+    setError(null);
+    try {
+      const token = getVendorToken() ?? undefined;
+      await apiDelete(`/vendor/centers/${id}/photos/${photoId}`, token);
+      load();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to delete photo");
+    } finally {
+      setPhotoActionId(null);
+    }
+  }
+
+  async function handleSetCover(photoId: string) {
+    setPhotoActionId(photoId);
+    setError(null);
+    try {
+      const token = getVendorToken() ?? undefined;
+      await apiPatch(`/vendor/centers/${id}/photos/${photoId}/cover`, {}, token);
+      load();
+    } catch (err) {
+      setError((err as Error).message ?? "Failed to set cover photo");
+    } finally {
+      setPhotoActionId(null);
     }
   }
 
@@ -352,10 +382,30 @@ export default function CenterManagePage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {center.center_photos.map((photo) => (
                     <div key={photo.id} className="relative group overflow-hidden rounded-xl border border-[#E2E8F0]">
-                      <img src={photo.image_url} alt="Center" className="h-32 w-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                      {photo.is_cover && (
-                        <span className="absolute top-2 left-2 rounded-full bg-[#2563EB] px-2 py-0.5 text-[10px] font-bold text-white">Cover</span>
+                      <img src={photo.image_url} alt="Center" className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-105" />
+
+                      {photo.is_cover ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-[#2563EB] px-2 py-0.5 text-[10px] font-bold text-white">Cover</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetCover(photo.id)}
+                          disabled={photoActionId === photo.id}
+                          className="absolute left-2 top-2 hidden items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-[#0F172A] shadow-sm hover:bg-white disabled:opacity-50 group-hover:flex"
+                        >
+                          <Star size={10} /> Set cover
+                        </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePhoto(photo.id)}
+                        disabled={photoActionId === photo.id}
+                        aria-label="Delete photo"
+                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#DC2626] opacity-0 shadow-sm transition-opacity hover:bg-white disabled:opacity-50 group-hover:opacity-100"
+                      >
+                        {photoActionId === photo.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                      </button>
                     </div>
                   ))}
                   <div

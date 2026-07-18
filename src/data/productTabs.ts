@@ -1,5 +1,4 @@
 import {
-  CalendarCheck,
   Briefcase,
   Armchair,
   Users,
@@ -59,17 +58,6 @@ export const productTabs: ProductTab[] = [
     ],
   },
   {
-    key: "monthlyPass",
-    label: "Monthly Pass",
-    icon: CalendarCheck,
-    ctaLabel: "Search Monthly Pass",
-    fields: [
-      { key: "location", label: "Location", placeholder: "Search by city or area", type: "location" },
-      { key: "startDate", label: "Start Date", placeholder: "Select start date", type: "date" },
-      { key: "members", label: "Members", placeholder: "Number of members", type: "number" },
-    ],
-  },
-  {
     key: "virtualOffice",
     label: "Virtual Office",
     icon: Globe2,
@@ -77,18 +65,6 @@ export const productTabs: ProductTab[] = [
     fields: [
       { key: "city", label: "City", placeholder: "Select city", type: "location" },
       { key: "businessType", label: "Business Type", placeholder: "e.g. GST Registration", type: "text" },
-    ],
-  },
-  {
-    key: "hotels",
-    label: "Hotels",
-    icon: Hotel,
-    ctaLabel: "Search Hotels",
-    fields: [
-      { key: "location", label: "Location", placeholder: "Where are you going?", type: "location" },
-      { key: "checkIn", label: "Check-In", placeholder: "Check-in date", type: "date" },
-      { key: "checkOut", label: "Check-Out", placeholder: "Check-out date", type: "date" },
-      { key: "guests", label: "Guests", placeholder: "Add guests", type: "number" },
     ],
   },
 ];

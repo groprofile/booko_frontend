@@ -36,7 +36,7 @@ export default function Hero() {
             <span className="text-[#2563EB]">Space Booking</span> Platform
           </h1>
           <p className="mt-4 max-w-2xl text-base font-medium text-[#475569] sm:text-lg">
-            Find and book verified hotels, coworking spaces, meeting rooms and day passes
+            Find and book verified coworking spaces, day passes, meeting rooms and virtual offices
             across India — instantly, with no brokers, no calls, no waiting.
           </p>
         </div>

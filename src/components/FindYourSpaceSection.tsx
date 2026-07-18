@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Star, MapPin, ArrowRight, TrendingUp, Ticket, MonitorPlay, Briefcase, Hotel, type LucideIcon } from "lucide-react";
+import { Star, MapPin, ArrowRight, TrendingUp, Ticket, MonitorPlay, Briefcase, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import {
   apiToDayPassListing,
-  apiToHotelListing,
   apiToMeetingRoomListing,
   apiToVirtualOfficeListing,
   PRODUCT_TYPE,
@@ -12,7 +11,7 @@ import {
   type CentreApiRow,
 } from "../lib/centreAdapter";
 
-type Category = "day-pass" | "meeting-room" | "virtual-office" | "hotel";
+type Category = "day-pass" | "meeting-room" | "virtual-office";
 
 interface DisplaySpace {
   id: string;
@@ -64,32 +63,18 @@ const TAB_CONFIG: Record<Category, { productType: string; unit: string; toDispla
       };
     },
   },
-  hotel: {
-    productType: PRODUCT_TYPE.hotel,
-    unit: "/ night",
-    toDisplay: (c) => {
-      const item = apiToHotelListing(c);
-      return {
-        id: item.id, name: item.name, location: item.locality, rating: item.rating, reviews: 0,
-        price: item.bestPrice, unit: "/ night", image: item.images[0], href: `/hotels/${item.id}`,
-        amenities: item.amenities,
-      };
-    },
-  },
 };
 
 const TABS: Array<{ id: Category; label: string; icon: LucideIcon }> = [
   { id: "day-pass",       label: "Day Pass",       icon: Ticket },
   { id: "meeting-room",   label: "Meeting Room",   icon: MonitorPlay },
   { id: "virtual-office", label: "Virtual Office", icon: Briefcase },
-  { id: "hotel",          label: "Hotel",          icon: Hotel },
 ];
 
 const CATEGORY_LINKS: Record<Category, string> = {
   "day-pass":       "/day-pass",
   "meeting-room":   "/meeting-rooms",
   "virtual-office": "/virtual-office",
-  "hotel":          "/hotels",
 };
 
 export default function FindYourSpaceSection() {
