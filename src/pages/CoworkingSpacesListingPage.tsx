@@ -20,6 +20,11 @@ import type { CoworkingSpace, ServiceKey, SortOption } from "../data/coworkingSp
 import { apiGet } from "../lib/api";
 import { apiToCoworkingSpace, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import {
+  METROS, metroBySlug, centerInMetro, haversineKm,
+  NEAR_ME_SLUG, NEAR_ME_RADIUS_KM,
+} from "../data/metros";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 function cityLabel(slug: string) {
   return (
@@ -40,27 +45,29 @@ export default function CoworkingSpacesListingPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listings, setListings] = useState<CoworkingSpace[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
-  const [cityOptions, setCityOptions] = useState<{ slug: string; label: string }[]>([]);
+  const geo = useGeolocation();
 
-  useEffect(() => {
-    let cancelled = false;
-    apiGet<{ cities: { city: string; center_count: number }[] }>("/cities")
-      .then((res) => {
-        if (!cancelled) {
-          setCityOptions(res.cities.map((row) => ({ slug: row.city.toLowerCase().replace(/\s+/g, "-"), label: row.city })));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setCityOptions([]);
-      });
-    return () => { cancelled = true; };
-  }, []);
+  // Curated top-metro list + "Near me" — always shown, never derived from the
+  // (dirty, free-text) center city data.
+  const cityOptions = useMemo(
+    () => [
+      ...METROS.map((m) => ({ slug: m.slug, label: m.label })),
+      { slug: NEAR_ME_SLUG, label: "Near me" },
+    ],
+    [],
+  );
 
   const fetchListings = useCallback(() => {
     setApiLoading(true);
-    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : '';
+    // For a city-locked route, narrow the fetch by the metro's geo box so
+    // Thane/Navi Mumbai (etc.) come back too; we tighten to the exact radius
+    // client-side below. Falls back to a plain city= filter for unknown slugs.
+    const metro = metroBySlug(lockedCitySlug);
+    let scope = "";
+    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
+    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?pageSize=200${cityParam}`,
+      `/centers/list?pageSize=200${scope}`,
     )
       .then((res) => setListings(res.data.map(apiToCoworkingSpace)))
       .catch(() => setListings([]))
@@ -123,14 +130,18 @@ export default function CoworkingSpacesListingPage() {
     updateParams((next) => (value ? next.set("area", value) : next.delete("area")));
   }
   function toggleCity(citySlug: string) {
+    // Turning "Near me" on triggers a geolocation request.
+    const current = searchParams.get("cities")?.split(",").filter(Boolean) ?? [];
+    if (citySlug === NEAR_ME_SLUG && !current.includes(NEAR_ME_SLUG)) geo.request();
     updateParams((next) => {
-      const current = next.get("cities")?.split(",").filter(Boolean) ?? [];
-      const nextList = current.includes(citySlug) ? current.filter((c) => c !== citySlug) : [...current, citySlug];
+      const list = next.get("cities")?.split(",").filter(Boolean) ?? [];
+      const nextList = list.includes(citySlug) ? list.filter((c) => c !== citySlug) : [...list, citySlug];
       if (nextList.length) next.set("cities", nextList.join(","));
       else next.delete("cities");
     });
   }
   function setSingleCity(citySlug: string) {
+    if (citySlug === NEAR_ME_SLUG) geo.request();
     updateParams((next) => (citySlug ? next.set("cities", citySlug) : next.delete("cities")));
   }
   function toggleProvider(provider: string) {
@@ -173,11 +184,28 @@ export default function CoworkingSpacesListingPage() {
     updateParams((next) => (next.get("persona") === value ? next.delete("persona") : next.set("persona", value)));
   }
 
+  const nearMeActive = selectedCities.includes(NEAR_ME_SLUG) && geo.coords != null;
+
   const filteredSpaces = useMemo(() => {
     let list = listings.slice();
 
-    if (selectedCities.length) {
-      list = list.filter((space) => selectedCities.includes(space.city));
+    // City-locked route: tighten the metro geo box to the exact radius + aliases.
+    const lockedMetro = metroBySlug(lockedCitySlug);
+    if (lockedMetro) {
+      list = list.filter((space) => centerInMetro(space, lockedMetro));
+    } else if (selectedCities.length) {
+      // National view: pass if the space belongs to any selected metro, or is
+      // within range of the user when "Near me" is active.
+      const activeMetros = METROS.filter((m) => selectedCities.includes(m.slug));
+      list = list.filter((space) => {
+        const metroMatch = activeMetros.some((m) => centerInMetro(space, m));
+        const meMatch =
+          nearMeActive &&
+          space.latitude != null &&
+          space.longitude != null &&
+          haversineKm(geo.coords!.lat, geo.coords!.lng, space.latitude, space.longitude) <= NEAR_ME_RADIUS_KM;
+        return metroMatch || meMatch;
+      });
     }
 
     if (query.trim()) {
@@ -211,8 +239,16 @@ export default function CoworkingSpacesListingPage() {
     else if (persona === "agencies")
       list = list.filter((space) => space.serviceKeys.includes("virtualOffice") && space.serviceKeys.includes("meetingRoom"));
 
+    // "Near me" implies a nearest-first ordering.
+    if (nearMeActive) {
+      return [...list].sort(
+        (a, b) =>
+          haversineKm(geo.coords!.lat, geo.coords!.lng, a.latitude ?? 0, a.longitude ?? 0) -
+          haversineKm(geo.coords!.lat, geo.coords!.lng, b.latitude ?? 0, b.longitude ?? 0),
+      );
+    }
     return sortSpaces(list, sort);
-  }, [selectedCities, query, area, selectedProviders, selectedServices, toggles, persona, sort, listings]);
+  }, [selectedCities, query, area, selectedProviders, selectedServices, toggles, persona, sort, listings, lockedCitySlug, nearMeActive, geo.coords]);
 
   const activeFilterCount =
     selectedProviders.length +

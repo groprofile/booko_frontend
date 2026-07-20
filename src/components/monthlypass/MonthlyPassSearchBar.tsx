@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { CITY_NAMES } from "../../data/monthlyPassListings";
+import { METROS, NEAR_ME_SLUG, cityNavTarget } from "../../data/metros";
 
 interface MonthlyPassSearchBarProps {
   citySlug: string;
+  near?: boolean;
   startDate: string;
   onStartDateChange: (value: string) => void;
   members: number;
@@ -17,6 +18,7 @@ const fieldClass =
 
 export default function MonthlyPassSearchBar({
   citySlug,
+  near = false,
   startDate,
   onStartDateChange,
   members,
@@ -77,15 +79,17 @@ export default function MonthlyPassSearchBar({
             City
           </span>
           <select
-            value={citySlug}
-            onChange={(event) => navigate(`/${event.target.value}/monthly-pass`)}
+            value={near ? NEAR_ME_SLUG : citySlug}
+            onChange={(event) => navigate(cityNavTarget(event.target.value, "monthly-pass"))}
             className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
           >
-            {Object.entries(CITY_NAMES).map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
+            <option value="">All Cities</option>
+            {METROS.map((m) => (
+              <option key={m.slug} value={m.slug}>
+                {m.label}
               </option>
             ))}
+            <option value={NEAR_ME_SLUG}>Near me</option>
           </select>
         </label>
 

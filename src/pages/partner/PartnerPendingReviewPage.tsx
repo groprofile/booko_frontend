@@ -62,7 +62,7 @@ export default function PartnerPendingReviewPage() {
       <header className="border-b border-[#E2E8F0] bg-white">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/bokko-logo.png" alt="Bokko" style={{ height: 32, width: "auto" }} />
+            <img src="/bokko-logo.webp" alt="Bokko" style={{ height: 32, width: "auto" }} />
             <span className="hidden text-xs font-semibold text-[#64748B] sm:block">Partner Central</span>
           </Link>
           <Link to="/" className="text-sm font-medium text-[#64748B] hover:text-[#0F172A]">← Back to Bokko</Link>

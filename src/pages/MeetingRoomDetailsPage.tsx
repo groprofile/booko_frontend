@@ -127,7 +127,6 @@ export default function MeetingRoomDetailsPage() {
     .reduce((sum, addOn) => sum + addOn.price, 0);
   const total = selectedTier.price + addOnsTotal;
   const costPerPerson = Math.round(total / Math.max(1, attendees));
-  const sameCityListings: MeetingRoomListing[] = [];
 
   const bookingCardProps = {
     listing,
@@ -194,7 +193,7 @@ export default function MeetingRoomDetailsPage() {
 
               <ReviewsSection details={details} />
 
-              <SimilarRoomsSection current={listing} allListings={sameCityListings} />
+              <SimilarRoomsSection current={listing} />
 
               <WorkspaceBundleSection citySlug={citySlug} />
 

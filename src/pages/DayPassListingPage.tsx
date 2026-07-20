@@ -20,6 +20,8 @@ import type { DayPassFilters, DayPassListing, SortOption } from "../data/dayPass
 import { apiGet } from "../lib/api";
 import { apiToDayPassListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { metroBySlug, centerInMetro, haversineKm, NEAR_ME_RADIUS_KM } from "../data/metros";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 function cityLabel(slug: string) {
   return (
@@ -45,12 +47,25 @@ export default function DayPassListingPage() {
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const [listings, setListings] = useState<DayPassListing[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
+  const near = searchParams.get("near") === "1";
+  const geo = useGeolocation();
+
+  // Ask for the user's location once when "Near me" is chosen.
+  useEffect(() => {
+    if (near && !geo.coords && geo.status === "idle") geo.request();
+  }, [near, geo]);
 
   const fetchListings = useCallback(() => {
     setApiLoading(true);
-    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    // City-locked route → narrow by the metro's geo box (includes Thane / Navi
+    // Mumbai etc.); tightened to the exact radius client-side. Unknown slug →
+    // fall back to the plain city= filter.
+    const metro = metroBySlug(lockedCitySlug);
+    let scope = "";
+    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
+    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=${PRODUCT_TYPE.dayPass}&pageSize=100${cityParam}`,
+      `/centers/list?productType=${PRODUCT_TYPE.dayPass}&pageSize=100${scope}`,
     )
       .then((res) => setListings(res.data.map(apiToDayPassListing)))
       .catch(() => setListings([]))
@@ -164,8 +179,22 @@ export default function DayPassListingPage() {
     });
   }
 
+  const nearActive = near && geo.coords != null;
+
   const filteredListings = useMemo(() => {
     let list = listings.slice();
+
+    // Tighten the metro geo box to the true radius + city aliases.
+    const lockedMetro = metroBySlug(lockedCitySlug);
+    if (lockedMetro) list = list.filter((l) => centerInMetro(l, lockedMetro));
+
+    // "Near me": keep only centers within range of the user.
+    if (nearActive) {
+      list = list.filter(
+        (l) => l.latitude != null && l.longitude != null &&
+          haversineKm(geo.coords!.lat, geo.coords!.lng, l.latitude, l.longitude) <= NEAR_ME_RADIUS_KM,
+      );
+    }
 
     if (location.trim()) {
       const q = location.trim().toLowerCase();
@@ -211,19 +240,27 @@ export default function DayPassListingPage() {
     );
 
     const sorted = [...list];
-    if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+    if (nearActive) sorted.sort((a, b) =>
+      haversineKm(geo.coords!.lat, geo.coords!.lng, a.latitude ?? 0, a.longitude ?? 0) -
+      haversineKm(geo.coords!.lat, geo.coords!.lng, b.latitude ?? 0, b.longitude ?? 0));
+    else if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
     else if (filters.sort === "price-asc") sorted.sort((a, b) => a.price - b.price);
     else if (filters.sort === "price-desc") sorted.sort((a, b) => b.price - a.price);
-    // Default ("recommended"): admin-promoted centers lead, then popular, then
-    // rating. Explicit price/distance sorts are left untouched.
-    else sorted.sort((a, b) =>
-      Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
-      Number(b.popular) - Number(a.popular) ||
-      b.rating - a.rating,
-    );
+    // Default ("recommended"): admin-promoted centers lead — by priority rank
+    // among themselves — then popular, then rating. Explicit price/distance
+    // sorts are left untouched.
+    else sorted.sort((a, b) => {
+      const feat = Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+      if (feat) return feat;
+      if (a.isFeatured && b.isFeatured) {
+        const rank = (a.featuredRank ?? Infinity) - (b.featuredRank ?? Infinity);
+        if (rank) return rank;
+      }
+      return Number(b.popular) - Number(a.popular) || b.rating - a.rating;
+    });
 
     return sorted;
-  }, [citySlug, filters, location, listings]);
+  }, [citySlug, filters, location, listings, lockedCitySlug, nearActive, geo.coords]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -248,6 +285,7 @@ export default function DayPassListingPage() {
           <div className="mt-6">
             <DayPassSearchBar
               citySlug={citySlug}
+              near={near}
               date={date}
               onDateChange={setDate}
               members={members}

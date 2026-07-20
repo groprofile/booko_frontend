@@ -98,8 +98,6 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
     );
   }
 
-  const sameCityListings: VirtualOfficeListing[] = [];
-
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
       <Header />
@@ -148,7 +146,7 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
 
               <FaqSection faqs={details.faqs} />
 
-              <SimilarOfficesSection current={listing} allListings={sameCityListings} />
+              <SimilarOfficesSection current={listing} />
 
               <BusinessSolutionsSection citySlug={citySlug} />
 

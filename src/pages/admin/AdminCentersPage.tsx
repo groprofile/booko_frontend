@@ -432,6 +432,53 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
   );
 }
 
+// Numeric priority for a promoted center. Lower number = shown first across
+// the "Bokko Recommended" / "Top Spaces" rails and listing default sorts.
+// Commits on blur or Enter (not per keystroke) to avoid a PATCH per digit.
+function PriorityInput({
+  value,
+  onCommit,
+}: {
+  value: number | null | undefined;
+  onCommit: (rank: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(value == null ? "" : String(value));
+
+  // Keep the input in sync when the row's rank changes elsewhere (e.g. revert).
+  useEffect(() => {
+    setDraft(value == null ? "" : String(value));
+  }, [value]);
+
+  function commit() {
+    const trimmed = draft.trim();
+    const parsed = trimmed === "" ? null : Math.max(0, Math.floor(Number(trimmed)));
+    onCommit(trimmed === "" ? null : Number.isFinite(parsed as number) ? parsed : null);
+  }
+
+  return (
+    <label className="flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-2.5 py-2 text-xs text-[#64748B]">
+      <span className="font-semibold text-[#0F172A]">Priority</span>
+      <input
+        type="number"
+        min={0}
+        inputMode="numeric"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="—"
+        title="Lower number shows first. Leave blank for unranked."
+        className="w-12 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-0.5 text-center text-xs font-bold text-[#2563EB] outline-none focus:border-[#2563EB]"
+      />
+    </label>
+  );
+}
+
 export default function AdminCentersPage() {
   const [centers, setCenters] = useState<ApiCenter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -479,14 +526,48 @@ export default function AdminCentersPage() {
     setError(null);
     // Optimistic flip — reverted on failure so the toggle never lies.
     const next = !center.is_featured;
-    setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_featured: next } : c)));
+    // Preserve the admin's chosen priority when re-promoting; clear it when
+    // un-promoting so a later re-promote doesn't inherit a stale rank.
+    const nextRank = next ? center.featured_rank ?? null : null;
+    setCenters((prev) =>
+      prev.map((c) => (c.id === center.id ? { ...c, is_featured: next, featured_rank: nextRank } : c)),
+    );
     try {
-      await apiPatch(`/admin/centers/${center.id}/featured`, { isFeatured: next }, token);
+      await apiPatch(
+        `/admin/centers/${center.id}/featured`,
+        { isFeatured: next, featuredRank: nextRank },
+        token,
+      );
     } catch (err) {
-      setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_featured: !next } : c)));
+      setCenters((prev) =>
+        prev.map((c) =>
+          c.id === center.id ? { ...c, is_featured: !next, featured_rank: center.featured_rank ?? null } : c,
+        ),
+      );
       setError(err instanceof ApiError ? err.message : "Failed to update promotion");
     } finally {
       setFeaturingId(null);
+    }
+  }
+
+  // Persist the admin priority for an already-promoted center. Lower rank shows
+  // first; a blank input clears the rank (center sorts after ranked ones).
+  async function handleSetRank(center: ApiCenter, rank: number | null) {
+    const token = getAdminToken();
+    if (!token) return;
+    if (rank === (center.featured_rank ?? null)) return; // no-op
+    setError(null);
+    const prevRank = center.featured_rank ?? null;
+    setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, featured_rank: rank } : c)));
+    try {
+      await apiPatch(
+        `/admin/centers/${center.id}/featured`,
+        { isFeatured: true, featuredRank: rank },
+        token,
+      );
+    } catch (err) {
+      setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, featured_rank: prevRank } : c)));
+      setError(err instanceof ApiError ? err.message : "Failed to update priority");
     }
   }
 
@@ -585,7 +666,7 @@ export default function AdminCentersPage() {
                     <p className="font-bold text-[#0F172A] truncate">{c.center_name}</p>
                     {c.is_featured && (
                       <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#2563EB] px-1.5 py-0.5 text-[9px] font-semibold text-white" title="Promoted — appears in Bokko Recommended">
-                        <Sparkles size={9} /> Promoted
+                        <Sparkles size={9} /> Promoted{c.featured_rank != null ? ` #${c.featured_rank}` : ""}
                       </span>
                     )}
                   </div>
@@ -664,6 +745,11 @@ export default function AdminCentersPage() {
                   <div className="flex flex-1 items-center justify-center rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] px-3 py-2 text-xs text-emerald-700 text-center font-semibold">
                     ✓ Live
                   </div>
+                  {/* Priority appears once promoted — controls ordering among
+                      promoted centers on the customer rails. */}
+                  {c.is_featured && (
+                    <PriorityInput value={c.featured_rank} onCommit={(rank) => handleSetRank(c, rank)} />
+                  )}
                   <button
                     onClick={() => handleToggleFeatured(c)}
                     disabled={featuringId === c.id}

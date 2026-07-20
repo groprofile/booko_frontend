@@ -21,6 +21,8 @@ import type { MeetingRoomFilters, MeetingRoomListing, MeetingSortOption } from "
 import { apiGet } from "../lib/api";
 import { apiToMeetingRoomListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { metroBySlug, centerInMetro, haversineKm, NEAR_ME_RADIUS_KM } from "../data/metros";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 const PRICE_MIN = 200;
 const PRICE_MAX = 20000;
@@ -54,12 +56,21 @@ export default function MeetingRoomListingPage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [listings, setListings] = useState<MeetingRoomListing[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
+  const near = searchParams.get("near") === "1";
+  const geo = useGeolocation();
+
+  useEffect(() => {
+    if (near && !geo.coords && geo.status === "idle") geo.request();
+  }, [near, geo]);
 
   useEffect(() => {
     setApiLoading(true);
-    const cityParam = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    const metro = metroBySlug(lockedCitySlug);
+    let scope = "";
+    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
+    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
-      `/centers/list?productType=${PRODUCT_TYPE.meetingRoom}&pageSize=100${cityParam}`,
+      `/centers/list?productType=${PRODUCT_TYPE.meetingRoom}&pageSize=100${scope}`,
     )
       .then((res) => setListings(res.data.map(apiToMeetingRoomListing)))
       .catch(() => setListings([]))
@@ -156,8 +167,19 @@ export default function MeetingRoomListingPage() {
     });
   }
 
+  const nearActive = near && geo.coords != null;
+
   const filteredListings = useMemo(() => {
     let list = listings.slice();
+
+    const lockedMetro = metroBySlug(lockedCitySlug);
+    if (lockedMetro) list = list.filter((l) => centerInMetro(l, lockedMetro));
+    if (nearActive) {
+      list = list.filter(
+        (l) => l.latitude != null && l.longitude != null &&
+          haversineKm(geo.coords!.lat, geo.coords!.lng, l.latitude, l.longitude) <= NEAR_ME_RADIUS_KM,
+      );
+    }
 
     if (filters.roomTypes.length) {
       list = list.filter((listing) => filters.roomTypes.includes(listing.roomType));
@@ -184,19 +206,28 @@ export default function MeetingRoomListingPage() {
     );
 
     const sorted = [...list];
-    if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+    if (nearActive) sorted.sort((a, b) =>
+      haversineKm(geo.coords!.lat, geo.coords!.lng, a.latitude ?? 0, a.longitude ?? 0) -
+      haversineKm(geo.coords!.lat, geo.coords!.lng, b.latitude ?? 0, b.longitude ?? 0));
+    else if (filters.sort === "distance") sorted.sort((a, b) => a.distanceKm - b.distanceKm);
     else if (filters.sort === "price-asc") sorted.sort((a, b) => a.bestPrice - b.bestPrice);
     else if (filters.sort === "price-desc") sorted.sort((a, b) => b.bestPrice - a.bestPrice);
     else if (filters.sort === "capacity-asc") sorted.sort((a, b) => a.capacity - b.capacity);
     else if (filters.sort === "capacity-desc") sorted.sort((a, b) => b.capacity - a.capacity);
-    // Default ("popularity"): admin-promoted centers lead, then popular.
-    else sorted.sort((a, b) =>
-      Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
-      Number(b.popular) - Number(a.popular),
-    );
+    // Default ("popularity"): admin-promoted centers lead — by priority rank
+    // among themselves — then popular.
+    else sorted.sort((a, b) => {
+      const feat = Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+      if (feat) return feat;
+      if (a.isFeatured && b.isFeatured) {
+        const rank = (a.featuredRank ?? Infinity) - (b.featuredRank ?? Infinity);
+        if (rank) return rank;
+      }
+      return Number(b.popular) - Number(a.popular);
+    });
 
     return sorted;
-  }, [citySlug, filters, listings]);
+  }, [citySlug, filters, listings, lockedCitySlug, nearActive, geo.coords]);
 
   const visibleListings = filteredListings.slice(0, visibleCount);
 
@@ -207,6 +238,7 @@ export default function MeetingRoomListingPage() {
       <main className="flex-1 pb-10">
         <MeetingRoomSearchBar
           citySlug={citySlug}
+          near={near}
           date={date}
           onDateChange={setDate}
           time={time}

@@ -14,7 +14,7 @@ export default function AdminLayout({ children, title, subtitle }: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
+    <div className="app-wash flex h-screen overflow-hidden">
       <AdminSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AdminTopbar title={title} subtitle={subtitle} />

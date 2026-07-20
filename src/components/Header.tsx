@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown, User, BookOpen, Headphones, LogOut, ShoppingCart, Gift } from "lucide-react";
 import Logo from "./Logo";
 import LoginModal from "./LoginModal";
-import CartDrawer from "./cart/CartDrawer";
 import { useCart } from "../context/CartContext";
 import { useUser } from "../context/UserAuthContext";
 
@@ -18,8 +17,7 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
-  const { totalItems } = useCart();
+  const { totalItems, openCart } = useCart();
   const { isLoggedIn, user, logout } = useUser();
   const location = useLocation();
 
@@ -119,7 +117,7 @@ export default function Header() {
             </div>
           ) : (
             <>
-              <button type="button" onClick={() => setCartOpen(true)}
+              <button type="button" onClick={openCart}
                 className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E2E8F0] text-[#334155] hover:border-[#2563EB] hover:text-[#2563EB]">
                 <ShoppingCart size={18} />
                 {totalItems > 0 && (
@@ -191,7 +189,6 @@ export default function Header() {
       )}
 
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </header>
   );
 }

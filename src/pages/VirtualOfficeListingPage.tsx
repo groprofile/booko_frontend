@@ -231,12 +231,17 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
     else if (filters.sort === "price-asc") sorted.sort((a, b) => a.bestPrice - b.bestPrice);
     else if (filters.sort === "price-desc") sorted.sort((a, b) => b.bestPrice - a.bestPrice);
     else if (filters.sort === "rating") sorted.sort((a, b) => b.rating - a.rating);
-    // Default ("recommended"): admin-promoted centers lead, then popular, then rating.
-    else sorted.sort((a, b) =>
-      Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
-      Number(b.popular) - Number(a.popular) ||
-      b.rating - a.rating,
-    );
+    // Default ("recommended"): admin-promoted centers lead — by priority rank
+    // among themselves — then popular, then rating.
+    else sorted.sort((a, b) => {
+      const feat = Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+      if (feat) return feat;
+      if (a.isFeatured && b.isFeatured) {
+        const rank = (a.featuredRank ?? Infinity) - (b.featuredRank ?? Infinity);
+        if (rank) return rank;
+      }
+      return Number(b.popular) - Number(a.popular) || b.rating - a.rating;
+    });
 
     return sorted;
   }, [citySlug, filters, listings]);

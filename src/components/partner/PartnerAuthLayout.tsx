@@ -11,8 +11,8 @@ interface Props {
 
 export default function PartnerAuthLayout({ children }: Props) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-      <header className="border-b border-[#E2E8F0] bg-white">
+    <div className="app-wash flex min-h-screen flex-col">
+      <header className="glass-panel border-b border-white/40">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
             <Logo height={30} />

@@ -61,6 +61,11 @@ export interface CoworkingSpace {
   // Admin-promoted center — pins to the top of default-sorted results and
   // shows the "Bokko Recommended" badge. Optional: mock data omits it.
   isFeatured?: boolean;
+  // Admin priority (lower = shown first). Breaks ties among promoted centers.
+  featuredRank?: number | null;
+  // Center coordinates — used to fetch its "Nearby" carousel from the live API.
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const allServiceOptions: { key: ServiceKey; label: string }[] = [
@@ -340,13 +345,18 @@ export function sortSpaces(list: CoworkingSpace[], sort: SortOption): CoworkingS
   else if (sort === "newest") sorted.sort((a, b) => hashSeed(b.id) - hashSeed(a.id));
   else if (sort === "price-asc") sorted.sort((a, b) => a.startingPrice - b.startingPrice);
   else if (sort === "price-desc") sorted.sort((a, b) => b.startingPrice - a.startingPrice);
-  // Default ("popularity"): admin-promoted centers lead, then popular, then
-  // rating. Explicit sorts (price/top-rated/most-booked) are left untouched so
-  // an intentional choice like "price low to high" is always respected.
-  else sorted.sort((a, b) =>
-    Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)) ||
-    Number(b.popular) - Number(a.popular) ||
-    b.rating - a.rating,
-  );
+  // Default ("popularity"): admin-promoted centers lead — by priority rank
+  // among themselves — then popular, then rating. Explicit sorts (price/
+  // top-rated/most-booked) are left untouched so an intentional choice like
+  // "price low to high" is always respected.
+  else sorted.sort((a, b) => {
+    const feat = Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+    if (feat) return feat;
+    if (a.isFeatured && b.isFeatured) {
+      const rank = (a.featuredRank ?? Infinity) - (b.featuredRank ?? Infinity);
+      if (rank) return rank;
+    }
+    return Number(b.popular) - Number(a.popular) || b.rating - a.rating;
+  });
   return sorted;
 }

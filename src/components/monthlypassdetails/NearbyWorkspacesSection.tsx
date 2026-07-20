@@ -1,47 +1,72 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, MapPin, Star } from "lucide-react";
 import type { MonthlyPassListing } from "../../data/monthlyPassListings";
-import { slugify } from "../../utils/slug";
+import { fetchNearbyPromotedFirst } from "../../lib/centreFeed";
+import { apiToMonthlyPassListing, PRODUCT_TYPE } from "../../lib/centreAdapter";
+import RecommendedBadge from "../RecommendedBadge";
 import SectionLabel from "./SectionLabel";
 
 interface NearbyWorkspacesSectionProps {
   current: MonthlyPassListing;
-  allListings: MonthlyPassListing[];
 }
 
-type Tab = "area" | "budget" | "premium" | "top-rated" | "popular";
+type Tab = "nearby" | "budget" | "premium" | "top-rated" | "popular";
 
 const tabs: { key: Tab; label: string }[] = [
-  { key: "area", label: "Same Area" },
+  { key: "nearby", label: "Nearby" },
   { key: "budget", label: "Same Budget" },
   { key: "premium", label: "Premium Spaces" },
   { key: "top-rated", label: "Top Rated" },
   { key: "popular", label: "Popular Workspaces" },
 ];
 
-export default function NearbyWorkspacesSection({ current, allListings }: NearbyWorkspacesSectionProps) {
-  const [tab, setTab] = useState<Tab>("area");
+export default function NearbyWorkspacesSection({ current }: NearbyWorkspacesSectionProps) {
+  const [tab, setTab] = useState<Tab>("nearby");
+  const [listings, setListings] = useState<MonthlyPassListing[]>([]);
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Live nearby monthly-pass centers, promoted-first (admin-ranked lead).
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchNearbyPromotedFirst(PRODUCT_TYPE.monthlyPass, current.latitude, current.longitude, {
+      excludeId: current.id,
+      pageSize: 12,
+    })
+      .then((rows) => {
+        if (!cancelled) setListings(rows.map(apiToMonthlyPassListing));
+      })
+      .catch(() => {
+        if (!cancelled) setListings([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current.id, current.latitude, current.longitude]);
+
   const candidates = useMemo(() => {
-    const others = allListings.filter((listing) => listing.id !== current.id);
-    if (tab === "area") {
-      return others.filter((listing) => listing.locality === current.locality).slice(0, 8);
-    }
     if (tab === "budget") {
-      return [...others]
+      return [...listings]
         .sort((a, b) => Math.abs(a.bestPrice - current.bestPrice) - Math.abs(b.bestPrice - current.bestPrice))
         .slice(0, 8);
     }
     if (tab === "premium") {
-      return others.filter((listing) => listing.premier).slice(0, 8);
+      return listings.filter((listing) => listing.premier).slice(0, 8);
     }
     if (tab === "top-rated") {
-      return [...others].sort((a, b) => b.rating - a.rating).slice(0, 8);
+      return [...listings].sort((a, b) => b.rating - a.rating).slice(0, 8);
     }
-    return others.filter((listing) => listing.popular).slice(0, 8);
-  }, [allListings, current, tab]);
+    if (tab === "popular") {
+      return listings.filter((listing) => listing.popular).slice(0, 8);
+    }
+    // "nearby" keeps the API's promoted-first-then-distance order.
+    return listings.slice(0, 8);
+  }, [listings, current, tab]);
 
   function scrollByAmount(amount: number) {
     scrollRef.current?.scrollBy({ left: amount, behavior: "smooth" });
@@ -79,16 +104,23 @@ export default function NearbyWorkspacesSection({ current, allListings }: Nearby
         ))}
       </div>
 
-      {candidates.length === 0 ? (
+      {loading ? (
+        <div className="flex gap-4 overflow-hidden pb-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[232px] w-[260px] shrink-0 animate-pulse rounded-[18px] bg-[#F1F5F9]" />
+          ))}
+        </div>
+      ) : candidates.length === 0 ? (
         <p className="text-sm text-[#64748B]">No nearby workspaces found in this category.</p>
       ) : (
         <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
           {candidates.map((listing) => (
             <Link
               key={listing.id}
-              to={`/monthly-pass/${slugify(listing.name)}`}
-              className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
+              to={`/monthly-pass/${listing.id}`}
+              className="relative flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
+              {listing.isFeatured && <RecommendedBadge size="sm" className="absolute left-3 top-3 z-10" />}
               <div className="h-[140px] w-full overflow-hidden">
                 <img src={listing.images[0]} alt={listing.name} className="h-full w-full object-cover" />
               </div>

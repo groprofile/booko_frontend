@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, MapPin, Star } from "lucide-react";
 import type { CoworkingSpace } from "../../data/coworkingSpaces";
 import { CITY_NAMES } from "../../data/coworkingSpaces";
+import RecommendedBadge from "../RecommendedBadge";
 import SectionLabel from "./SectionLabel";
 
 interface SimilarWorkspacesCarouselProps {
@@ -26,7 +27,16 @@ export default function SimilarWorkspacesCarousel({ spaces }: SimilarWorkspacesC
     if (tab === "top-rated") return [...spaces].sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 10);
     if (tab === "most-booked") return [...spaces].sort((a, b) => Number(b.reviews) - Number(a.reviews)).slice(0, 10);
     if (tab === "premium") return spaces.filter((space) => space.premium).slice(0, 10);
-    return [...spaces].sort((a, b) => Number(a.distanceKm) - Number(b.distanceKm)).slice(0, 10);
+    // "Nearby": admin-promoted centers lead (by priority rank), the rest by
+    // distance. Matches the promoted-first behavior of the detail-page rails.
+    const rank = (s: CoworkingSpace) => (s.featuredRank == null ? Number.POSITIVE_INFINITY : s.featuredRank);
+    return [...spaces]
+      .sort((a, b) => {
+        if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) return a.isFeatured ? -1 : 1;
+        if (a.isFeatured && b.isFeatured) return rank(a) - rank(b);
+        return Number(a.distanceKm) - Number(b.distanceKm);
+      })
+      .slice(0, 10);
   }, [spaces, tab]);
 
   function scrollByAmount(amount: number) {
@@ -73,8 +83,9 @@ export default function SimilarWorkspacesCarousel({ spaces }: SimilarWorkspacesC
             <Link
               key={space.id}
               to={`/${space.city}/coworking-spaces`}
-              className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
+              className="relative flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
+              {space.isFeatured && <RecommendedBadge size="sm" className="absolute left-3 top-3 z-10" />}
               <div className="h-[140px] w-full overflow-hidden">
                 <img src={space.image} alt={space.name} className="h-full w-full object-cover" />
               </div>

@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { CITY_NAMES, allRoomTypes } from "../../data/meetingRoomListings";
+import { allRoomTypes } from "../../data/meetingRoomListings";
+import { METROS, NEAR_ME_SLUG, cityNavTarget } from "../../data/metros";
 
 interface MeetingRoomSearchBarProps {
   citySlug: string;
+  near?: boolean;
   date: string;
   onDateChange: (value: string) => void;
   time: string;
@@ -22,6 +24,7 @@ const fieldClass =
 
 export default function MeetingRoomSearchBar({
   citySlug,
+  near = false,
   date,
   onDateChange,
   time,
@@ -48,15 +51,17 @@ export default function MeetingRoomSearchBar({
         <label className={fieldClass}>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">City</span>
           <select
-            value={citySlug}
-            onChange={(event) => navigate(`/${event.target.value}/meeting-rooms`)}
+            value={near ? NEAR_ME_SLUG : citySlug}
+            onChange={(event) => navigate(cityNavTarget(event.target.value, "meeting-rooms"))}
             className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
           >
-            {Object.entries(CITY_NAMES).map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
+            <option value="">All Cities</option>
+            {METROS.map((m) => (
+              <option key={m.slug} value={m.slug}>
+                {m.label}
               </option>
             ))}
+            <option value={NEAR_ME_SLUG}>Near me</option>
           </select>
         </label>
 

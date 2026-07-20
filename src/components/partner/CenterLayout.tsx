@@ -51,11 +51,13 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F1F5F9]">
+    <div className="app-wash flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="flex w-[220px] shrink-0 flex-col bg-[#0F172A]">
+      <aside className="relative flex w-[220px] shrink-0 flex-col bg-[#0F172A]">
+        {/* Brand glow behind the logo header */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(60%_80%_at_20%_0%,rgba(37,99,235,0.35),transparent_70%),radial-gradient(50%_70%_at_90%_0%,rgba(6,182,212,0.22),transparent_70%)]" />
         {/* Logo + Center name */}
-        <div className="border-b border-white/8 px-4 py-4">
+        <div className="relative border-b border-white/8 px-4 py-4">
           <div className="flex items-center gap-2.5">
             <Logo height={24} />
             <div>
@@ -79,7 +81,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
         </div>
 
         {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
+        <nav className="relative flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
           {NAV.filter((item) =>
             (!item.ownerOnly || !partner?.isManager) &&
             (!item.managerOnly || partner?.isManager),
@@ -90,7 +92,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
               <Link key={item.href} to={item.href}
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all ${
                   active
-                    ? "bg-[#2563EB] text-white shadow-md shadow-blue-900/40"
+                    ? "cta-gradient text-white shadow-md shadow-blue-900/40"
                     : "text-[#64748B] hover:bg-white/6 hover:text-[#CBD5E1]"
                 }`}>
                 <item.icon size={15} className="shrink-0" />
@@ -109,7 +111,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
         {/* Profile */}
         <div className="border-t border-white/8 p-2.5">
           <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
+            <div className="cta-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
               {partner?.name?.charAt(0) ?? "P"}
             </div>
             <div className="min-w-0 flex-1">
@@ -127,7 +129,7 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
       {/* Main area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Topbar with live indicator */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#E2E8F0] bg-white px-6">
+        <header className="glass-panel z-20 flex h-14 shrink-0 items-center justify-between border-b border-white/40 px-6">
           <div>
             <h1 className="text-[15px] font-bold leading-none text-[#0F172A]">{title ?? "Dashboard"}</h1>
             {subtitle && <p className="mt-0.5 text-xs text-[#94A3B8]">{subtitle}</p>}
@@ -145,8 +147,8 @@ export default function CenterLayout({ children, title, subtitle }: Props) {
               <Bell size={14} />
               <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-white" />
             </button>
-            <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[9px] font-bold text-white">
+            <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white/70 px-3 py-1.5">
+              <div className="cta-gradient flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white">
                 {partner?.name?.charAt(0) ?? "P"}
               </div>
               <span className="text-[12px] font-semibold text-[#0F172A]">{partner?.name ?? "Partner"}</span>

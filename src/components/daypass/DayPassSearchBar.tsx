@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { CITY_NAMES } from "../../data/dayPassListings";
+import { METROS, NEAR_ME_SLUG, cityNavTarget } from "../../data/metros";
 
 interface DayPassSearchBarProps {
   citySlug: string;
+  near?: boolean;
   date: string;
   onDateChange: (value: string) => void;
   members: number;
@@ -17,6 +18,7 @@ const fieldClass =
 
 export default function DayPassSearchBar({
   citySlug,
+  near = false,
   date,
   onDateChange,
   members,
@@ -77,15 +79,17 @@ export default function DayPassSearchBar({
             City
           </span>
           <select
-            value={citySlug}
-            onChange={(event) => navigate(`/${event.target.value}/day-pass`)}
+            value={near ? NEAR_ME_SLUG : citySlug}
+            onChange={(event) => navigate(cityNavTarget(event.target.value, "day-pass"))}
             className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
           >
-            {Object.entries(CITY_NAMES).map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
+            <option value="">All Cities</option>
+            {METROS.map((m) => (
+              <option key={m.slug} value={m.slug}>
+                {m.label}
               </option>
             ))}
+            <option value={NEAR_ME_SLUG}>Near me</option>
           </select>
         </label>
 

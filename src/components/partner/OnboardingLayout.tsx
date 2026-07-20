@@ -27,19 +27,19 @@ export default function OnboardingLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
+    <div className="app-wash flex min-h-screen flex-col">
       {/* Top header */}
-      <header className="sticky top-0 z-40 border-b border-[#E2E8F0] bg-white">
+      <header className="glass-panel sticky top-0 z-40 border-b border-white/40">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/bokko-logo.png" alt="Bokko" style={{ height: 32, width: "auto" }} />
+            <img src="/bokko-logo.webp" alt="Bokko" style={{ height: 32, width: "auto" }} />
             <span className="hidden text-xs font-semibold text-[#64748B] sm:block">Partner Central</span>
           </Link>
 
           <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 sm:flex">
               <div className="h-1.5 w-32 overflow-hidden rounded-full bg-[#E2E8F0]">
-                <div className="h-full rounded-full bg-[#2563EB] transition-all duration-500" style={{ width: `${pct}%` }} />
+                <div className="cta-gradient h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
               <span className="text-xs font-semibold text-[#64748B]">{pct}% complete</span>
             </div>
@@ -78,7 +78,7 @@ export default function OnboardingLayout() {
                     }`}
                   >
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                      isDone ? "bg-[#DCFCE7] text-[#16A34A]" : isActive ? "bg-[#2563EB] text-white" : "bg-[#E2E8F0] text-[#64748B]"
+                      isDone ? "bg-[#DCFCE7] text-[#16A34A]" : isActive ? "cta-gradient text-white" : "bg-[#E2E8F0] text-[#64748B]"
                     }`}>
                       {isDone ? <CheckCircle2 size={14} /> : step.num}
                     </span>
@@ -114,7 +114,7 @@ export default function OnboardingLayout() {
                   <Link
                     to={`/partner/onboarding/${step.path}`}
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                      isDone ? "bg-[#DCFCE7] text-[#16A34A]" : isActive ? "bg-[#2563EB] text-white" : "bg-[#E2E8F0] text-[#64748B]"
+                      isDone ? "bg-[#DCFCE7] text-[#16A34A]" : isActive ? "cta-gradient text-white" : "bg-[#E2E8F0] text-[#64748B]"
                     }`}
                   >
                     {isDone ? <CheckCircle2 size={12} /> : step.num}

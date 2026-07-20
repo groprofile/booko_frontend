@@ -135,6 +135,9 @@ export function apiToDayPassListing(c: CentreApiRow): DayPassListing {
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
     isFeatured: Boolean(c.is_featured),
+    featuredRank: c.featured_rank ?? null,
+    latitude: c.latitude,
+    longitude: c.longitude,
     images: getImages(c),
   };
 }
@@ -213,6 +216,9 @@ export function apiToMeetingRoomListing(c: CentreApiRow): MeetingRoomListing {
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
     isFeatured: Boolean(c.is_featured),
+    featuredRank: c.featured_rank ?? null,
+    latitude: c.latitude,
+    longitude: c.longitude,
     images: getImages(c),
   };
 }
@@ -244,6 +250,9 @@ export function apiToMonthlyPassListing(c: CentreApiRow): MonthlyPassListing {
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
     isFeatured: Boolean(c.is_featured),
+    featuredRank: c.featured_rank ?? null,
+    latitude: c.latitude,
+    longitude: c.longitude,
     images: getImages(c),
   };
 }
@@ -280,6 +289,9 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     premier: toRating(c.rating, 0) >= 4.8,
     popular: toRating(c.rating, 0) >= 4.5,
     isFeatured: Boolean(c.is_featured),
+    featuredRank: c.featured_rank ?? null,
+    latitude: c.latitude,
+    longitude: c.longitude,
     plans: voPlan.length > 0
       ? voPlan
       : [{ key: 'basic', name: 'Basic Plan', price: bestPrice, description: 'Virtual Office' }],
@@ -371,6 +383,9 @@ export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
     matchScoreItems: [],
     matchScore: Math.round(50 + rating * 10),
     isFeatured: Boolean(c.is_featured),
+    featuredRank: c.featured_rank ?? null,
+    latitude: c.latitude,
+    longitude: c.longitude,
   };
 }
 

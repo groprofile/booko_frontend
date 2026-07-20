@@ -33,7 +33,7 @@ export default function MobileBookingBar(props: MobileBookingBarProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex-1 rounded-xl bg-[#111111] py-3 text-center text-sm font-bold text-white"
+          className="cta-gradient flex-1 rounded-xl py-3 text-center text-sm font-bold text-white"
         >
           Book Day Pass
         </button>

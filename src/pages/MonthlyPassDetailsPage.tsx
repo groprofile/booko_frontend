@@ -163,7 +163,7 @@ export default function MonthlyPassDetailsPage() {
                 reviews={details.reviews}
               />
 
-              <NearbyWorkspacesSection current={listing} allListings={sameCityListings} />
+              <NearbyWorkspacesSection current={listing} />
 
               <WorkspaceComparisonSection current={listing} allListings={sameCityListings} />
 

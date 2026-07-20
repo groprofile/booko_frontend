@@ -42,7 +42,7 @@ export default function AdminTopbar({ title, subtitle }: Props) {
   }
 
   return (
-    <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[#E2E8F0] bg-white px-5">
+    <header className="glass-panel relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-white/40 px-5">
       {/* Left: title */}
       <div>
         <h1 className="text-sm font-bold text-[#0F172A]">{title}</h1>
@@ -117,7 +117,7 @@ export default function AdminTopbar({ title, subtitle }: Props) {
               onClick={() => { setShowProfile((v) => !v); setShowNotif(false); }}
               className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[#F1F5F9]"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
+              <div className="cta-gradient flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white">
                 {admin.name.charAt(0)}
               </div>
               <div className="hidden text-left sm:block">

@@ -15,7 +15,7 @@ export default function Logo({ variant = "dark", height = 36 }: LogoProps) {
     <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Bokko home">
       {!imgFailed ? (
         <img
-          src="/bokko-logo.png"
+          src="/bokko-logo.webp"
           alt="Bokko"
           onError={() => setImgFailed(true)}
           style={{ height: `${height}px`, width: "auto", filter: imgFilter }}
@@ -25,7 +25,7 @@ export default function Logo({ variant = "dark", height = 36 }: LogoProps) {
           <span
             className="flex shrink-0 items-center justify-center rounded-[10px] text-base font-extrabold text-white"
             style={{
-              background: "linear-gradient(135deg, #2563EB 0%, #1d4ed8 100%)",
+              background: "linear-gradient(135deg, #2563EB 0%, #06B6D4 100%)",
               height: height,
               width: height,
             }}

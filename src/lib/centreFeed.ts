@@ -32,3 +32,59 @@ export async function fetchFeaturedFirst(
   }
   return merged.slice(0, pageSize);
 }
+
+interface NearbyOptions {
+  /** Center currently being viewed — excluded from its own "Nearby" rail. */
+  excludeId?: string;
+  pageSize?: number;
+  /** Search radius in km passed to the backend distance query. */
+  radius?: number;
+}
+
+/**
+ * Fetch a "Nearby" feed for a detail page, promoted-first.
+ *
+ * Calls `/centers/list` with the viewed center's coordinates and `sort=distance`
+ * (the backend's one deliberately-honest, non-promoted ordering). We then float
+ * admin-promoted centers to the top — ordered by `featured_rank` — with the
+ * remaining centers left in pure distance order. If nothing nearby is promoted,
+ * this degrades to a plain closest-first list.
+ *
+ * When the viewed center has no coordinates, we fall back to a non-geo
+ * top-rated fetch so the rail is never empty. Fails soft (empty list) so a slow
+ * or broken endpoint never blanks the section.
+ */
+export async function fetchNearbyPromotedFirst(
+  productType: string,
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+  { excludeId, pageSize = 8, radius = 25 }: NearbyOptions = {},
+): Promise<CentreApiRow[]> {
+  // Over-fetch so that dropping the current center still leaves a full rail.
+  const fetchSize = pageSize + 1;
+  const hasCoords = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+
+  const qs = hasCoords
+    ? `productType=${productType}&pageSize=${fetchSize}&lat=${lat}&lng=${lng}&radius=${radius}&sort=distance`
+    : `productType=${productType}&pageSize=${fetchSize}&sort=rating`;
+
+  const { data } = await apiGet<{ data: CentreApiRow[] }>(`/centers/list?${qs}`).catch(() => ({
+    data: [] as CentreApiRow[],
+  }));
+
+  const rows = (data ?? []).filter((row) => row.id !== excludeId);
+
+  // Promoted centers lead (by admin priority), the rest keep distance order.
+  const rank = (r: CentreApiRow) => (r.featured_rank == null ? Number.POSITIVE_INFINITY : r.featured_rank);
+  const promoted = rows.filter((r) => r.is_featured).sort((a, b) => rank(a) - rank(b));
+  const rest = rows.filter((r) => !r.is_featured);
+
+  const seen = new Set<string>();
+  const merged: CentreApiRow[] = [];
+  for (const row of [...promoted, ...rest]) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    merged.push(row);
+  }
+  return merged.slice(0, pageSize);
+}

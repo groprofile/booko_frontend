@@ -12,10 +12,9 @@ import AmenitiesSection from "../components/daypassdetails/AmenitiesSection";
 import AboutWorkspaceSection from "../components/daypassdetails/AboutWorkspaceSection";
 import ReviewsSection from "../components/daypassdetails/ReviewsSection";
 import SimilarWorkspacesSection from "../components/daypassdetails/SimilarWorkspacesSection";
-import ExploreNearbySection from "../components/daypassdetails/ExploreNearbySection";
 import BookingCard from "../components/daypassdetails/BookingCard";
 import MobileBookingBar from "../components/daypassdetails/MobileBookingBar";
-import { CITY_NAMES, cityToLocalities } from "../data/dayPassListings";
+import { CITY_NAMES } from "../data/dayPassListings";
 import type { DayPassListing } from "../data/dayPassListings";
 import type { DayPassDetails } from "../data/dayPassDetails";
 import { apiGet } from "../lib/api";
@@ -152,17 +151,7 @@ export default function DayPassDetailsPage() {
                 details={details}
               />
 
-              <SimilarWorkspacesSection
-                current={listing}
-                cityName={cityName}
-                allListings={[]}
-              />
-
-              <ExploreNearbySection
-                citySlug={citySlug}
-                localities={cityToLocalities[citySlug] ?? []}
-                images={details.galleryImages}
-              />
+              <SimilarWorkspacesSection current={listing} cityName={cityName} />
             </div>
 
             <aside className="hidden sm:block lg:sticky lg:top-24 lg:self-start">

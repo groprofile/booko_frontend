@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
   const inputErr = `${inputBase} border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-400/10`;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F1F5F9] px-4 py-10">
+    <div className="app-wash flex min-h-screen flex-col items-center justify-center px-4 py-10">
       {/* Top logo */}
       <div className="mb-8 flex flex-col items-center gap-1">
         <Logo height={36} />
@@ -60,11 +60,11 @@ export default function AdminLoginPage() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-xl shadow-slate-200/60">
+      <div className="glass-panel w-full max-w-[420px] overflow-hidden rounded-3xl shadow-soft-lg">
         {/* Card header */}
-        <div className="flex flex-col items-center gap-2 border-b border-[#F1F5F9] bg-[#F8FAFC] px-8 py-6 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EFF6FF] ring-4 ring-[#2563EB]/10">
-            <Lock size={22} className="text-[#2563EB]" />
+        <div className="flex flex-col items-center gap-2 border-b border-white/50 bg-white/40 px-8 py-6 text-center">
+          <div className="cta-gradient flex h-12 w-12 items-center justify-center rounded-2xl ring-4 ring-[#2563EB]/10">
+            <Lock size={22} className="text-white" />
           </div>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#0F172A]">Welcome back</h1>
           <p className="text-sm text-[#64748B]">Sign in to Bokko Admin · Authorized Access Only</p>

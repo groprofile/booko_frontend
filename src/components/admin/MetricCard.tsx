@@ -15,7 +15,7 @@ interface Props {
 export default function MetricCard({ label, value, sub, trend, icon: Icon, iconColor = "#2563EB", iconBg = "#EFF6FF", accent }: Props) {
   const up = trend !== undefined && trend >= 0;
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+    <div className="glass-panel relative overflow-hidden rounded-2xl p-5 shadow-soft">
       {accent && (
         <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl" style={{ backgroundColor: accent }} />
       )}

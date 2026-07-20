@@ -30,11 +30,13 @@ export default function SuperPartnerLayout({ children, title, subtitle }: Props)
   function handleSignout() { signout(); navigate("/partner/signin"); }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F1F5F9]">
+    <div className="app-wash flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="flex w-[220px] shrink-0 flex-col bg-[#0F172A]">
+      <aside className="relative flex w-[220px] shrink-0 flex-col bg-[#0F172A]">
+        {/* Brand glow behind the logo header */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(60%_80%_at_20%_0%,rgba(37,99,235,0.35),transparent_70%),radial-gradient(50%_70%_at_90%_0%,rgba(6,182,212,0.22),transparent_70%)]" />
         {/* Logo area */}
-        <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4">
+        <div className="relative flex items-center gap-3 border-b border-white/8 px-4 py-4">
           <Logo height={26} />
           <div>
             <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#475569]">Partner Hub</span>
@@ -46,14 +48,14 @@ export default function SuperPartnerLayout({ children, title, subtitle }: Props)
         </div>
 
         {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
+        <nav className="relative flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3">
           {NAV.map((item) => {
             const active = pathname === item.href;
             return (
               <Link key={item.href} to={item.href}
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all ${
                   active
-                    ? "bg-[#2563EB] text-white shadow-md shadow-blue-900/40"
+                    ? "cta-gradient text-white shadow-md shadow-blue-900/40"
                     : "text-[#64748B] hover:bg-white/6 hover:text-[#CBD5E1]"
                 }`}>
                 <item.icon size={15} className="shrink-0" />
@@ -85,7 +87,7 @@ export default function SuperPartnerLayout({ children, title, subtitle }: Props)
       {/* Main area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Topbar */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#E2E8F0] bg-white px-6">
+        <header className="glass-panel z-20 flex h-14 shrink-0 items-center justify-between border-b border-white/40 px-6">
           <div>
             <h1 className="text-[15px] font-bold leading-none text-[#0F172A]">{title ?? "Dashboard"}</h1>
             {subtitle && <p className="mt-0.5 text-xs text-[#94A3B8]">{subtitle}</p>}
@@ -95,7 +97,7 @@ export default function SuperPartnerLayout({ children, title, subtitle }: Props)
               <Bell size={14} />
               <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-white" />
             </button>
-            <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white/70 px-3 py-1.5">
               <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-[9px] font-bold text-white">
                 {partner?.name?.charAt(0) ?? "P"}
               </div>

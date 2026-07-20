@@ -47,6 +47,11 @@ export interface VirtualOfficeListing {
   // Admin-promoted center — pins to the top of default-sorted results and
   // shows the "Bokko Recommended" badge. Optional: mock data omits it.
   isFeatured?: boolean;
+  // Admin priority (lower = shown first). Breaks ties among promoted centers.
+  featuredRank?: number | null;
+  // Center coordinates — used to fetch its "Nearby" carousel from the live API.
+  latitude?: number | null;
+  longitude?: number | null;
   plans: VOPlan[];
   bestPrice: number;
   images: string[];
