@@ -228,6 +228,9 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
       plans.push({ name: row.name.trim() || pc.defaultName, productType: pc.productType, price, unit: pc.unit });
     }
 
+    // Coordinates are resolved server-side from googleMapUrl (handles full
+    // links, shortened maps.app.goo.gl links via redirect-follow, and a
+    // Geocoding API fallback) — the frontend just passes the raw URL through.
     const token = getAdminToken();
     if (!token) return;
     setSaving(true);

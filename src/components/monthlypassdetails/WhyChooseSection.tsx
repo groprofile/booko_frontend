@@ -36,20 +36,20 @@ interface WhyChooseSectionProps {
 
 export default function WhyChooseSection({ features }: WhyChooseSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Why Choose This Workspace" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {features.map((feature) => {
           const Icon = iconMap[feature] ?? BadgeCheck;
           return (
             <div
               key={feature}
-              className="flex flex-col items-start gap-2.5 rounded-2xl border border-[#E2E8F0] bg-white p-4"
+              className="flex flex-col items-start gap-3 rounded-sm border border-border bg-card p-5 shadow-soft transition-all hover:shadow-soft-lg hover:border-primary-blue/20"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
-                <Icon size={18} strokeWidth={1.8} />
+              <span className="flex h-11 w-11 items-center justify-center rounded-sm bg-blue-50 text-primary-blue">
+                <Icon size={20} strokeWidth={1.5} />
               </span>
-              <p className="text-sm font-bold text-[#0F172A]">{feature}</p>
+              <p className="text-sm font-bold text-primary-text leading-snug">{feature}</p>
             </div>
           );
         })}

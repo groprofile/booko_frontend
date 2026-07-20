@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import ImageGallery from "../components/daypassdetails/ImageGallery";
+import MainLayout from "../components/layout/MainLayout";
+import DetailGallery from "../components/common/DetailGallery";
 import WorkspaceHeader from "../components/daypassdetails/WorkspaceHeader";
 import SeatingOptionsSection from "../components/daypassdetails/SeatingOptionsSection";
 import WhyBookWithBokko from "../components/daypassdetails/WhyBookWithBokko";
@@ -79,35 +78,31 @@ export default function DayPassDetailsPage() {
 
   if (!listing || !details) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-        <Header />
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
-          <p className="text-xl font-bold text-[#0F172A]">Workspace not found</p>
-          <p className="text-sm text-[#64748B]">This day pass listing may have moved or no longer exists.</p>
+      <MainLayout>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
+          <p className="text-xl font-bold text-primary-text">Workspace not found</p>
+          <p className="text-sm text-muted-text">This day pass listing may have moved or no longer exists.</p>
           <Link
             to={`/${citySlug}/day-pass`}
-            className="rounded-xl bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-deep"
           >
             Browse Day Pass in {cityName}
           </Link>
-        </main>
-        <Footer />
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-      <Header />
-
-      <main className="flex-1 animate-fade-in-up pb-24 sm:pb-0">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-[#64748B]">
-            <Link to="/" className="hover:text-[#2563EB]">
+    <MainLayout>
+      <div className="animate-fade-in-up pb-24 sm:pb-0">
+        <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-muted-text">
+            <Link to="/" className="hover:text-brand">
               Home
             </Link>
             <ChevronRight size={14} />
-            <Link to={`/${citySlug}/day-pass`} className="hover:text-[#2563EB]">
+            <Link to={`/${citySlug}/day-pass`} className="hover:text-brand">
               Day Pass
             </Link>
             <ChevronRight size={14} />
@@ -115,15 +110,15 @@ export default function DayPassDetailsPage() {
             <ChevronRight size={14} />
             <span>{listing.locality}</span>
             <ChevronRight size={14} />
-            <span className="font-semibold text-[#0F172A]">{listing.name}</span>
+            <span className="font-semibold text-primary-text">{listing.name}</span>
           </nav>
 
-          <div className="mt-4">
-            <ImageGallery images={details.galleryImages} name={listing.name} />
+          <div className="mt-2">
+            <DetailGallery images={details.galleryImages} name={listing.name} />
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="flex min-w-0 flex-col gap-12">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="flex min-w-0 flex-col gap-6">
               <WorkspaceHeader listing={listing} cityName={cityName} />
 
               <SeatingOptionsSection
@@ -170,9 +165,7 @@ export default function DayPassDetailsPage() {
             </aside>
           </div>
         </div>
-      </main>
-
-      <Footer />
+      </div>
 
       <MobileBookingBar
         listing={listing}
@@ -186,6 +179,6 @@ export default function DayPassDetailsPage() {
         members={members}
         onMembersChange={setMembers}
       />
-    </div>
+    </MainLayout>
   );
 }

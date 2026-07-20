@@ -6,7 +6,7 @@ interface WhoIsThisForSectionProps {
 
 export default function WhoIsThisForSection({ items }: WhoIsThisForSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Who Is This For" />
       <div className="flex flex-wrap gap-2.5">
         {items.map((item) => (

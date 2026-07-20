@@ -28,7 +28,7 @@ export default function OffersCouponSection({ coupons, appliedCoupon, onApply, o
   const bestCoupon = [...coupons].sort((a, b) => b.discountPercent - a.discountPercent)[0];
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Offers & Coupons" />
 
       <div className="flex flex-col gap-2 sm:flex-row">

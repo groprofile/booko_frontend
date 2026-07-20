@@ -37,20 +37,20 @@ interface WhyBookSectionProps {
 
 export default function WhyBookSection({ cards }: WhyBookSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Why Book This Hotel" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {cards.map((label) => {
           const Icon = iconMap[label] ?? ShieldCheck;
           return (
             <div
               key={label}
-              className="flex flex-col items-center gap-2 rounded-[20px] border border-[#E2E8F0] bg-white px-3 py-5 text-center shadow-soft transition-shadow hover:shadow-soft-lg"
+              className="flex flex-col items-center gap-3 rounded-sm border border-border bg-card px-4 py-6 text-center shadow-soft transition-all hover:shadow-soft-lg hover:border-primary-blue/20"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EFF6FF] text-[#2563EB]">
-                <Icon size={20} strokeWidth={1.8} />
+              <span className="flex h-12 w-12 items-center justify-center rounded-sm bg-blue-50 text-primary-blue">
+                <Icon size={22} strokeWidth={1.5} />
               </span>
-              <p className="text-sm font-semibold text-[#0F172A]">{label}</p>
+              <p className="text-sm font-semibold text-primary-text leading-snug">{label}</p>
             </div>
           );
         })}

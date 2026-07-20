@@ -38,7 +38,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
         <button
           type="button"
           onClick={() => openLightbox(0)}
-          className="group relative aspect-[16/10] w-full overflow-hidden rounded-[20px] shadow-soft-lg sm:aspect-auto sm:h-[420px]"
+          className="group relative aspect-[16/10] w-full overflow-hidden rounded-sm shadow-soft-lg sm:aspect-auto sm:h-[420px]"
         >
           <img
             src={images[0]}
@@ -58,7 +58,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
               key={src + index}
               type="button"
               onClick={() => openLightbox(index + 1)}
-              className="group relative overflow-hidden rounded-[16px] shadow-soft"
+              className="group relative overflow-hidden rounded-sm shadow-soft"
             >
               <img
                 src={src}
@@ -82,7 +82,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
               key={src + index}
               type="button"
               onClick={() => openLightbox(index + 1)}
-              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-[14px]"
+              className="relative h-20 w-28 shrink-0 overflow-hidden rounded-sm"
             >
               <img src={src} alt={`${name} photo ${index + 2}`} className="h-full w-full object-cover" />
             </button>
@@ -95,14 +95,14 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
         <button
           type="button"
           onClick={() => openLightbox(0)}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
+          className="inline-flex items-center gap-2 rounded-sm border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
         >
           360° Tour
         </button>
         <button
           type="button"
           onClick={() => openLightbox(0)}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
+          className="inline-flex items-center gap-2 rounded-sm border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
         >
           <Video size={15} />
           Virtual Walkthrough
@@ -110,7 +110,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
+          className="inline-flex items-center gap-2 rounded-sm border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] shadow-soft hover:border-[#94A3B8]"
         >
           <Share2 size={15} />
           {shared ? "Link Copied!" : "Share"}
@@ -119,7 +119,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
           type="button"
           onClick={() => setWishlisted((v) => !v)}
           className={
-            "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold shadow-soft transition-colors " +
+            "inline-flex items-center gap-2 rounded-sm border px-4 py-2 text-sm font-semibold shadow-soft transition-colors " +
             (wishlisted ? "border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]" : "border-[#E2E8F0] bg-white text-[#334155] hover:border-[#94A3B8]")
           }
         >
@@ -147,7 +147,7 @@ export default function GalleryHero({ images, name }: GalleryHeroProps) {
             <img
               src={images[activeIndex]}
               alt={`${name} photo ${activeIndex + 1}`}
-              className="max-h-full max-w-full rounded-xl object-contain"
+              className="max-h-full max-w-full rounded-sm object-contain"
             />
             <button
               type="button"

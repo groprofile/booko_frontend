@@ -8,7 +8,7 @@ interface SpecialRequestsSectionProps {
 
 export default function SpecialRequestsSection({ selected, onToggle }: SpecialRequestsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Special Requests" />
       <p className="mb-3 text-sm text-[#64748B]">Free to request — subject to availability at the property.</p>
       <div className="flex flex-wrap gap-2">

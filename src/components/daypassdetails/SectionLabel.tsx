@@ -7,12 +7,12 @@ interface SectionLabelProps {
 
 export default function SectionLabel({ title, action }: SectionLabelProps) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
+    <div className="mb-6 flex items-end justify-between gap-4">
       <div>
-        <h2 className="text-[20px] font-extrabold uppercase tracking-wide text-[#0F172A] sm:text-[26px]">
+        <h2 className="text-xl font-extrabold uppercase tracking-wide text-primary-text sm:text-2xl">
           {title}
         </h2>
-        <span className="mt-2 block h-1 w-10 rounded-full bg-[#2563EB]" />
+        <span className="mt-3 block h-1 w-10 rounded-full bg-primary-blue" />
       </div>
       {action}
     </div>

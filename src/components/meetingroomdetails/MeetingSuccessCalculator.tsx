@@ -37,7 +37,7 @@ export default function MeetingSuccessCalculator({
   costPerPerson,
 }: MeetingSuccessCalculatorProps) {
   return (
-    <div className="mt-4 rounded-[20px] border border-[#2563EB]/20 bg-[#EFF6FF] p-5">
+    <div className="mt-4 rounded-sm border border-[#2563EB]/20 bg-[#EFF6FF] p-5">
       <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
         <Sparkles size={15} className="text-[#2563EB]" />
         Meeting Success Calculator
@@ -57,7 +57,7 @@ export default function MeetingSuccessCalculator({
         <Row label="Projector" included={projectorIncluded} />
       </div>
 
-      <div className="mt-4 rounded-xl bg-white px-4 py-3 text-center">
+      <div className="mt-4 rounded-sm bg-white px-4 py-3 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Estimated Cost Per Person</p>
         <p className="text-2xl font-extrabold text-[#2563EB]">₹{costPerPerson.toLocaleString()}</p>
       </div>

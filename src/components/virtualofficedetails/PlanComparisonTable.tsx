@@ -16,9 +16,9 @@ function Cell({ included }: { included: boolean }) {
 
 export default function PlanComparisonTable({ rows }: PlanComparisonTableProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Plan Comparison" />
-      <div className="overflow-x-auto rounded-[20px] border border-[#E2E8F0] bg-white">
+      <div className="overflow-x-auto rounded-sm border border-[#E2E8F0] bg-white">
         <table className="w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">

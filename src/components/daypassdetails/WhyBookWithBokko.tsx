@@ -26,19 +26,19 @@ const benefits = [
 
 export default function WhyBookWithBokko() {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Why Book With Bokko?" />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {benefits.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
-            className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-soft transition-shadow hover:shadow-soft-lg"
+            className="rounded-sm border border-border bg-card p-6 shadow-soft transition-all hover:shadow-soft-lg hover:border-primary-blue/20"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EFF6FF] text-[#2563EB]">
-              <Icon size={22} strokeWidth={1.8} />
+            <span className="flex h-13 w-13 items-center justify-center rounded-sm bg-blue-50 text-primary-blue">
+              <Icon size={24} strokeWidth={1.5} />
             </span>
-            <p className="mt-4 text-base font-bold text-[#0F172A]">{title}</p>
-            <p className="mt-1.5 text-sm text-[#64748B]">{description}</p>
+            <p className="mt-4 text-base font-bold text-primary-text">{title}</p>
+            <p className="mt-2 text-sm text-secondary-text leading-relaxed">{description}</p>
           </div>
         ))}
       </div>

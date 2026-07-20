@@ -96,7 +96,7 @@ export default function BookingCard({
   }
 
   return (
-    <div className="rounded-[24px] border border-white/60 bg-white/85 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-[#2563EB]/5">
+    <div className="rounded-sm border border-border bg-card p-4">
       <p className="text-sm font-bold text-[#0F172A]">Book {selectedRoom.name}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2.5">
@@ -106,7 +106,7 @@ export default function BookingCard({
             type="date"
             value={checkIn}
             onChange={(event) => onCheckInChange(event.target.value)}
-            className="h-10 rounded-xl border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -115,7 +115,7 @@ export default function BookingCard({
             type="date"
             value={checkOut}
             onChange={(event) => onCheckOutChange(event.target.value)}
-            className="h-10 rounded-xl border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -123,7 +123,7 @@ export default function BookingCard({
           <select
             value={guests}
             onChange={(event) => onGuestsChange(Number(event.target.value))}
-            className="h-10 rounded-xl border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           >
             {[1, 2, 3, 4].map((n) => (
               <option key={n} value={n}>
@@ -137,7 +137,7 @@ export default function BookingCard({
           <select
             value={roomCount}
             onChange={(event) => onRoomCountChange(Number(event.target.value))}
-            className="h-10 rounded-xl border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           >
             {[1, 2, 3].map((n) => (
               <option key={n} value={n}>
@@ -156,7 +156,7 @@ export default function BookingCard({
             return (
               <span
                 key={tier.key}
-                className="flex min-w-[80px] flex-col items-center rounded-xl border border-[#E2E8F0] px-3 py-2 text-[#CBD5E1]"
+                className="flex min-w-[80px] flex-col items-center rounded-sm border border-[#E2E8F0] px-3 py-2 text-[#CBD5E1]"
               >
                 <span className="text-xs font-bold">N/A</span>
                 <span className="text-[10px] font-medium">{tier.label}</span>
@@ -169,7 +169,7 @@ export default function BookingCard({
               type="button"
               onClick={() => onSelectStay(tier.key)}
               className={
-                "flex min-w-[80px] flex-col items-center rounded-xl border px-3 py-2 transition-colors " +
+                "flex min-w-[80px] flex-col items-center rounded-sm border px-3 py-2 transition-colors " +
                 (selected ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-[#E2E8F0] bg-white text-[#0F172A] hover:border-[#94A3B8]")
               }
             >
@@ -183,7 +183,7 @@ export default function BookingCard({
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">Meal Options</p>
       <div className="mt-2 flex flex-col gap-1.5">
         {details.mealOptions.map((meal) => (
-          <label key={meal.key} className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+          <label key={meal.key} className="flex cursor-pointer items-center justify-between gap-2 rounded-sm border border-[#E2E8F0] px-3 py-2 text-sm">
             <span className="flex items-center gap-2">
               <input
                 type="radio"
@@ -208,12 +208,12 @@ export default function BookingCard({
             value={couponCode}
             onChange={(event) => setCouponCode(event.target.value)}
             placeholder="Enter coupon code"
-            className="h-10 flex-1 rounded-xl border border-[#D1D5DB] px-3 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 flex-1 rounded-sm border border-[#D1D5DB] px-3 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
           <button
             type="button"
             onClick={() => applyCoupon(couponCode)}
-            className="h-10 shrink-0 rounded-xl bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-black"
+            className="h-10 shrink-0 rounded-sm bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-black"
           >
             Apply
           </button>
@@ -244,7 +244,7 @@ export default function BookingCard({
                 key={coupon.code}
                 type="button"
                 onClick={() => applyCoupon(coupon.code)}
-                className="flex items-center justify-between rounded-xl border border-dashed border-[#2563EB]/40 bg-[#EFF6FF] px-3 py-2 text-left text-xs"
+                className="flex items-center justify-between rounded-sm border border-dashed border-[#2563EB]/40 bg-[#EFF6FF] px-3 py-2 text-left text-xs"
               >
                 <span>
                   <span className="font-bold text-[#2563EB]">{coupon.code}</span> — {coupon.description}
@@ -277,14 +277,14 @@ export default function BookingCard({
         <button
           type="button"
           onClick={() => navigateToCheckout()}
-          className="cta-gradient w-full rounded-xl py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]"
+          className="cta-gradient w-full rounded-sm py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]"
         >
           Reserve Now
         </button>
         <button
           type="button"
           onClick={() => navigateToCheckout()}
-          className="w-full rounded-xl border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]"
+          className="w-full rounded-sm border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]"
         >
           Book Instantly · Pay at Hotel
         </button>

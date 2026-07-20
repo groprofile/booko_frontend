@@ -18,11 +18,11 @@ function RoomCard({ room, selected, onSelect }: RoomCardProps) {
   return (
     <div
       className={
-        "flex flex-col gap-4 rounded-[20px] border p-4 transition-colors sm:flex-row " +
+        "flex flex-col gap-4 rounded-sm border p-4 transition-colors sm:flex-row " +
         (selected ? "border-[#2563EB] bg-[#EFF6FF]" : "border-[#E2E8F0] bg-white")
       }
     >
-      <div className="relative h-[180px] w-full shrink-0 overflow-hidden rounded-[16px] sm:h-[150px] sm:w-[220px]">
+      <div className="relative h-[180px] w-full shrink-0 overflow-hidden rounded-sm sm:h-[150px] sm:w-[220px]">
         <img src={room.images[imageIndex]} alt={room.name} className="h-full w-full object-cover" />
         {room.breakfastIncluded && (
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-[#16A34A] shadow-soft">
@@ -80,7 +80,7 @@ function RoomCard({ room, selected, onSelect }: RoomCardProps) {
             .map((tier) => (
               <span
                 key={tier.key}
-                className="flex min-w-[72px] flex-col items-center rounded-lg border border-[#E2E8F0] px-2.5 py-1.5"
+                className="flex min-w-[72px] flex-col items-center rounded-sm border border-[#E2E8F0] px-2.5 py-1.5"
               >
                 <span className="text-xs font-bold text-[#0F172A]">{tier.available ? `₹${tier.price.toLocaleString()}` : "N/A"}</span>
                 <span className="text-[10px] text-[#64748B]">{tier.label}</span>
@@ -98,7 +98,7 @@ function RoomCard({ room, selected, onSelect }: RoomCardProps) {
           type="button"
           onClick={onSelect}
           className={
-            "flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors " +
+            "flex w-full items-center justify-center gap-1.5 rounded-sm px-4 py-2.5 text-sm font-semibold transition-colors " +
             (selected ? "bg-[#2563EB] text-white" : "border border-[#E2E8F0] bg-white text-[#334155] hover:border-[#94A3B8]")
           }
         >
@@ -118,7 +118,7 @@ interface RoomOptionsSectionProps {
 
 export default function RoomOptionsSection({ rooms, selectedRoomId, onSelectRoom }: RoomOptionsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Room Options" />
       <div className="flex flex-col gap-4">
         {rooms.map((room) => (

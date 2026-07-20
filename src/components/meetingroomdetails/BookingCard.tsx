@@ -79,7 +79,7 @@ export default function BookingCard({
   }
 
   return (
-    <div className="rounded-[24px] border border-white/60 bg-white/85 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-[#2563EB]/5">
+    <div className="rounded-sm border border-white/60 bg-white/85 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-[#2563EB]/5">
       <p className="text-sm font-bold text-[#0F172A]">Book {selectedRoom.roomType}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2.5">
@@ -89,7 +89,7 @@ export default function BookingCard({
             type="date"
             value={date}
             onChange={(event) => onDateChange(event.target.value)}
-            className="h-10 rounded-xl border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -98,7 +98,7 @@ export default function BookingCard({
             type="time"
             value={startTime}
             onChange={(event) => onStartTimeChange(event.target.value)}
-            className="h-10 rounded-xl border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
         </label>
         <label className="col-span-2 flex flex-col gap-1">
@@ -109,7 +109,7 @@ export default function BookingCard({
             max={selectedRoom.capacity}
             value={attendees}
             onChange={(event) => onAttendeesChange(Math.max(1, Number(event.target.value) || 1))}
-            className="h-10 rounded-xl border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           />
         </label>
         <label className="col-span-2 flex flex-col gap-1">
@@ -117,7 +117,7 @@ export default function BookingCard({
           <select
             value={selectedRoomId}
             onChange={(event) => onSelectRoom(event.target.value)}
-            className="h-10 rounded-xl border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-10 rounded-sm border border-[#D1D5DB] bg-white px-2.5 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           >
             {siblingRoomTypes.map((room) => (
               <option key={room.id} value={room.id}>
@@ -138,7 +138,7 @@ export default function BookingCard({
               type="button"
               onClick={() => onSelectDuration(tier.key)}
               className={
-                "flex min-w-[76px] flex-col items-center rounded-xl border px-3 py-2 transition-colors " +
+                "flex min-w-[76px] flex-col items-center rounded-sm border px-3 py-2 transition-colors " +
                 (sel ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-[#E2E8F0] bg-white text-[#0F172A] hover:border-[#94A3B8]")
               }
             >
@@ -152,7 +152,7 @@ export default function BookingCard({
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">Add-ons</p>
       <div className="mt-2 flex flex-col gap-1.5">
         {addOns.map((addOn) => (
-          <label key={addOn.key} className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+          <label key={addOn.key} className="flex cursor-pointer items-center justify-between gap-2 rounded-sm border border-[#E2E8F0] px-3 py-2 text-sm">
             <span className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -186,15 +186,15 @@ export default function BookingCard({
 
       <div className="mt-4 flex flex-col gap-2">
         <button type="button" onClick={goToCheckout}
-          className="cta-gradient w-full rounded-xl py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]">
+          className="cta-gradient w-full rounded-sm py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]">
           Book Now
         </button>
         <button type="button" onClick={goToCheckout}
-          className="w-full rounded-xl border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]">
+          className="w-full rounded-sm border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]">
           Reserve Instantly
         </button>
         <button type="button" onClick={goToCheckout}
-          className="w-full rounded-xl border border-[#E2E8F0] py-3.5 text-sm font-bold text-[#334155] transition-colors hover:border-[#94A3B8]">
+          className="w-full rounded-sm border border-[#E2E8F0] py-3.5 text-sm font-bold text-[#334155] transition-colors hover:border-[#94A3B8]">
           Get Corporate Quote
         </button>
       </div>

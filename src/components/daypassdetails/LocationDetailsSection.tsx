@@ -10,16 +10,16 @@ export default function LocationDetailsSection({ details }: LocationDetailsSecti
   const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(details.address)}&output=embed`;
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Location Details" />
-      <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-wide text-[#94A3B8]">Address</p>
-        <p className="mt-1.5 flex items-start gap-2 text-base font-medium text-[#0F172A]">
-          <MapPin size={18} className="mt-0.5 shrink-0 text-[#2563EB]" />
+      <div className="rounded-sm border border-border bg-card p-6 shadow-soft">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-text">Address</p>
+        <p className="mt-2 flex items-start gap-3 text-base font-medium text-primary-text">
+          <MapPin size={18} className="mt-0.5 shrink-0 text-primary-blue flex-shrink-0" />
           {details.address}
         </p>
 
-        <div className="mt-5 h-[260px] w-full overflow-hidden rounded-[16px] border border-[#E2E8F0]">
+        <div className="mt-6 h-72 w-full overflow-hidden rounded-sm border border-border">
           <iframe
             title="Workspace location map"
             src={mapSrc}
@@ -29,42 +29,42 @@ export default function LocationDetailsSection({ details }: LocationDetailsSecti
           />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
-              <TrainFront size={16} className="text-[#2563EB]" />
+            <p className="flex items-center gap-2 text-sm font-bold text-primary-text">
+              <TrainFront size={16} className="text-primary-blue flex-shrink-0" />
               Nearest Metro
             </p>
-            <p className="mt-1 text-sm text-[#64748B]">
+            <p className="mt-2 text-sm text-secondary-text">
               {details.metroStation}
-              <span className="block">{details.metroDistanceKm} Kms away</span>
+              <span className="block text-xs text-muted-text mt-1">{details.metroDistanceKm} km away</span>
             </p>
           </div>
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
-              <TrainFront size={16} className="text-[#2563EB]" />
+            <p className="flex items-center gap-2 text-sm font-bold text-primary-text">
+              <TrainFront size={16} className="text-primary-blue flex-shrink-0" />
               Nearest Railway
             </p>
-            <p className="mt-1 text-sm text-[#64748B]">
+            <p className="mt-2 text-sm text-secondary-text">
               {details.railwayStation}
-              <span className="block">{details.railwayDistanceKm} Kms away</span>
+              <span className="block text-xs text-muted-text mt-1">{details.railwayDistanceKm} km away</span>
             </p>
           </div>
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
-              <Clock3 size={16} className="text-[#2563EB]" />
+            <p className="flex items-center gap-2 text-sm font-bold text-primary-text">
+              <Clock3 size={16} className="text-primary-blue flex-shrink-0" />
               Travel Time
             </p>
-            <p className="mt-1 text-sm text-[#64748B]">~{details.travelTimeMin} mins from city center</p>
+            <p className="mt-2 text-sm text-secondary-text">~{details.travelTimeMin} mins from city center</p>
           </div>
         </div>
 
-        <div className="mt-6 border-t border-[#E2E8F0] pt-5">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
-            <Landmark size={16} className="text-[#2563EB]" />
+        <div className="mt-6 border-t border-border pt-6">
+          <p className="flex items-center gap-2 text-sm font-bold text-primary-text">
+            <Landmark size={16} className="text-primary-blue flex-shrink-0" />
             Nearby Landmarks
           </p>
-          <p className="mt-1.5 text-sm text-[#64748B]">{details.landmarks.join(" • ")}</p>
+          <p className="mt-2 text-sm text-secondary-text">{details.landmarks.join(" • ")}</p>
         </div>
       </div>
     </section>

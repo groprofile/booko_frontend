@@ -9,16 +9,16 @@ interface DocumentRequirementsSectionProps {
 
 export default function DocumentRequirementsSection({ documents, approvalWindow }: DocumentRequirementsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Document Requirements" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {documents.map((doc, index) => (
-          <div key={doc.name} className="rounded-[18px] border border-[#E2E8F0] bg-white p-4">
+          <div key={doc.name} className="rounded-sm border border-[#E2E8F0] bg-white p-4">
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">
                 {index + 1}
               </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8FAFC] text-[#64748B]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-[#F8FAFC] text-[#64748B]">
                 <FileText size={16} />
               </span>
             </div>

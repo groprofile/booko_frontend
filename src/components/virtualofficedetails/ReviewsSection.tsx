@@ -12,7 +12,7 @@ export default function ReviewsSection({ details }: ReviewsSectionProps) {
   const visibleReviews = showAll ? details.reviews : details.reviews.slice(0, 3);
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Customer Reviews" />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -38,7 +38,7 @@ export default function ReviewsSection({ details }: ReviewsSectionProps) {
         ))}
       </div>
 
-      <div className="mt-5 rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+      <div className="mt-5 rounded-sm border border-[#E2E8F0] bg-[#F8FAFC] p-4">
         <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
           <Sparkles size={15} className="text-[#2563EB]" />
           AI Review Summary
@@ -55,7 +55,7 @@ export default function ReviewsSection({ details }: ReviewsSectionProps) {
 
       <div className="mt-5 flex flex-col gap-3">
         {visibleReviews.map((review, index) => (
-          <div key={`${review.name}-${index}`} className="rounded-[16px] border border-[#E2E8F0] bg-white p-4">
+          <div key={`${review.name}-${index}`} className="rounded-sm border border-[#E2E8F0] bg-white p-4">
             <div className="flex items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1 font-bold text-[#0F172A]">
                 <Star size={13} className="fill-[#FBBF24] text-[#FBBF24]" />

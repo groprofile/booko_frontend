@@ -8,7 +8,7 @@ interface TrustScoreSectionProps {
 
 export default function TrustScoreSection({ trustScore, items }: TrustScoreSectionProps) {
   return (
-    <div className="rounded-[20px] border border-[#2563EB]/20 bg-[#EFF6FF] p-6">
+    <div className="rounded-sm border border-[#2563EB]/20 bg-[#EFF6FF] p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {items.map((item) => (
@@ -23,7 +23,7 @@ export default function TrustScoreSection({ trustScore, items }: TrustScoreSecti
           ))}
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 rounded-[16px] bg-white px-5 py-3 shadow-soft">
+        <div className="flex shrink-0 items-center gap-3 rounded-sm bg-white px-5 py-3 shadow-soft">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Virtual Office Trust Score</p>
             <p className="text-2xl font-extrabold text-[#2563EB]">{trustScore}/100</p>

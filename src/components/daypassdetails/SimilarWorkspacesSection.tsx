@@ -56,7 +56,7 @@ export default function SimilarWorkspacesSection({ current, cityName }: SimilarW
   }
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel
         title="Explore Nearby"
         action={
@@ -64,20 +64,22 @@ export default function SimilarWorkspacesSection({ current, cityName }: SimilarW
             type="button"
             onClick={() => scrollByAmount(320)}
             aria-label="Scroll right"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#334155] shadow-soft hover:border-[#94A3B8] sm:flex"
+            className="hidden h-10 w-10 items-center justify-center rounded-sm border border-border bg-card text-secondary-text shadow-soft hover:border-muted-text hover:shadow-soft-lg sm:flex transition-all"
           >
             <ChevronRight size={18} />
           </button>
         }
       />
 
-      <div className="mb-4 flex border-b border-[#E2E8F0]">
+      <div className="mb-6 flex gap-1 border-b border-border">
         <button
           type="button"
           onClick={() => setTab("nearby")}
           className={
-            "border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors " +
-            (tab === "nearby" ? "border-[#2563EB] text-[#2563EB]" : "border-transparent text-[#64748B]")
+            "px-4 py-3 text-sm font-semibold transition-all " +
+            (tab === "nearby"
+              ? "border-b-2 border-primary-blue text-primary-blue"
+              : "border-b-2 border-transparent text-muted-text hover:text-secondary-text")
           }
         >
           Spaces Nearby
@@ -86,8 +88,10 @@ export default function SimilarWorkspacesSection({ current, cityName }: SimilarW
           type="button"
           onClick={() => setTab("city")}
           className={
-            "border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors " +
-            (tab === "city" ? "border-[#2563EB] text-[#2563EB]" : "border-transparent text-[#64748B]")
+            "px-4 py-3 text-sm font-semibold transition-all " +
+            (tab === "city"
+              ? "border-b-2 border-primary-blue text-primary-blue"
+              : "border-b-2 border-transparent text-muted-text hover:text-secondary-text")
           }
         >
           Top Rated
@@ -95,46 +99,47 @@ export default function SimilarWorkspacesSection({ current, cityName }: SimilarW
       </div>
 
       {loading ? (
-        <div className="flex gap-4 overflow-hidden pb-2">
+        <div className="flex gap-5 overflow-hidden pb-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[264px] w-[260px] shrink-0 animate-pulse rounded-[18px] bg-[#F1F5F9]" />
+            <div key={i} className="h-72 w-64 shrink-0 animate-pulse rounded-sm bg-bg" />
           ))}
         </div>
       ) : candidates.length === 0 ? (
-        <p className="text-sm text-[#64748B]">No nearby day pass spaces found in {cityName} yet.</p>
+        <p className="text-sm text-muted-text">No nearby day pass spaces found in {cityName} yet.</p>
       ) : (
-        <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div ref={scrollRef} className="flex gap-5 overflow-x-auto pb-2 scrollbar-hide">
           {candidates.map((listing) => (
             <div
               key={listing.id}
-              className="group relative flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white/90 shadow-soft ring-1 ring-[#1D4ED8]/5 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-[#2563EB]/25 hover:shadow-md hover:ring-[#2563EB]/20"
+              className="group relative flex w-72 shrink-0 flex-col overflow-hidden rounded-sm border border-border bg-card shadow-soft transition-all hover:-translate-y-1 hover:shadow-soft-lg hover:border-primary-blue/20"
             >
-              {listing.isFeatured && <RecommendedBadge size="sm" className="absolute left-3 top-3 z-10" />}
-              <div className="h-[140px] w-full overflow-hidden">
+              {listing.isFeatured && <RecommendedBadge size="sm" className="absolute left-4 top-4 z-10" />}
+              <div className="h-44 w-full overflow-hidden bg-bg">
                 <img src={listing.images[0]} alt={listing.name} className="h-full w-full object-cover" />
               </div>
-              <div className="flex flex-1 flex-col p-4">
-                <p className="text-sm font-bold text-[#0F172A] line-clamp-1">{listing.name}</p>
-                <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-[#F1F5F9] px-2 py-0.5 text-[11px] font-semibold text-[#475569]">
+              <div className="flex flex-1 flex-col p-5">
+                <p className="text-sm font-bold text-primary-text line-clamp-2">{listing.name}</p>
+                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-sm bg-blue-50 px-3 py-1 text-xs font-semibold text-primary-blue">
                   {listing.seatingTypes[0]}
                 </span>
-                <p className="mt-2 flex items-center gap-1 text-xs text-[#64748B]">
-                  <MapPin size={12} />
+                <p className="mt-3 flex items-center gap-2 text-xs text-muted-text">
+                  <MapPin size={13} className="flex-shrink-0" />
                   {listing.locality}
                 </p>
-                <p className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
-                  <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
-                  {listing.rating.toFixed(2)}
+                <p className="mt-2 flex items-center gap-2 text-xs text-muted-text">
+                  <Star size={13} className="fill-yellow-400 text-yellow-400 flex-shrink-0" />
+                  <span className="font-semibold text-primary-text">{listing.rating.toFixed(2)}</span>
                 </p>
-                <div className="mt-2 flex items-baseline gap-1.5">
-                  <span className="text-sm font-bold text-[#0F172A]">₹{listing.bestPrice}</span>
-                  <span className="text-xs text-[#94A3B8]">/day</span>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-base font-bold text-primary-text">₹{listing.bestPrice}</span>
+                  <span className="text-xs text-muted-text">/day</span>
                 </div>
                 <Link
                   to={`/day-pass/${listing.id}`}
-                  className="mt-3 text-sm font-semibold text-[#2563EB] hover:underline"
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary-blue transition-colors hover:text-primary-blue/80"
                 >
-                  View Details →
+                  View Details
+                  <span>→</span>
                 </Link>
               </div>
             </div>

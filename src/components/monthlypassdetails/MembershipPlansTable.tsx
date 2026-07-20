@@ -16,9 +16,9 @@ export default function MembershipPlansTable({ membershipTypes }: MembershipPlan
   ];
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Membership Plans" />
-      <div className="overflow-x-auto rounded-[20px] border border-[#E2E8F0]">
+      <div className="overflow-x-auto rounded-sm border border-[#E2E8F0]">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="bg-[#F8FAFC]">

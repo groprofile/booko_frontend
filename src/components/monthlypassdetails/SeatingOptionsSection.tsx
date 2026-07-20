@@ -7,11 +7,11 @@ interface SeatingOptionsSectionProps {
 
 export default function SeatingOptionsSection({ options }: SeatingOptionsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Seating Options" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {options.map((option) => (
-          <div key={option.key} className="overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white">
+          <div key={option.key} className="overflow-hidden rounded-sm border border-[#E2E8F0] bg-white">
             <div className="relative aspect-[16/10] w-full overflow-hidden">
               <img src={option.image} alt={option.name} className="h-full w-full object-cover" />
               <span

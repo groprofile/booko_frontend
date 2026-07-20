@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import GalleryHero from "../components/hoteldetails/GalleryHero";
+import DetailGallery from "../components/common/DetailGallery";
 import HotelDetailHeader from "../components/hoteldetails/HotelDetailHeader";
 import BookingCard from "../components/hoteldetails/BookingCard";
 import WhyBookSection from "../components/hoteldetails/WhyBookSection";
@@ -137,12 +137,12 @@ export default function HotelDetailsPage() {
             <span className="font-semibold text-[#0F172A]">{listing.name}</span>
           </nav>
 
-          <div className="mt-4">
-            <GalleryHero images={details.galleryImages} name={listing.name} />
+          <div className="mt-2">
+            <DetailGallery images={details.galleryImages} name={listing.name} />
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="flex min-w-0 flex-col gap-12">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="flex min-w-0 flex-col gap-6">
               <HotelDetailHeader listing={listing} details={details} cityName={cityName} />
 
               <WhyBookSection cards={details.whyBookCards} />

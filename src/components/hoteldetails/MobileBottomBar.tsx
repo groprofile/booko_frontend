@@ -41,7 +41,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex-1 rounded-xl bg-[#111111] py-3 text-center text-sm font-bold text-white"
+          className="flex-1 rounded-sm bg-[#111111] py-3 text-center text-sm font-bold text-white"
         >
           Book Now
         </button>

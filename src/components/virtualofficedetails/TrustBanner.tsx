@@ -21,7 +21,7 @@ export default function TrustBanner() {
           <button
             type="button"
             onClick={() => setRequested("call")}
-            className="cta-gradient inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+            className="cta-gradient inline-flex items-center gap-2 rounded-sm px-5 py-2.5 text-sm font-bold text-white"
           >
             <Phone size={15} />
             Call Now
@@ -29,7 +29,7 @@ export default function TrustBanner() {
           <button
             type="button"
             onClick={() => setRequested("whatsapp")}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#16A34A] px-5 py-2.5 text-sm font-bold text-[#16A34A] hover:bg-[#ECFDF5]"
+            className="inline-flex items-center gap-2 rounded-sm border border-[#16A34A] px-5 py-2.5 text-sm font-bold text-[#16A34A] hover:bg-[#ECFDF5]"
           >
             <MessageCircle size={15} />
             WhatsApp

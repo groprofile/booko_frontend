@@ -49,6 +49,7 @@ function AddCenterModal({ onClose, onCreated }: AddCenterModalProps) {
     city: "",
     state: "",
     pincode: "",
+    googleMapUrl: "",
     openingTime: "09:00",
     closingTime: "21:00",
     contactName: "",
@@ -96,6 +97,7 @@ function AddCenterModal({ onClose, onCreated }: AddCenterModalProps) {
           city: form.city.trim(),
           state: form.state.trim(),
           pincode: form.pincode.trim(),
+          googleMapUrl: form.googleMapUrl.trim() || undefined,
           openingTime: form.openingTime,
           closingTime: form.closingTime,
           contactName: form.contactName.trim() || undefined,
@@ -249,6 +251,17 @@ function AddCenterModal({ onClose, onCreated }: AddCenterModalProps) {
                   className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
                 />
               </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[#0F172A]">Google Maps URL</label>
+              <input
+                value={form.googleMapUrl}
+                onChange={(e) => set("googleMapUrl", e.target.value)}
+                placeholder="https://maps.google.com/…"
+                className="bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 rounded-xl px-4 py-2.5 text-sm outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+              />
+              <p className="text-[11px] text-[#94A3B8]">Used to pin your exact location so customers find you in Nearby search.</p>
             </div>
 
             {/* Section: Timings */}

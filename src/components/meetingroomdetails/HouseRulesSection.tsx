@@ -19,12 +19,12 @@ export default function HouseRulesSection({ rules }: HouseRulesSectionProps) {
   ];
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="House Rules" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {rows.map(({ icon: Icon, label, value }) => (
-          <div key={label} className="flex items-start gap-3 rounded-[16px] border border-[#E2E8F0] bg-white p-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
+          <div key={label} className="flex items-start gap-3 rounded-sm border border-[#E2E8F0] bg-white p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#EFF6FF] text-[#2563EB]">
               <Icon size={16} />
             </span>
             <div>

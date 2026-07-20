@@ -15,6 +15,8 @@ import BokkoExpertCard from "../components/coworkingspaces/BokkoExpertCard";
 import BokkoExpertWidget from "../components/coworkingspaces/BokkoExpertWidget";
 import SimilarWorkspacesCarousel from "../components/coworkingspaces/SimilarWorkspacesCarousel";
 import ExploreCitiesSection from "../components/coworkingspaces/ExploreCitiesSection";
+import ListingsMap from "../components/common/ListingsMap";
+import ListingsViewControls from "../components/common/ListingsViewControls";
 import { CITY_NAMES, allProviders, sortSpaces } from "../data/coworkingSpaces";
 import type { CoworkingSpace, ServiceKey, SortOption } from "../data/coworkingSpaces";
 import { apiGet } from "../lib/api";
@@ -43,6 +45,9 @@ export default function CoworkingSpacesListingPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [layout, setLayout] = useState<"list" | "grid">("list");
+  const [showMap, setShowMap] = useState(true);
+  const mapVisible = layout === "list" && showMap;
   const [listings, setListings] = useState<CoworkingSpace[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
   const geo = useGeolocation();
@@ -316,45 +321,51 @@ export default function CoworkingSpacesListingPage() {
               Showing {filteredSpaces.length} workspace{filteredSpaces.length === 1 ? "" : "s"}
               {lockedCitySlug ? ` in ${cityName}` : ""}
             </p>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] lg:hidden"
-            >
-              <SlidersHorizontal size={16} />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[11px] font-bold text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                className="inline-flex items-center gap-2 rounded-sm border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] lg:hidden"
+              >
+                <SlidersHorizontal size={16} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[11px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              <ListingsViewControls layout={layout} onLayoutChange={setLayout} showMap={showMap} onToggleMap={() => setShowMap((v) => !v)} />
+            </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          <div className={"mt-6 grid grid-cols-1 gap-8 " + (mapVisible ? "lg:grid-cols-[280px_minmax(0,1fr)_420px]" : "lg:grid-cols-[280px_minmax(0,1fr)]")}>
             <aside className="hidden lg:block">
-              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-[#E2E8F0] bg-white p-5">
+              <div className="sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col gap-5 overflow-y-auto rounded-sm border border-[#E2E8F0] bg-white p-5">
                 <FilterSidebar {...sidebarProps} />
+              </div>
+              <div className="sticky top-24 mt-5 hidden xl:block">
+                <BokkoExpertCard />
               </div>
             </aside>
 
-            <div className="flex min-w-0 flex-col gap-12">
+            <div className="flex min-w-0 flex-col gap-8">
               {apiLoading ? (
-                <div className="flex flex-col gap-5">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <WorkspaceCardSkeleton key={i} />
+                <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <WorkspaceCardSkeleton key={i} layout={layout === "grid" ? "grid" : "row"} />
                   ))}
                 </div>
               ) : filteredSpaces.length === 0 ? (
-                <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
+                <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-[#E2E8F0] bg-white text-center">
                   <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
                   <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-5">
+                <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
                   {filteredSpaces.map((space, i) => (
                     <div key={space.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                      <WorkspaceCard space={space} />
+                      <WorkspaceCard space={space} layout={layout === "grid" ? "grid" : "row"} />
                     </div>
                   ))}
                 </div>
@@ -367,11 +378,26 @@ export default function CoworkingSpacesListingPage() {
               <ExploreCitiesSection />
             </div>
 
-            <aside className="hidden xl:block">
-              <div className="sticky top-24">
-                <BokkoExpertCard />
-              </div>
-            </aside>
+            {mapVisible && (
+              <aside className="hidden lg:block">
+                <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-hidden rounded-sm border border-[#E2E8F0]">
+                  <ListingsMap
+                    items={filteredSpaces
+                      .filter((s) => s.latitude != null && s.longitude != null)
+                      .map((s) => ({
+                        id: s.id,
+                        name: s.name,
+                        image: s.images?.[0] ?? s.image,
+                        priceLabel: `₹${s.startingPrice.toLocaleString()} starting`,
+                        lat: s.latitude as number,
+                        lng: s.longitude as number,
+                        href: s.services[0]?.href ?? "#",
+                      }))}
+                    fallbackCenter={metroBySlug(lockedCitySlug) ?? { lat: 19.076, lng: 72.8777 }}
+                  />
+                </div>
+              </aside>
+            )}
           </div>
         </div>
       </main>
@@ -402,7 +428,7 @@ export default function CoworkingSpacesListingPage() {
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
-                className="w-full rounded-xl bg-[#111111] py-3.5 text-sm font-bold text-white hover:bg-black"
+                className="w-full rounded-sm bg-[#111111] py-3.5 text-sm font-bold text-white hover:bg-black"
               >
                 Show {filteredSpaces.length} results
               </button>

@@ -19,7 +19,7 @@ const personas: { key: Persona; label: string; icon: typeof Rocket; description:
 
 export default function RecommendedSection({ activePersona, onSelectPersona }: RecommendedSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Recommended Workspaces" />
       <p className="mb-4 text-sm text-[#64748B]">Tap a persona to instantly filter workspaces best suited for you.</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

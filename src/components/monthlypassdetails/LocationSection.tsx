@@ -27,9 +27,9 @@ export default function LocationSection({
   nearbyPlaces,
 }: LocationSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Commute & Location" />
-      <div className="overflow-hidden rounded-[20px] border border-[#E2E8F0]">
+      <div className="overflow-hidden rounded-sm border border-[#E2E8F0]">
         <iframe
           title="Workspace location map"
           src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
@@ -39,22 +39,22 @@ export default function LocationSection({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+        <div className="rounded-sm border border-[#E2E8F0] bg-white p-4">
           <Train size={16} className="text-[#2563EB]" />
           <p className="mt-2 text-sm font-bold text-[#0F172A]">{metroDistanceKm} km</p>
           <p className="text-xs text-[#64748B]">Metro Distance</p>
         </div>
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+        <div className="rounded-sm border border-[#E2E8F0] bg-white p-4">
           <Train size={16} className="text-[#2563EB]" />
           <p className="mt-2 text-sm font-bold text-[#0F172A]">{railwayDistanceKm} km</p>
           <p className="text-xs text-[#64748B]">Railway Distance</p>
         </div>
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+        <div className="rounded-sm border border-[#E2E8F0] bg-white p-4">
           <Plane size={16} className="text-[#2563EB]" />
           <p className="mt-2 text-sm font-bold text-[#0F172A]">{airportDistanceKm} km</p>
           <p className="text-xs text-[#64748B]">Airport Distance</p>
         </div>
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+        <div className="rounded-sm border border-[#E2E8F0] bg-white p-4">
           <Building2 size={16} className="text-[#2563EB]" />
           <p className="mt-2 text-sm font-bold text-[#0F172A]">{hasParking ? "Available" : "Limited"}</p>
           <p className="text-xs text-[#64748B]">Parking</p>
@@ -67,9 +67,9 @@ export default function LocationSection({
           return (
             <div
               key={place.category}
-              className="flex items-center gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-4"
+              className="flex items-center gap-3 rounded-sm border border-[#E2E8F0] bg-white p-4"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F8FAFC] text-[#2563EB]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#F8FAFC] text-[#2563EB]">
                 <Icon size={16} />
               </span>
               <div>

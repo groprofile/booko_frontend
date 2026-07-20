@@ -73,7 +73,7 @@ export default function SimilarRoomsSection({ current }: SimilarRoomsSectionProp
   }
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel
         title="Similar Meeting Rooms"
         action={
@@ -107,7 +107,7 @@ export default function SimilarRoomsSection({ current }: SimilarRoomsSectionProp
       {loading ? (
         <div className="flex gap-4 overflow-hidden pb-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[232px] w-[260px] shrink-0 animate-pulse rounded-[18px] bg-[#F1F5F9]" />
+            <div key={i} className="h-[232px] w-[260px] shrink-0 animate-pulse rounded-sm bg-[#F1F5F9]" />
           ))}
         </div>
       ) : candidates.length === 0 ? (
@@ -118,7 +118,7 @@ export default function SimilarRoomsSection({ current }: SimilarRoomsSectionProp
             <Link
               key={listing.id}
               to={`/meeting-rooms/${listing.id}`}
-              className="relative flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
+              className="relative flex w-[260px] shrink-0 flex-col overflow-hidden rounded-sm border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
               {listing.isFeatured && <RecommendedBadge size="sm" className="absolute left-3 top-3 z-10" />}
               <div className="h-[140px] w-full overflow-hidden">

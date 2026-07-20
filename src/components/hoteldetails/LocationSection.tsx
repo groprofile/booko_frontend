@@ -29,15 +29,15 @@ export default function LocationSection({ address, details }: LocationSectionPro
   const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Location" />
-      <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-soft">
+      <div className="rounded-sm border border-[#E2E8F0] bg-white p-6 shadow-soft">
         <p className="flex items-start gap-2 text-base font-medium text-[#0F172A]">
           <MapPin size={18} className="mt-0.5 shrink-0 text-[#2563EB]" />
           {address}
         </p>
 
-        <div className="mt-4 h-[260px] w-full overflow-hidden rounded-[16px] border border-[#E2E8F0]">
+        <div className="mt-4 h-[260px] w-full overflow-hidden rounded-sm border border-[#E2E8F0]">
           <iframe
             title="Hotel location map"
             src={mapSrc}
@@ -51,7 +51,7 @@ export default function LocationSection({ address, details }: LocationSectionPro
           {details.nearbyPlaces.map((place) => {
             const Icon = placeIcons[place.category] ?? MapPin;
             return (
-              <div key={place.category} className="flex items-start gap-2.5 rounded-[14px] border border-[#E2E8F0] px-4 py-3">
+              <div key={place.category} className="flex items-start gap-2.5 rounded-sm border border-[#E2E8F0] px-4 py-3">
                 <Icon size={16} className="mt-0.5 shrink-0 text-[#2563EB]" />
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">{place.category}</p>

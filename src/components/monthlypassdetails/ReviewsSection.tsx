@@ -12,11 +12,11 @@ interface ReviewsSectionProps {
 
 export default function ReviewsSection({ rating, reviewCount, ratingBreakdown, aiLovedTags, reviews }: ReviewsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Reviews & Ratings" />
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-[200px_1fr]">
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white p-5 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-[#E2E8F0] bg-white p-5 text-center">
           <p className="text-4xl font-extrabold text-[#0F172A]">{rating.toFixed(1)}</p>
           <div className="mt-1 flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -39,7 +39,7 @@ export default function ReviewsSection({ rating, reviewCount, ratingBreakdown, a
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-[#2563EB]/20 bg-[#EFF6FF] p-5">
+      <div className="mt-5 rounded-sm border border-[#2563EB]/20 bg-[#EFF6FF] p-5">
         <div className="flex items-center gap-2">
           <Sparkles size={15} className="text-[#2563EB]" />
           <p className="text-sm font-bold text-[#0F172A]">AI Review Summary — Members Loved</p>
@@ -55,7 +55,7 @@ export default function ReviewsSection({ rating, reviewCount, ratingBreakdown, a
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {reviews.map((review) => (
-          <div key={review.id} className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+          <div key={review.id} className="rounded-sm border border-[#E2E8F0] bg-white p-4">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0F172A] text-sm font-bold text-white">
                 {review.authorInitial}

@@ -29,7 +29,7 @@ export default function WorkspaceBundleSection({ citySlug }: WorkspaceBundleSect
   ];
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Complete Your Workspace Bundle" />
       <p className="mb-4 text-sm text-[#64748B]">
         Pair this meeting room with other Bokko products for your visit — all bookable in one place.
@@ -40,9 +40,9 @@ export default function WorkspaceBundleSection({ citySlug }: WorkspaceBundleSect
           <Link
             key={title}
             to={href}
-            className="group flex flex-col gap-3 rounded-[20px] border border-[#E2E8F0] bg-white p-5 shadow-soft transition-shadow hover:shadow-soft-lg"
+            className="group flex flex-col gap-3 rounded-sm border border-[#E2E8F0] bg-white p-5 shadow-soft transition-shadow hover:shadow-soft-lg"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EFF6FF] text-[#2563EB]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-sm bg-[#EFF6FF] text-[#2563EB]">
               <Icon size={20} strokeWidth={1.8} />
             </span>
             <div>
@@ -56,8 +56,8 @@ export default function WorkspaceBundleSection({ citySlug }: WorkspaceBundleSect
           </Link>
         ))}
 
-        <div className="flex flex-col gap-3 rounded-[20px] border border-dashed border-[#2563EB]/40 bg-[#EFF6FF] p-5">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#2563EB]">
+        <div className="flex flex-col gap-3 rounded-sm border border-dashed border-[#2563EB]/40 bg-[#EFF6FF] p-5">
+          <span className="flex h-11 w-11 items-center justify-center rounded-sm bg-white text-[#2563EB]">
             <Layers size={20} strokeWidth={1.8} />
           </span>
           <div>

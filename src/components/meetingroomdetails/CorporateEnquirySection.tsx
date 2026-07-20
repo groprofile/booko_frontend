@@ -13,7 +13,7 @@ export default function CorporateEnquirySection() {
   const [requested, setRequested] = useState<RequestType | null>(null);
 
   return (
-    <section className="cta-gradient rounded-[24px] p-8 text-white">
+    <section className="cta-gradient rounded-sm p-8 text-white">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
         <Sparkles size={13} />
         For Teams & Enterprises
@@ -26,7 +26,7 @@ export default function CorporateEnquirySection() {
       </ul>
 
       {requested ? (
-        <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold">
+        <div className="mt-5 inline-flex items-center gap-2 rounded-sm bg-white/15 px-4 py-3 text-sm font-semibold">
           <CheckCircle2 size={16} />
           {confirmations[requested]}
         </div>
@@ -35,7 +35,7 @@ export default function CorporateEnquirySection() {
           <button
             type="button"
             onClick={() => setRequested("expert")}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#2563EB] transition-transform hover:scale-[1.03]"
+            className="inline-flex items-center gap-2 rounded-sm bg-white px-5 py-3 text-sm font-bold text-[#2563EB] transition-transform hover:scale-[1.03]"
           >
             <MessageSquareText size={16} />
             Talk to Bokko Expert
@@ -43,7 +43,7 @@ export default function CorporateEnquirySection() {
           <button
             type="button"
             onClick={() => setRequested("callback")}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-sm border border-white/40 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
           >
             <PhoneCall size={16} />
             Request Callback
@@ -51,7 +51,7 @@ export default function CorporateEnquirySection() {
           <button
             type="button"
             onClick={() => setRequested("quote")}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-sm border border-white/40 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
           >
             Get Custom Quote
           </button>

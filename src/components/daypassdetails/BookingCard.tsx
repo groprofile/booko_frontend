@@ -55,41 +55,43 @@ export default function BookingCard({
   }
 
   return (
-    <div className="rounded-[24px] border border-white/60 bg-white/85 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl ring-1 ring-[#2563EB]/5">
-      <p className="text-base font-bold text-[#0F172A]">Book {selected?.type} at {listing.name}</p>
+    <div className="rounded-sm border border-border bg-card p-6 shadow-soft-lg">
+      <p className="text-lg font-bold text-primary-text">Book {selected?.type} at {listing.name}</p>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {listing.premier && (
-          <span className="rounded-md bg-[#EFF6FF] px-2 py-1 text-[11px] font-bold text-[#2563EB]">
-            Premium Workspace
-          </span>
-        )}
-      </div>
+      {(listing.premier || listing.popular) && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {listing.premier && (
+            <span className="rounded-sm bg-blue-50 px-3 py-1.5 text-xs font-bold text-primary-blue">
+              Premium Workspace
+            </span>
+          )}
+        </div>
+      )}
 
       {listing.popular && (
-        <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#F1F5F9] px-3 py-2.5 text-sm text-[#334155]">
-          <ThumbsUp size={15} className="mt-0.5 shrink-0 text-[#2563EB]" />
+        <div className="mt-4 flex items-start gap-3 rounded-sm bg-blue-50 px-4 py-3 text-sm text-secondary-text">
+          <ThumbsUp size={16} className="mt-0.5 shrink-0 text-primary-blue" />
           Great choice! This is one of our most popular workspaces.
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Date</span>
+      <div className="mt-6 flex flex-col gap-4">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-text">Date</span>
           <input
             type="date"
             value={date}
             onChange={(event) => onDateChange(event.target.value)}
-            className="h-11 w-full rounded-xl border border-[#D1D5DB] px-3 text-sm font-medium text-[#0F172A] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-11 w-full rounded-sm border border-border bg-card px-4 text-sm font-medium text-primary-text outline-none transition-all focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/10"
           />
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Members</span>
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-text">Members</span>
           <select
             value={members}
             onChange={(event) => onMembersChange(Number(event.target.value))}
-            className="h-11 w-full rounded-xl border border-[#D1D5DB] bg-white px-3 text-sm font-medium text-[#0F172A] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-11 w-full rounded-sm border border-border bg-card px-4 text-sm font-medium text-primary-text outline-none transition-all focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/10"
           >
             {[1, 2, 3, 4, 5, 10].map((value) => (
               <option key={value} value={value}>
@@ -99,12 +101,12 @@ export default function BookingCard({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Seating Type</span>
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-text">Seating Type</span>
           <select
             value={selectedType}
             onChange={(event) => onSelectType(event.target.value)}
-            className="h-11 w-full rounded-xl border border-[#D1D5DB] bg-white px-3 text-sm font-medium text-[#0F172A] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
+            className="h-11 w-full rounded-sm border border-border bg-card px-4 text-sm font-medium text-primary-text outline-none transition-all focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/10"
           >
             {seatingOptions.map((option) => (
               <option key={option.type} value={option.type}>
@@ -116,16 +118,16 @@ export default function BookingCard({
       </div>
 
       {selected && (
-        <div className="mt-4 flex flex-col gap-1 border-t border-[#E2E8F0] pt-4">
-          <div className="flex items-center justify-between text-sm text-[#64748B]">
+        <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">
+          <div className="flex items-center justify-between text-sm text-muted-text">
             <span>Price ({members} × ₹{selected.price})</span>
             <span className="line-through">₹{(selected.price * members).toLocaleString()}</span>
           </div>
-          <div className="flex items-center justify-between text-sm text-[#16A34A]">
+          <div className="flex items-center justify-between text-sm font-semibold text-success">
             <span>Offer Applied · {selected.offerCode}</span>
             <span>- ₹{(selected.price * members - total).toLocaleString()}</span>
           </div>
-          <div className="mt-1.5 flex items-center justify-between border-t border-[#E2E8F0] pt-2 text-base font-extrabold text-[#0F172A]">
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-lg font-extrabold text-primary-text">
             <span>Total Amount</span>
             <span>₹{total.toLocaleString()}</span>
           </div>
@@ -135,7 +137,7 @@ export default function BookingCard({
       <button
         type="button"
         onClick={goToCheckout}
-        className="cta-gradient mt-4 w-full rounded-xl py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]"
+        className="cta-gradient mt-6 w-full rounded-sm py-3 text-base font-semibold text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-all hover:brightness-[1.06]"
       >
         Book Day Pass
       </button>

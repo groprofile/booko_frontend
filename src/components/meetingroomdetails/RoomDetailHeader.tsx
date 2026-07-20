@@ -21,14 +21,14 @@ export default function RoomDetailHeader({ listing, details, cityName }: RoomDet
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-xs font-bold text-white">
+        <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2.5 py-1 text-xs font-bold text-white">
           <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
           {details.rating.toFixed(1)} ({details.reviewCount} reviews)
         </span>
         {details.badges.map((badge) => (
           <span
             key={badge}
-            className={"rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide " + (badgeStyles[badge] ?? "bg-[#F1F5F9] text-[#475569]")}
+            className={"rounded-sm px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide " + (badgeStyles[badge] ?? "bg-[#F1F5F9] text-[#475569]")}
           >
             {badge}
           </span>

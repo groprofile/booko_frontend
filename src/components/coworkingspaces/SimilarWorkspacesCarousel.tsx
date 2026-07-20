@@ -44,7 +44,7 @@ export default function SimilarWorkspacesCarousel({ spaces }: SimilarWorkspacesC
   }
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel
         title="Similar Workspaces"
         action={

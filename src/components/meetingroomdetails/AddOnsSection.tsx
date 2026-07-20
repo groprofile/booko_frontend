@@ -10,7 +10,7 @@ interface AddOnsSectionProps {
 
 export default function AddOnsSection({ addOns, selectedKeys, onToggle }: AddOnsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Add-ons" action={<p className="text-xs text-[#64748B]">Tap to add to your booking</p>} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {addOns.map((addOn) => {
@@ -21,7 +21,7 @@ export default function AddOnsSection({ addOns, selectedKeys, onToggle }: AddOns
               type="button"
               onClick={() => onToggle(addOn.key)}
               className={
-                "flex flex-col items-start gap-1 rounded-[16px] border p-4 text-left transition-colors " +
+                "flex flex-col items-start gap-1 rounded-sm border p-4 text-left transition-colors " +
                 (selected ? "border-[#2563EB] bg-[#EFF6FF]" : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]")
               }
             >

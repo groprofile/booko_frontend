@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import MainLayout from "../components/layout/MainLayout";
 import HeroSection from "../components/virtualofficedetails/HeroSection";
 import TrustScoreSection from "../components/virtualofficedetails/TrustScoreSection";
 import WhyThisOfficeSection from "../components/virtualofficedetails/WhyThisOfficeSection";
@@ -84,41 +83,37 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
 
   if (!listing || !details) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-        <Header />
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
-          <p className="text-xl font-bold text-[#0F172A]">Virtual office not found</p>
-          <p className="text-sm text-[#64748B]">This listing may have moved or no longer exists.</p>
-          <Link to={`/${citySlug}/virtual-office`} className="rounded-xl bg-[#111111] px-5 py-2.5 text-sm font-semibold text-white hover:bg-black">
+      <MainLayout>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
+          <p className="text-xl font-bold text-primary-text">Virtual office not found</p>
+          <p className="text-sm text-muted-text">This listing may have moved or no longer exists.</p>
+          <Link to={`/${citySlug}/virtual-office`} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-deep">
             Browse Virtual Offices in {cityName}
           </Link>
-        </main>
-        <Footer />
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-      <Header />
-
-      <main className="flex-1 animate-fade-in-up pb-24 sm:pb-0">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-[#64748B]">
-            <Link to="/" className="hover:text-[#2563EB]">
+    <MainLayout>
+      <div className="animate-fade-in-up pb-24 sm:pb-0">
+        <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-muted-text">
+            <Link to="/" className="hover:text-brand">
               Home
             </Link>
             <ChevronRight size={14} />
-            <Link to={`/${citySlug}/virtual-office`} className="hover:text-[#2563EB]">
+            <Link to={`/${citySlug}/virtual-office`} className="hover:text-brand">
               Virtual Office
             </Link>
             <ChevronRight size={14} />
             <span>{cityName}</span>
             <ChevronRight size={14} />
-            <span className="font-semibold text-[#0F172A]">{listing.centerName}</span>
+            <span className="font-semibold text-primary-text">{listing.centerName}</span>
           </nav>
 
-          <div className="mt-4">
+          <div className="mt-2">
             <HeroSection listing={listing} details={details} cityName={cityName} />
           </div>
 
@@ -126,8 +121,8 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
             <TrustScoreSection trustScore={details.trustScore} items={details.trustScoreItems} />
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="flex min-w-0 flex-col gap-12">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="flex min-w-0 flex-col gap-6">
               <WhyThisOfficeSection items={details.whyThisOffice} />
 
               <PlanComparisonTable rows={details.planComparison} />
@@ -162,13 +157,11 @@ export default function VirtualOfficeDetailsPage({ officeSlug }: VirtualOfficeDe
         </div>
 
         <TrustBanner />
-      </main>
-
-      <Footer />
+      </div>
 
       <BokkoExpertWidget />
 
       <MobileBottomBar listing={listing} citySlug={citySlug} cityName={cityName} plans={listing.plans} />
-    </div>
+    </MainLayout>
   );
 }

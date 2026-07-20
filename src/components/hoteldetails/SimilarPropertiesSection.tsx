@@ -47,7 +47,7 @@ export default function SimilarPropertiesSection({ current, allListings }: Simil
   }
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel
         title="Similar Properties"
         action={
@@ -86,7 +86,7 @@ export default function SimilarPropertiesSection({ current, allListings }: Simil
             <Link
               key={listing.id}
               to={`/hotels/${slugify(listing.name)}`}
-              className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
+              className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-sm border border-[#E2E8F0] bg-white shadow-soft transition-transform hover:-translate-y-1"
             >
               <div className="h-[140px] w-full overflow-hidden">
                 <img src={listing.images[0]} alt={listing.name} className="h-full w-full object-cover" />

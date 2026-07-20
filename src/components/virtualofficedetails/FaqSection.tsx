@@ -11,13 +11,13 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Frequently Asked Questions" />
       <div className="flex flex-col gap-2.5">
         {faqs.map((faq, index) => {
           const open = openIndex === index;
           return (
-            <div key={faq.question} className="rounded-[16px] border border-[#E2E8F0] bg-white">
+            <div key={faq.question} className="rounded-sm border border-[#E2E8F0] bg-white">
               <button
                 type="button"
                 onClick={() => setOpenIndex(open ? null : index)}

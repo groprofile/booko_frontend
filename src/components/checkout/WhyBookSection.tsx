@@ -12,7 +12,7 @@ const items = [
 
 export default function WhyBookSection() {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Why Book With Bokko" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {items.map(({ icon: Icon, label }) => (

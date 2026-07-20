@@ -42,7 +42,7 @@ export default function Hero() {
         </div>
 
         <div className="relative z-10 mx-auto mt-10 max-w-[1280px] px-4 sm:mt-12 sm:px-6 lg:px-8 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white shadow-float">
+          <div className="rounded-[24px] glass-panel shadow-float">
             <div className="flex justify-center overflow-x-auto p-3 sm:p-4">
               <CategoryTabs activeKey={activeKey} onSelect={setActiveKey} />
             </div>

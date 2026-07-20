@@ -12,7 +12,7 @@ const personaIcons: Record<string, typeof Rocket> = {
 
 export default function AiRecommendationSection({ items }: AiRecommendationSectionProps) {
   return (
-    <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-6">
+    <div className="rounded-sm border border-[#E2E8F0] bg-white p-6">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
           <Sparkles size={15} />
@@ -26,8 +26,8 @@ export default function AiRecommendationSection({ items }: AiRecommendationSecti
         {items.map((item) => {
           const Icon = personaIcons[item.persona] ?? Sparkles;
           return (
-            <div key={item.persona} className="rounded-2xl bg-[#F8FAFC] p-4">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-soft">
+            <div key={item.persona} className="rounded-sm bg-[#F8FAFC] p-4">
+              <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-white text-[#2563EB] shadow-soft">
                 <Icon size={16} />
               </span>
               <p className="mt-2 text-sm font-bold text-[#0F172A]">{item.persona}</p>

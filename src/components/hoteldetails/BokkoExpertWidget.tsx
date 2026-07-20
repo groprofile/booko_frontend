@@ -17,9 +17,9 @@ export default function BokkoExpertWidget() {
   return (
     <div className="fixed bottom-24 right-4 z-50 sm:bottom-6 sm:right-6">
       {open && (
-        <div className="mb-3 w-[280px] rounded-[20px] border border-[#E2E8F0] bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.15)]">
+        <div className="mb-3 w-[280px] rounded-sm border border-[#E2E8F0] bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.15)]">
           <div className="flex items-center justify-between">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EFF6FF] text-[#2563EB]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-[#EFF6FF] text-[#2563EB]">
               <Sparkles size={18} strokeWidth={1.8} />
             </span>
             <button
@@ -43,7 +43,7 @@ export default function BokkoExpertWidget() {
           </ul>
 
           {requested ? (
-            <div className="mt-3 rounded-xl bg-[#ECFDF5] px-3 py-2 text-xs font-semibold text-[#16A34A]">
+            <div className="mt-3 rounded-sm bg-[#ECFDF5] px-3 py-2 text-xs font-semibold text-[#16A34A]">
               {requested === "call" ? "We'll call you shortly." : "We'll message you on WhatsApp shortly."}
             </div>
           ) : (
@@ -51,7 +51,7 @@ export default function BokkoExpertWidget() {
               <button
                 type="button"
                 onClick={() => setRequested("call")}
-                className="cta-gradient flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-bold text-white"
+                className="cta-gradient flex h-10 items-center justify-center gap-2 rounded-sm text-sm font-bold text-white"
               >
                 <Phone size={14} />
                 Call Expert
@@ -59,7 +59,7 @@ export default function BokkoExpertWidget() {
               <button
                 type="button"
                 onClick={() => setRequested("whatsapp")}
-                className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#16A34A] text-sm font-bold text-[#16A34A] hover:bg-[#ECFDF5]"
+                className="flex h-10 items-center justify-center gap-2 rounded-sm border border-[#16A34A] text-sm font-bold text-[#16A34A] hover:bg-[#ECFDF5]"
               >
                 <MessageCircle size={14} />
                 WhatsApp

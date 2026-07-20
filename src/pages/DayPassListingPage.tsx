@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, Map, SlidersHorizontal, X } from "lucide-react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import MainLayout from "../components/layout/MainLayout";
 import DayPassSearchBar from "../components/daypass/DayPassSearchBar";
 import DayPassOffersRail from "../components/daypass/DayPassOffersRail";
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import FilterSidebar from "../components/daypass/FilterSidebar";
 import ListingCard from "../components/daypass/ListingCard";
 import ListingCardSkeleton from "../components/daypass/ListingCardSkeleton";
+import ListingsMap from "../components/common/ListingsMap";
+import ListingsViewControls from "../components/common/ListingsViewControls";
 import {
   CITY_NAMES,
   allAccessibility,
@@ -43,7 +44,9 @@ export default function DayPassListingPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [members, setMembers] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [mapView, setMapView] = useState(false);
+  const [layout, setLayout] = useState<"list" | "grid">("list");
+  const [showMap, setShowMap] = useState(true);
+  const mapVisible = layout === "list" && showMap;
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const [listings, setListings] = useState<DayPassListing[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
@@ -263,22 +266,19 @@ export default function DayPassListingPage() {
   }, [citySlug, filters, location, listings, lockedCitySlug, nearActive, geo.coords]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
-      <Header />
-
-      <main className="flex-1">
-        <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-[#64748B]">
-            <Link to="/" className="hover:text-[#2563EB]">
+    <MainLayout>
+      <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-text">
+            <Link to="/" className="hover:text-brand">
               Home
             </Link>
             <ChevronRight size={14} />
             <span>{cityName}</span>
             <ChevronRight size={14} />
-            <span className="font-semibold text-[#0F172A]">Day Pass</span>
+            <span className="font-semibold text-primary-text">Day Pass</span>
           </nav>
 
-          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-[#0F172A] sm:text-3xl">
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-primary-text sm:text-3xl">
             Book Coworking Day Pass in {cityName}
           </h1>
 
@@ -308,42 +308,30 @@ export default function DayPassListingPage() {
             ref={resultsRef}
             className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
           >
-            <p className="text-base font-semibold text-[#0F172A]">
+            <p className="text-base font-semibold text-primary-text">
               Showing {filteredListings.length} results in {cityName}
             </p>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setFiltersOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-semibold text-[#334155] transition-colors hover:border-[#94A3B8] lg:hidden"
+                className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-4 py-2 text-sm font-semibold text-secondary-text transition-colors hover:border-[#94A3B8] lg:hidden"
               >
                 <SlidersHorizontal size={16} />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-[11px] font-bold text-white">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">
                     {activeFilterCount}
                   </span>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={() => setMapView((v) => !v)}
-                className={
-                  "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors " +
-                  (mapView
-                    ? "border-[#2563EB] bg-[#EFF6FF] text-[#2563EB]"
-                    : "border-[#E2E8F0] bg-white text-[#334155] hover:border-[#94A3B8]")
-                }
-              >
-                <Map size={16} />
-                Map
-              </button>
+              <ListingsViewControls layout={layout} onLayoutChange={setLayout} showMap={showMap} onToggleMap={() => setShowMap((v) => !v)} />
             </div>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
             <aside className="hidden lg:block">
-              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-[#E2E8F0] bg-white p-5">
+              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-sm border border-border bg-card p-5">
                 <FilterSidebar
                   filters={filters}
                   toggleArrayValue={toggleArrayValue}
@@ -355,26 +343,58 @@ export default function DayPassListingPage() {
             </aside>
 
             <div>
-              {mapView ? (
-                <div className="flex h-[480px] items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-sm font-medium text-[#64748B]">
-                  Map view coming soon for {cityName}.
-                </div>
-              ) : apiLoading ? (
-                <div className="flex flex-col gap-5 pb-16 lg:pb-0">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <ListingCardSkeleton key={i} />
+              {apiLoading ? (
+                <div className={layout === "grid" ? "grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 lg:pb-0" : "flex flex-col gap-3 pb-16 lg:pb-0"}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <ListingCardSkeleton key={i} layout={layout === "grid" ? "grid" : "row"} />
                   ))}
                 </div>
               ) : filteredListings.length === 0 ? (
-                <div className="flex h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white text-center">
-                  <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
-                  <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>
+                <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-border bg-card text-center">
+                  <p className="text-base font-bold text-primary-text">No workspaces match your filters</p>
+                  <p className="mt-1 text-sm text-muted-text">Try adjusting or clearing some filters.</p>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-5 pb-16 lg:pb-0">
+              ) : mapVisible ? (
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+                  <div className="flex flex-col gap-3 pb-16 lg:pb-0">
+                    {filteredListings.map((listing, i) => (
+                      <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                        <ListingCard listing={listing} layout="row" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden xl:block">
+                    <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-hidden rounded-sm border border-border">
+                      <ListingsMap
+                        items={filteredListings
+                          .filter((l) => l.latitude != null && l.longitude != null)
+                          .map((l) => ({
+                            id: l.id,
+                            name: l.name,
+                            image: l.images[0],
+                            priceLabel: `₹${l.bestPrice}/day`,
+                            lat: l.latitude as number,
+                            lng: l.longitude as number,
+                            href: `/day-pass/${l.id}`,
+                          }))}
+                        fallbackCenter={metroBySlug(lockedCitySlug) ?? { lat: 19.076, lng: 72.8777 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : layout === "grid" ? (
+                <div className="grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 lg:pb-0">
                   {filteredListings.map((listing, i) => (
                     <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                      <ListingCard listing={listing} />
+                      <ListingCard listing={listing} layout="grid" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 pb-16 lg:pb-0">
+                  {filteredListings.map((listing, i) => (
+                    <div key={listing.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                      <ListingCard listing={listing} layout="row" />
                     </div>
                   ))}
                 </div>
@@ -382,9 +402,6 @@ export default function DayPassListingPage() {
             </div>
           </div>
         </div>
-      </main>
-
-      <Footer />
 
       {filtersOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center lg:hidden">
@@ -393,14 +410,14 @@ export default function DayPassListingPage() {
             className="absolute inset-0 bg-[#0F172A]/55"
             onClick={() => setFiltersOpen(false)}
           />
-          <div className="relative flex max-h-[88vh] w-full flex-col rounded-t-[24px] bg-white">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
+          <div className="relative flex max-h-[88vh] w-full flex-col rounded-t-[24px] bg-card">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <span className="mx-auto h-1.5 w-10 rounded-full bg-[#E2E8F0]" />
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
                 aria-label="Close filters"
-                className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-full text-[#64748B] hover:bg-[#F8FAFC]"
+                className="absolute right-4 top-3 flex h-9 w-9 items-center justify-center rounded-full text-muted-text hover:bg-[#F8FAFC]"
               >
                 <X size={18} />
               </button>
@@ -414,7 +431,7 @@ export default function DayPassListingPage() {
                 setPriceRange={setPriceRange}
               />
             </div>
-            <div className="sticky bottom-0 border-t border-[#E2E8F0] bg-white p-4">
+            <div className="sticky bottom-0 border-t border-border bg-card p-4">
               <button
                 type="button"
                 onClick={() => setFiltersOpen(false)}
@@ -426,6 +443,6 @@ export default function DayPassListingPage() {
           </div>
         </div>
       )}
-    </div>
+    </MainLayout>
   );
 }

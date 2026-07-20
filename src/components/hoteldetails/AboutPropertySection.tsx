@@ -11,7 +11,7 @@ export default function AboutPropertySection({ details }: AboutPropertySectionPr
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="About This Property" />
 
       <div className="flex flex-col gap-4">
@@ -32,7 +32,7 @@ export default function AboutPropertySection({ details }: AboutPropertySectionPr
               <p className="text-sm font-bold text-[#0F172A]">Why Stay Here</p>
               <p className="mt-1 text-[15px] leading-relaxed text-[#334155]">{details.whyStayHere}</p>
             </div>
-            <div className="rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+            <div className="rounded-sm border border-[#E2E8F0] bg-[#F8FAFC] p-4">
               <p className="flex items-center gap-1.5 text-sm font-bold text-[#0F172A]">
                 <Sparkles size={15} className="text-[#2563EB]" />
                 AI Generated Highlights

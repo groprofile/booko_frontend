@@ -174,6 +174,8 @@ export function apiToHotelListing(c: CentreApiRow): HotelListing {
     offerCode: 'BOKKO10',
     popular: toRating(c.rating, 0) >= 4.5,
     images: getImages(c),
+    latitude: c.latitude,
+    longitude: c.longitude,
   };
 }
 

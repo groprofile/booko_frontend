@@ -15,11 +15,11 @@ export default function HostDetailsSection({ host }: HostDetailsSectionProps) {
   ];
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Host Details" />
-      <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-6 shadow-soft">
+      <div className="rounded-sm border border-[#E2E8F0] bg-white p-6 shadow-soft">
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EFF6FF] text-[#2563EB]">
+          <span className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#EFF6FF] text-[#2563EB]">
             <UserRound size={22} strokeWidth={1.8} />
           </span>
           <div>
@@ -39,7 +39,7 @@ export default function HostDetailsSection({ host }: HostDetailsSectionProps) {
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {rows.map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-start gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F8FAFC] text-[#2563EB]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#F8FAFC] text-[#2563EB]">
                 <Icon size={16} />
               </span>
               <div>

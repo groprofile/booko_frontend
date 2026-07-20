@@ -52,6 +52,8 @@ export interface HotelListing {
   offerCode: string;
   popular: boolean;
   images: string[];
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const allStayTypes = ["Hourly Stay", "Full Day Stay", "Workcation", "Business Hotel"];

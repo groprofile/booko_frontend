@@ -14,7 +14,7 @@ export default function SeatingOptionsSection({
   onSelect,
 }: SeatingOptionsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Seating Options" />
       <div className="flex flex-col gap-4">
         {options.map((option) => {
@@ -23,38 +23,38 @@ export default function SeatingOptionsSection({
             <div
               key={option.type}
               className={
-                "flex flex-col gap-4 rounded-[18px] border p-4 transition-colors sm:flex-row sm:items-center " +
-                (isSelected ? "border-[#2563EB] bg-[#EFF6FF]" : "border-[#E2E8F0] bg-white")
+                "flex flex-col gap-4 rounded-sm border-2 p-4 transition-all sm:flex-row sm:items-center sm:gap-6 " +
+                (isSelected ? "border-primary-blue bg-blue-50/50" : "border-border bg-card shadow-soft")
               }
             >
-              <div className="h-[160px] w-full shrink-0 overflow-hidden rounded-[14px] sm:h-[110px] sm:w-[180px]">
+              <div className="h-40 w-full shrink-0 overflow-hidden rounded-sm sm:h-28 sm:w-40">
                 <img src={option.image} alt={option.type} className="h-full w-full object-cover" />
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-bold text-[#0F172A]">{option.type}</p>
-                  <span className="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-semibold text-[#475569]">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-lg font-bold text-primary-text">{option.type}</p>
+                  <span className="rounded-full bg-bg px-3 py-1 text-xs font-semibold text-secondary-text">
                     Pay per use
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-[#64748B]">{option.description}</p>
-                <p className="mt-2 text-xs font-semibold text-[#94A3B8]">
+                <p className="mt-2 text-sm text-secondary-text leading-relaxed">{option.description}</p>
+                <p className="mt-3 text-xs font-medium text-muted-text">
                   {option.features.join(" • ")}
                 </p>
-                <p className="mt-1.5 text-xs font-semibold text-[#16A34A]">{option.availability}</p>
+                <p className="mt-2 text-xs font-semibold text-success">{option.availability}</p>
               </div>
 
-              <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end sm:text-right">
+              <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end sm:text-right">
                 <div>
-                  <p className="text-xs text-[#94A3B8]">Price (credits/day)</p>
-                  <p className="text-xl font-extrabold text-[#0F172A]">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-text">Price (credits/day)</p>
+                  <p className="mt-1 text-2xl font-extrabold text-primary-text">
                     {option.price}
-                    <span className="text-sm font-medium text-[#94A3B8]">/1 person</span>
+                    <span className="text-xs font-medium text-muted-text ml-1">/person</span>
                   </p>
-                  <p className="text-sm font-bold text-[#16A34A]">
-                    {option.bestPrice} Best Price
-                    <span className="block text-xs font-medium text-[#64748B]">
+                  <p className="mt-2 text-sm font-semibold text-success">
+                    {option.bestPrice} Best
+                    <span className="block text-xs font-medium text-secondary-text">
                       Use {option.offerCode}
                     </span>
                   </p>
@@ -64,10 +64,10 @@ export default function SeatingOptionsSection({
                   type="button"
                   onClick={() => onSelect(option.type)}
                   className={
-                    "flex w-full items-center justify-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors sm:w-auto " +
+                    "flex items-center justify-center gap-2 rounded-sm px-6 py-2.5 text-sm font-semibold transition-all w-full sm:w-auto " +
                     (isSelected
-                      ? "bg-[#2563EB] text-white"
-                      : "border border-[#E2E8F0] bg-white text-[#334155] hover:border-[#94A3B8]")
+                      ? "bg-primary-blue text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] hover:brightness-[1.06]"
+                      : "border border-border bg-card text-secondary-text hover:border-muted-text hover:shadow-soft")
                   }
                 >
                   {isSelected && <CheckCircle2 size={16} />}

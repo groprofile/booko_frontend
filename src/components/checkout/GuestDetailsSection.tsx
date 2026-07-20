@@ -54,7 +54,7 @@ export default function GuestDetailsSection({
   onBillingAddressChange,
 }: GuestDetailsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Guest Details" />
 
       <p className="mb-3 text-sm font-bold text-[#0F172A]">Primary Guest</p>

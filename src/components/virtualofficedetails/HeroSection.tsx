@@ -16,21 +16,21 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
   const yearlyMultiplier = billingTiers.find((tier) => tier.key === "yearly")?.multiplier ?? 10;
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-soft-lg">
+    <div className="overflow-hidden rounded-sm border border-border bg-card shadow-soft">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4 p-6 sm:p-8">
-          <div className="h-[200px] w-full overflow-hidden rounded-[18px] sm:h-[240px]">
+          <div className="h-[200px] w-full overflow-hidden rounded-sm sm:h-[240px]">
             <img src={details.heroImage} alt={listing.centerName} className="h-full w-full object-cover" />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {listing.gstEligible && (
-              <span className="rounded-md bg-[#ECFDF5] px-2.5 py-1 text-[11px] font-bold text-[#16A34A]">GST Eligible</span>
+              <span className="rounded-sm bg-[#ECFDF5] px-2.5 py-1 text-[11px] font-bold text-[#16A34A]">GST Eligible</span>
             )}
             {listing.premier && (
-              <span className="rounded-md bg-[#EFF6FF] px-2.5 py-1 text-[11px] font-bold text-[#2563EB]">Premium</span>
+              <span className="rounded-sm bg-[#EFF6FF] px-2.5 py-1 text-[11px] font-bold text-[#2563EB]">Premium</span>
             )}
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#F5F3FF] px-2.5 py-1 text-[11px] font-bold text-[#7C3AED]">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-[#F5F3FF] px-2.5 py-1 text-[11px] font-bold text-[#7C3AED]">
               <ShieldCheck size={12} />
               Verified Location
             </span>
@@ -45,7 +45,7 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#0F172A] px-2.5 py-1 text-xs font-bold text-white">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2.5 py-1 text-xs font-bold text-white">
               <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
               {details.rating.toFixed(1)} Google Rating
             </span>
@@ -60,7 +60,7 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
             <span className="text-base font-medium text-[#94A3B8]">/month</span>
           </p>
 
-          <div className="flex flex-col gap-2 rounded-[16px] border border-[#E2E8F0] bg-white p-4">
+          <div className="flex flex-col gap-2 rounded-sm border border-border bg-card p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#64748B]">Monthly</span>
               <span className="font-bold text-[#0F172A]">₹{monthlyPlan.price.toLocaleString()}</span>
@@ -71,12 +71,12 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
             </div>
           </div>
 
-          <button type="button" className="w-full rounded-xl bg-[#111111] py-3.5 text-sm font-bold text-white transition-colors hover:bg-black">
+          <button type="button" className="w-full rounded-sm bg-[#111111] py-3.5 text-sm font-bold text-white transition-colors hover:bg-black">
             Book Now
           </button>
 
           {expertRequested ? (
-            <div className="flex items-center gap-2 rounded-xl bg-[#ECFDF5] px-4 py-3 text-sm font-semibold text-[#16A34A]">
+            <div className="flex items-center gap-2 rounded-sm bg-[#ECFDF5] px-4 py-3 text-sm font-semibold text-[#16A34A]">
               <BadgeCheck size={16} />
               We'll reach out to you shortly.
             </div>
@@ -84,7 +84,7 @@ export default function HeroSection({ listing, details, cityName }: HeroSectionP
             <button
               type="button"
               onClick={() => setExpertRequested(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-[#2563EB] py-3.5 text-sm font-bold text-[#2563EB] transition-colors hover:bg-[#EFF6FF]"
             >
               <MessageSquareText size={16} />
               Talk To Bokko Expert

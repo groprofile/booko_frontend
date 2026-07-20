@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
 import { fetchFeaturedFirst } from "../lib/centreFeed";
 import {
   apiToDayPassListing,
@@ -9,12 +8,11 @@ import {
   toRating,
   type CentreApiRow,
 } from "../lib/centreAdapter";
-import RecommendedSpaceCard from "./RecommendedSpaceCard";
-import type { RecommendedSpaceCardData } from "./RecommendedSpaceCard";
+import Section from "./common/Section";
+import WorkspaceCard from "./cards/WorkspaceCard";
+import GlassChips, { type GlassChipOption } from "./common/GlassChips";
 
 type RecommendedCategory = "Day Pass" | "Meeting Room" | "Virtual Office";
-
-const categoryTabs: RecommendedCategory[] = ["Day Pass", "Meeting Room", "Virtual Office"];
 
 interface CommonListing {
   id: string;
@@ -34,13 +32,13 @@ const TAB_CONFIG: Record<RecommendedCategory, {
   hrefFor: (item: CommonListing) => string;
   priceUnit: string;
 }> = {
-  "Day Pass": { productType: PRODUCT_TYPE.dayPass, routeSlug: "day-pass", adapter: apiToDayPassListing, hrefFor: (i) => `/day-pass/${i.id}`, priceUnit: "/day" },
+  "Day Pass": { productType: PRODUCT_TYPE.dayPass, routeSlug: "day-pass", adapter: apiToDayPassListing, hrefFor: (i) => `/day-pass/${i.id}`, priceUnit: "/ day" },
   "Meeting Room": {
     productType: PRODUCT_TYPE.meetingRoom,
     routeSlug: "meeting-rooms",
     adapter: (c) => ({ ...apiToMeetingRoomListing(c), rating: toRating(c.rating), reviews: 0 }),
     hrefFor: (i) => `/meeting-rooms/${i.id}`,
-    priceUnit: "/hour",
+    priceUnit: "/ hr",
   },
   "Virtual Office": {
     productType: PRODUCT_TYPE.virtualOffice,
@@ -50,13 +48,19 @@ const TAB_CONFIG: Record<RecommendedCategory, {
       return { id: i.id, city: i.city, name: i.centerName, locality: i.area, rating: i.rating, reviews: i.reviews, images: i.images, bestPrice: i.bestPrice };
     },
     hrefFor: (i) => `/virtual-office/${i.id}`,
-    priceUnit: "/month",
+    priceUnit: "/ mo",
   },
 };
 
+const CATEGORY_OPTIONS: GlassChipOption[] = [
+  { id: "Day Pass", label: "Day Pass" },
+  { id: "Meeting Room", label: "Meeting Room" },
+  { id: "Virtual Office", label: "Virtual Office" },
+];
+
 export default function RecommendedSpacesSection() {
-  const [activeCategory, setActiveCategory] = useState<RecommendedCategory>(categoryTabs[0]);
-  const [spaces, setSpaces] = useState<RecommendedSpaceCardData[]>([]);
+  const [activeCategory, setActiveCategory] = useState<RecommendedCategory>("Day Pass");
+  const [spaces, setSpaces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,9 +68,6 @@ export default function RecommendedSpacesSection() {
     setLoading(true);
     const config = TAB_CONFIG[activeCategory];
 
-    // Admin-promoted centers lead the rail; top-rated centers backfill the
-    // remaining slots so it's never empty (and never shows the same center
-    // twice). Promoted rows keep their "Bokko Recommended" badge.
     fetchFeaturedFirst(config.productType, 4)
       .then((merged) => {
         if (cancelled) return;
@@ -98,74 +99,48 @@ export default function RecommendedSpacesSection() {
   }, [activeCategory]);
 
   return (
-    <section className="w-full bg-white py-10 sm:py-14 lg:py-16">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 border-b border-[#E2E8F0] pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl">
-              Bokko Recommended Spaces
-            </h2>
-            <p className="mt-3 max-w-xl text-base text-[#64748B] sm:text-lg">
-              Handpicked coworking spaces, day passes, meeting rooms and virtual offices across India.
-            </p>
-          </div>
-          <a
-            href={`/${TAB_CONFIG[activeCategory].routeSlug}`}
-            className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
-          >
-            View All
-            <ArrowRight size={16} />
-          </a>
-        </div>
-
-        <div
-          className="scrollbar-hide mt-6 flex gap-6 overflow-x-auto"
-          role="tablist"
-          aria-label="Filter by category"
-        >
-          {categoryTabs.map((category) => {
-            const isActive = category === activeCategory;
-            return (
-              <button
-                key={category}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveCategory(category)}
-                className={
-                  "shrink-0 whitespace-nowrap border-b-2 pb-2 text-sm transition-colors " +
-                  (isActive
-                    ? "border-[#2563EB] font-bold text-[#0F172A]"
-                    : "border-transparent font-medium text-[#64748B] hover:text-[#0F172A]")
-                }
-              >
-                {category}
-              </button>
-            );
-          })}
-        </div>
-
-        {loading ? (
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-[360px] animate-pulse rounded-[24px] bg-[#F1F5F9]" />
-            ))}
-          </div>
-        ) : spaces.length > 0 ? (
-          <div
-            key={activeCategory}
-            className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-          >
-            {spaces.map((space, i) => (
-              <div key={space.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
-                <RecommendedSpaceCard space={space} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-10 text-center text-sm text-[#64748B]">No spaces available right now.</p>
-        )}
+    <Section 
+      heading="Bokko Recommended Spaces"
+      description="Handpicked coworking spaces, day passes, meeting rooms and virtual offices across India."
+    >
+      <div className="mb-6 flex flex-col gap-4">
+        <GlassChips
+          options={CATEGORY_OPTIONS}
+          selectedIds={[activeCategory]}
+          onChange={(ids) => setActiveCategory(ids[0] as RecommendedCategory)}
+          singleSelect={true}
+        />
       </div>
-    </section>
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[360px] animate-pulse rounded-2xl bg-border/50" />
+          ))}
+        </div>
+      ) : spaces.length > 0 ? (
+        <div
+          key={activeCategory}
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in-up"
+        >
+          {spaces.map((space) => (
+            <WorkspaceCard
+              key={space.id}
+              id={space.id}
+              image={space.image}
+              title={space.title}
+              location={space.location}
+              features={["Premium", "Verified"]} 
+              price={`₹${space.price.toLocaleString("en-IN")}`}
+              priceUnit={space.priceUnit}
+              rating={space.rating}
+              linkTo={space.href}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-10 text-center text-sm text-muted-text">No spaces available right now.</p>
+      )}
+    </Section>
   );
 }

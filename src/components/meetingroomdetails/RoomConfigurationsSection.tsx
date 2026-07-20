@@ -13,7 +13,7 @@ function LayoutDiagram({ layout }: { layout: string }) {
           <div className="flex gap-2">
             <Seat /><Seat /><Seat />
           </div>
-          <div className="h-8 w-28 rounded-md border-2 border-[#2563EB]/40 bg-[#EFF6FF]" />
+          <div className="h-8 w-28 rounded-sm border-2 border-[#2563EB]/40 bg-[#EFF6FF]" />
           <div className="flex gap-2">
             <Seat /><Seat /><Seat />
           </div>
@@ -71,7 +71,7 @@ function LayoutDiagram({ layout }: { layout: string }) {
   return (
     <div className="flex h-24 w-full items-center justify-center gap-4">
       <Seat />
-      <div className="h-6 w-16 rounded-md border-2 border-[#2563EB]/40 bg-[#EFF6FF]" />
+      <div className="h-6 w-16 rounded-sm border-2 border-[#2563EB]/40 bg-[#EFF6FF]" />
       <Seat />
     </div>
   );
@@ -83,12 +83,12 @@ interface RoomConfigurationsSectionProps {
 
 export default function RoomConfigurationsSection({ configurations }: RoomConfigurationsSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Room Configurations" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {configurations.map((config) => (
-          <div key={config.layout} className="rounded-[18px] border border-[#E2E8F0] bg-white p-4">
-            <div className="rounded-[14px] bg-[#F8FAFC]">
+          <div key={config.layout} className="rounded-sm border border-[#E2E8F0] bg-white p-4">
+            <div className="rounded-sm bg-[#F8FAFC]">
               <LayoutDiagram layout={config.layout} />
             </div>
             <p className="mt-3 text-sm font-bold text-[#0F172A]">{config.layout}</p>

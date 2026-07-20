@@ -43,24 +43,24 @@ export default function WorkspaceHeader({ listing, cityName }: WorkspaceHeaderPr
       <div className="flex flex-wrap items-center gap-2">
         {listing.isFeatured && <RecommendedBadge size="sm" />}
         {listing.premier && (
-          <span className="rounded-md bg-[#EFF6FF] px-2.5 py-1 text-xs font-bold text-[#2563EB]">
+          <span className="rounded-sm bg-[#EFF6FF] px-2.5 py-1 text-xs font-bold text-[#2563EB]">
             Premier
           </span>
         )}
         <span
           className={
-            "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold " +
+            "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-bold " +
             (openNow ? "bg-[#ECFDF5] text-[#16A34A]" : "bg-[#FEF2F2] text-[#DC2626]")
           }
         >
           <span className={"h-1.5 w-1.5 rounded-full " + (openNow ? "bg-[#16A34A]" : "bg-[#DC2626]")} />
           {openNow ? "Open now" : "Closed"}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-md bg-[#FFFBEB] px-2.5 py-1 text-xs font-bold text-[#B45309]">
+        <span className="inline-flex items-center gap-1 rounded-sm bg-[#FFFBEB] px-2.5 py-1 text-xs font-bold text-[#B45309]">
           <Star size={13} className="fill-[#FBBF24] text-[#FBBF24]" />
           {listing.rating.toFixed(2)} ({listing.reviews.toLocaleString()} Brand Reviews)
         </span>
-        <span className="inline-flex items-center gap-1 rounded-md bg-[#ECFDF5] px-2.5 py-1 text-xs font-bold text-[#16A34A]">
+        <span className="inline-flex items-center gap-1 rounded-sm bg-[#ECFDF5] px-2.5 py-1 text-xs font-bold text-[#16A34A]">
           <ShieldCheck size={13} />
           Verified Workspace
         </span>

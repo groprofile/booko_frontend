@@ -23,7 +23,7 @@ export default function MobileBookingBar(props: MobileBookingBarProps) {
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-[#E2E8F0] bg-white px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] sm:hidden">
         <div>
           <p className="text-xs text-[#94A3B8]">Best Price</p>
           <p className="text-lg font-extrabold text-[#0F172A]">
@@ -33,7 +33,7 @@ export default function MobileBookingBar(props: MobileBookingBarProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="cta-gradient flex-1 rounded-xl py-3 text-center text-sm font-bold text-white"
+          className="cta-gradient flex-1 rounded-sm py-3 text-center text-sm font-bold text-white"
         >
           Book Day Pass
         </button>

@@ -30,7 +30,7 @@ export default function ExploreCitiesSection() {
   if (cities.length === 0) return null;
 
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="Explore by City" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {cities.map((row) => (

@@ -7,11 +7,11 @@ interface HowItWorksSectionProps {
 
 export default function HowItWorksSection({ steps }: HowItWorksSectionProps) {
   return (
-    <section>
+    <section className="m-0">
       <SectionLabel title="How It Works" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {steps.map((step) => (
-          <div key={step.step} className="relative rounded-[18px] border border-[#E2E8F0] bg-white p-5">
+          <div key={step.step} className="relative rounded-sm border border-[#E2E8F0] bg-white p-5">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563EB] text-sm font-bold text-white">
               {step.step}
             </span>
