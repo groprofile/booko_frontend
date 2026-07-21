@@ -247,6 +247,7 @@ function buildListings(): HotelListing[] {
 
   Object.keys(CITY_NAMES).forEach((city) => {
     const localities = cityToLocalities[city];
+    if (!localities) return;
     templates.forEach((template, index) => {
       seed += 1;
       const r1 = seededRandom(seed);

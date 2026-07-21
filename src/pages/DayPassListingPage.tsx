@@ -3,24 +3,18 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import DayPassSearchBar from "../components/daypass/DayPassSearchBar";
-import DayPassOffersRail from "../components/daypass/DayPassOffersRail";
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import FilterSidebar from "../components/daypass/FilterSidebar";
 import ListingCard from "../components/daypass/ListingCard";
 import ListingCardSkeleton from "../components/daypass/ListingCardSkeleton";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
-import {
-  CITY_NAMES,
-  allAccessibility,
-  allBrands,
-  allSeatingTypes,
-  allSpaceTypes,
-} from "../data/dayPassListings";
+import { CITY_NAMES } from "../data/dayPassListings";
 import type { DayPassFilters, DayPassListing, SortOption } from "../data/dayPassListings";
 import { apiGet } from "../lib/api";
 import { apiToDayPassListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 import { metroBySlug, centerInMetro, haversineKm, NEAR_ME_RADIUS_KM } from "../data/metros";
 import { useGeolocation } from "../hooks/useGeolocation";
 
@@ -62,15 +56,25 @@ export default function DayPassListingPage() {
     setApiLoading(true);
     // City-locked route → narrow by the metro's geo box (includes Thane / Navi
     // Mumbai etc.); tightened to the exact radius client-side. Unknown slug →
-    // fall back to the plain city= filter.
+    // fall back to the plain city= filter. The geo box only matches centers
+    // that have latitude/longitude saved — most don't yet, so if the
+    // geo-scoped fetch comes back empty for a known metro, retry once with a
+    // plain city= text match rather than silently showing zero results.
     const metro = metroBySlug(lockedCitySlug);
-    let scope = "";
-    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
-    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
+    const geoScope = metro ? `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}` : "";
+    const cityScope = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    const scope = geoScope || cityScope;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
       `/centers/list?productType=${PRODUCT_TYPE.dayPass}&pageSize=100${scope}`,
     )
-      .then((res) => setListings(res.data.map(apiToDayPassListing)))
+      .then((res) => {
+        if (res.data.length === 0 && geoScope && cityScope) {
+          return apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+            `/centers/list?productType=${PRODUCT_TYPE.dayPass}&pageSize=100${cityScope}`,
+          ).then((fallback) => setListings(fallback.data.map(apiToDayPassListing)));
+        }
+        setListings(res.data.map(apiToDayPassListing));
+      })
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
   }, [lockedCitySlug, cityName]);
@@ -95,6 +99,13 @@ export default function DayPassListingPage() {
 
   const location = searchParams.get("location") ?? "";
 
+  // Filter options are derived from the real fetched centres, so the sidebar
+  // only ever offers values that some centre can actually match.
+  const seatingOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.seatingTypes)), [listings]);
+  const brandOptions = useMemo(() => uniqueSorted(listings.map((l) => l.brand)), [listings]);
+  const accessibilityOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.accessibility)), [listings]);
+  const spaceTypeOptions = useMemo(() => uniqueSorted(listings.map((l) => l.spaceType)), [listings]);
+
   const filters: DayPassFilters = useMemo(() => {
     const parseList = (key: string, options: readonly string[]) => {
       const raw = searchParams.get(key)?.split(",").filter(Boolean) ?? [];
@@ -104,17 +115,17 @@ export default function DayPassListingPage() {
     };
     const spaceTypeSlug = searchParams.get("spaceType");
     return {
-      seating: parseList("seating", allSeatingTypes),
-      brands: parseList("brands", allBrands),
-      accessibility: parseList("accessibility", allAccessibility),
+      seating: parseList("seating", seatingOptions),
+      brands: parseList("brands", brandOptions),
+      accessibility: parseList("accessibility", accessibilityOptions),
       timings: searchParams.get("timings")?.split(",").filter(Boolean) ?? [],
-      spaceType: spaceTypeSlug ? findByDeslug(allSpaceTypes, spaceTypeSlug) ?? null : null,
+      spaceType: spaceTypeSlug ? findByDeslug(spaceTypeOptions, spaceTypeSlug) ?? null : null,
       priceMin: Number(searchParams.get("priceMin") ?? 0),
       priceMax: Number(searchParams.get("priceMax") ?? 2000),
       sort: (searchParams.get("sort") as SortOption) ?? "recommended",
       q: searchParams.get("q") ?? "",
     };
-  }, [searchParams]);
+  }, [searchParams, seatingOptions, brandOptions, accessibilityOptions, spaceTypeOptions]);
 
   const activeFilterCount =
     filters.seating.length +
@@ -296,9 +307,6 @@ export default function DayPassListingPage() {
             />
           </div>
 
-          <div className="mt-8">
-            <DayPassOffersRail />
-          </div>
 
           <div className="mt-8 max-w-xl">
             <WorkspaceSearchBar value={filters.q} onChange={setQuery} />
@@ -334,6 +342,10 @@ export default function DayPassListingPage() {
               <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-sm border border-border bg-card p-5">
                 <FilterSidebar
                   filters={filters}
+                  seatingOptions={seatingOptions}
+                  brandOptions={brandOptions}
+                  accessibilityOptions={accessibilityOptions}
+                  spaceTypeOptions={spaceTypeOptions}
                   toggleArrayValue={toggleArrayValue}
                   setSpaceType={setSpaceType}
                   setSort={setSort}
@@ -351,8 +363,17 @@ export default function DayPassListingPage() {
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-border bg-card text-center">
-                  <p className="text-base font-bold text-primary-text">No workspaces match your filters</p>
-                  <p className="mt-1 text-sm text-muted-text">Try adjusting or clearing some filters.</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-primary-text">Coming soon to {cityName}</p>
+                      <p className="mt-1 text-sm text-muted-text">We're onboarding workspaces in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-primary-text">No workspaces match your filters</p>
+                      <p className="mt-1 text-sm text-muted-text">Try adjusting or clearing some filters.</p>
+                    </>
+                  )}
                 </div>
               ) : mapVisible ? (
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -425,6 +446,10 @@ export default function DayPassListingPage() {
             <div className="flex-1 overflow-y-auto px-5 py-5">
               <FilterSidebar
                 filters={filters}
+                seatingOptions={seatingOptions}
+                brandOptions={brandOptions}
+                accessibilityOptions={accessibilityOptions}
+                spaceTypeOptions={spaceTypeOptions}
                 toggleArrayValue={toggleArrayValue}
                 setSpaceType={setSpaceType}
                 setSort={setSort}

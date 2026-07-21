@@ -1,20 +1,18 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import {
-  allBrands,
-  allBuildingTypes,
-  allDurations,
-  allPopularTags,
-  allRatingThresholds,
-  allServices,
-} from "../../data/virtualOfficeListings";
+import { allRatingThresholds } from "../../data/virtualOfficeListings";
 import type { VirtualOfficeFilters, VOSortOption } from "../../data/virtualOfficeListings";
 
 type ArrayFilterKey = "areas" | "services" | "durations" | "popularTags" | "buildingTypes" | "brands";
 
 interface VirtualOfficeFilterSidebarProps {
   filters: VirtualOfficeFilters;
-  areas: string[];
+  areaOptions: string[];
+  serviceOptions: string[];
+  durationOptions: string[];
+  popularTagOptions: string[];
+  buildingTypeOptions: string[];
+  brandOptions: string[];
   toggleArrayValue: (key: ArrayFilterKey, value: string) => void;
   toggleRating: (value: number) => void;
   setSort: (value: VOSortOption) => void;
@@ -30,7 +28,7 @@ const sortOptions: { value: VOSortOption; label: string }[] = [
 ];
 
 const PRICE_MIN = 500;
-const PRICE_MAX = 2000;
+const PRICE_MAX = 5000;
 
 function CheckboxRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
@@ -57,62 +55,73 @@ function FilterCard({ title, children }: { title: string; children: ReactNode })
 
 export default function VirtualOfficeFilterSidebar({
   filters,
-  areas,
+  areaOptions,
+  serviceOptions,
+  durationOptions,
+  popularTagOptions,
+  buildingTypeOptions,
+  brandOptions,
   toggleArrayValue,
   toggleRating,
   setSort,
   setPriceRange,
 }: VirtualOfficeFilterSidebarProps) {
   const [areaQuery, setAreaQuery] = useState("");
-  const visibleAreas = areas.filter((area) => area.toLowerCase().includes(areaQuery.toLowerCase()));
+  const visibleAreas = areaOptions.filter((area) => area.toLowerCase().includes(areaQuery.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-5">
-      <FilterCard title="Areas">
-        <input
-          type="text"
-          value={areaQuery}
-          onChange={(event) => setAreaQuery(event.target.value)}
-          placeholder="Search area"
-          className="mb-2 h-9 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]"
-        />
-        <div className="flex max-h-44 flex-col overflow-y-auto">
-          {visibleAreas.map((area) => (
-            <CheckboxRow
-              key={area}
-              label={area}
-              checked={filters.areas.includes(area)}
-              onChange={() => toggleArrayValue("areas", area)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {areaOptions.length > 0 && (
+        <FilterCard title="Areas">
+          <input
+            type="text"
+            value={areaQuery}
+            onChange={(event) => setAreaQuery(event.target.value)}
+            placeholder="Search area"
+            className="mb-2 h-9 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]"
+          />
+          <div className="flex max-h-44 flex-col overflow-y-auto">
+            {visibleAreas.map((area) => (
+              <CheckboxRow
+                key={area}
+                label={area}
+                checked={filters.areas.includes(area)}
+                onChange={() => toggleArrayValue("areas", area)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Services Included">
-        <div className="flex flex-col">
-          {allServices.map((service) => (
-            <CheckboxRow
-              key={service}
-              label={service}
-              checked={filters.services.includes(service)}
-              onChange={() => toggleArrayValue("services", service)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {serviceOptions.length > 0 && (
+        <FilterCard title="Services Included">
+          <div className="flex flex-col">
+            {serviceOptions.map((service) => (
+              <CheckboxRow
+                key={service}
+                label={service}
+                checked={filters.services.includes(service)}
+                onChange={() => toggleArrayValue("services", service)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Plan Duration">
-        <div className="flex flex-col">
-          {allDurations.map((duration) => (
-            <CheckboxRow
-              key={duration}
-              label={duration}
-              checked={filters.durations.includes(duration)}
-              onChange={() => toggleArrayValue("durations", duration)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {durationOptions.length > 0 && (
+        <FilterCard title="Plan Duration">
+          <div className="flex flex-col">
+            {durationOptions.map((duration) => (
+              <CheckboxRow
+                key={duration}
+                label={duration}
+                checked={filters.durations.includes(duration)}
+                onChange={() => toggleArrayValue("durations", duration)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Price Range">
         <p className="text-xs text-[#64748B]">
@@ -155,51 +164,57 @@ export default function VirtualOfficeFilterSidebar({
         </div>
       </FilterCard>
 
-      <FilterCard title="Popular Tags">
-        <div className="flex flex-wrap gap-2">
-          {allPopularTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleArrayValue("popularTags", tag)}
-              className={
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
-                (filters.popularTags.includes(tag)
-                  ? "border-[#2563EB] bg-[#2563EB] text-white"
-                  : "border-[#E2E8F0] text-[#334155] hover:border-[#94A3B8]")
-              }
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      </FilterCard>
+      {popularTagOptions.length > 0 && (
+        <FilterCard title="Popular Tags">
+          <div className="flex flex-wrap gap-2">
+            {popularTagOptions.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleArrayValue("popularTags", tag)}
+                className={
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
+                  (filters.popularTags.includes(tag)
+                    ? "border-[#2563EB] bg-[#2563EB] text-white"
+                    : "border-[#E2E8F0] text-[#334155] hover:border-[#94A3B8]")
+                }
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Building Type">
-        <div className="flex flex-col">
-          {allBuildingTypes.map((type) => (
-            <CheckboxRow
-              key={type}
-              label={type}
-              checked={filters.buildingTypes.includes(type)}
-              onChange={() => toggleArrayValue("buildingTypes", type)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {buildingTypeOptions.length > 1 && (
+        <FilterCard title="Building Type">
+          <div className="flex flex-col">
+            {buildingTypeOptions.map((type) => (
+              <CheckboxRow
+                key={type}
+                label={type}
+                checked={filters.buildingTypes.includes(type)}
+                onChange={() => toggleArrayValue("buildingTypes", type)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Brands">
-        <div className="flex flex-col">
-          {allBrands.map((brand) => (
-            <CheckboxRow
-              key={brand}
-              label={brand}
-              checked={filters.brands.includes(brand)}
-              onChange={() => toggleArrayValue("brands", brand)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {brandOptions.length > 0 && (
+        <FilterCard title="Space Provider">
+          <div className="flex flex-col">
+            {brandOptions.map((brand) => (
+              <CheckboxRow
+                key={brand}
+                label={brand}
+                checked={filters.brands.includes(brand)}
+                onChange={() => toggleArrayValue("brands", brand)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Rating">
         <div className="flex flex-wrap gap-2">

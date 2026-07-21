@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { allRoomTypes } from "../../data/meetingRoomListings";
 import { METROS, NEAR_ME_SLUG, cityNavTarget } from "../../data/metros";
 
 interface MeetingRoomSearchBarProps {
@@ -12,10 +11,6 @@ interface MeetingRoomSearchBarProps {
   onTimeChange: (value: string) => void;
   duration: number;
   onDurationChange: (value: number) => void;
-  capacity: number;
-  onCapacityChange: (value: number) => void;
-  roomType: string;
-  onRoomTypeChange: (value: string) => void;
   onSubmit: () => void;
 }
 
@@ -31,10 +26,6 @@ export default function MeetingRoomSearchBar({
   onTimeChange,
   duration,
   onDurationChange,
-  capacity,
-  onCapacityChange,
-  roomType,
-  onRoomTypeChange,
   onSubmit,
 }: MeetingRoomSearchBarProps) {
   const navigate = useNavigate();
@@ -101,41 +92,6 @@ export default function MeetingRoomSearchBar({
             {[1, 2, 3, 6].map((hours) => (
               <option key={hours} value={hours}>
                 {hours} {hours === 1 ? "Hour" : "Hours"}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={fieldClass}>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">
-            Capacity
-          </span>
-          <select
-            value={capacity}
-            onChange={(event) => onCapacityChange(Number(event.target.value))}
-            className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
-          >
-            {[2, 4, 6, 8, 10, 15, 20].map((n) => (
-              <option key={n} value={n}>
-                {n}+ Attendees
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={fieldClass + " lg:flex-[1.3]"}>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">
-            Meeting Room Type
-          </span>
-          <select
-            value={roomType}
-            onChange={(event) => onRoomTypeChange(event.target.value)}
-            className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
-          >
-            <option value="">All Room Types</option>
-            {allRoomTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
               </option>
             ))}
           </select>

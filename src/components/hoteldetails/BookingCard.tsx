@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronDown, Tag } from "lucide-react";
 import type { HotelDetails, RoomOption } from "../../data/hotelDetails";
 import type { HotelListing } from "../../data/hotelListings";
 
@@ -44,28 +42,10 @@ export default function BookingCard({
   onSelectMeal,
 }: BookingCardProps) {
   const navigate = useNavigate();
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<typeof details.coupons[number] | null>(null);
-  const [couponError, setCouponError] = useState("");
-  const [offersOpen, setOffersOpen] = useState(false);
 
   const selectedStay = selectedRoom.pricing.find((tier) => tier.key === selectedStayKey) ?? selectedRoom.pricing[0];
   const selectedMeal = details.mealOptions.find((meal) => meal.key === selectedMealKey) ?? details.mealOptions[0];
   const subtotal = (selectedStay.price + selectedMeal.priceDelta) * roomCount;
-  const discount = appliedCoupon ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) : 0;
-  const total = subtotal - discount;
-
-  function applyCoupon(code: string) {
-    const coupon = details.coupons.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-    if (coupon) {
-      setAppliedCoupon(coupon);
-      setCouponError("");
-      setCouponCode(coupon.code);
-    } else {
-      setCouponError("Invalid coupon code");
-      setAppliedCoupon(null);
-    }
-  }
 
   function navigateToCheckout() {
     navigate("/checkout", {
@@ -90,7 +70,7 @@ export default function BookingCard({
         guests,
         roomCount,
         cancellationPolicy: selectedRoom.cancellationPolicy,
-        coupons: details.coupons,
+        coupons: [],
       },
     });
   }
@@ -201,76 +181,16 @@ export default function BookingCard({
         ))}
       </div>
 
-      <div className="mt-4 border-t border-[#E2E8F0] pt-4">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={couponCode}
-            onChange={(event) => setCouponCode(event.target.value)}
-            placeholder="Enter coupon code"
-            className="h-10 flex-1 rounded-sm border border-[#D1D5DB] px-3 text-sm font-medium text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
-          />
-          <button
-            type="button"
-            onClick={() => applyCoupon(couponCode)}
-            className="h-10 shrink-0 rounded-sm bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-black"
-          >
-            Apply
-          </button>
-        </div>
-        {couponError && <p className="mt-1.5 text-xs font-medium text-[#DC2626]">{couponError}</p>}
-        {appliedCoupon && (
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-[#16A34A]">
-            <CheckCircle2 size={13} />
-            {appliedCoupon.code} applied — {appliedCoupon.discountPercent}% off
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setOffersOpen((v) => !v)}
-          className="mt-2 flex w-full items-center justify-between text-sm font-semibold text-[#2563EB]"
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Tag size={14} />
-            View Offers & Corporate Discounts
-          </span>
-          <ChevronDown size={15} className={offersOpen ? "rotate-180 transition-transform" : "transition-transform"} />
-        </button>
-        {offersOpen && (
-          <div className="mt-2 flex flex-col gap-1.5">
-            {details.coupons.map((coupon) => (
-              <button
-                key={coupon.code}
-                type="button"
-                onClick={() => applyCoupon(coupon.code)}
-                className="flex items-center justify-between rounded-sm border border-dashed border-[#2563EB]/40 bg-[#EFF6FF] px-3 py-2 text-left text-xs"
-              >
-                <span>
-                  <span className="font-bold text-[#2563EB]">{coupon.code}</span> — {coupon.description}
-                </span>
-                <span className="font-bold text-[#2563EB]">{coupon.discountPercent}%</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="mt-4 flex flex-col gap-1 border-t border-[#E2E8F0] pt-4">
         <div className="flex items-center justify-between text-sm text-[#64748B]">
           <span>Subtotal ({roomCount} {roomCount === 1 ? "room" : "rooms"})</span>
           <span>₹{subtotal.toLocaleString()}</span>
         </div>
-        {discount > 0 && (
-          <div className="flex items-center justify-between text-sm text-[#16A34A]">
-            <span>Coupon Discount</span>
-            <span>- ₹{discount.toLocaleString()}</span>
-          </div>
-        )}
         <div className="mt-1.5 flex items-center justify-between border-t border-[#E2E8F0] pt-2 text-base font-extrabold text-[#0F172A]">
           <span>Total Amount</span>
-          <span>₹{total.toLocaleString()}</span>
+          <span>₹{subtotal.toLocaleString()}</span>
         </div>
+        <p className="text-[11px] text-[#94A3B8]">Bokko commission &amp; GST are confirmed at checkout.</p>
       </div>
 
       <div className="mt-4 flex flex-col gap-2">

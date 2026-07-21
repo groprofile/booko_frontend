@@ -53,6 +53,20 @@ export const CITY_NAMES: Record<string, string> = {
   pune: "Pune",
   hyderabad: "Hyderabad",
   chennai: "Chennai",
+  kolkata: "Kolkata",
+  ahmedabad: "Ahmedabad",
+  jaipur: "Jaipur",
+  kochi: "Kochi",
+  indore: "Indore",
+  chandigarh: "Chandigarh",
+  lucknow: "Lucknow",
+  coimbatore: "Coimbatore",
+  nagpur: "Nagpur",
+  surat: "Surat",
+  bhubaneswar: "Bhubaneswar",
+  vadodara: "Vadodara",
+  visakhapatnam: "Visakhapatnam",
+  mysore: "Mysore",
 };
 
 export const cityToLocalities: Record<string, string[]> = {
@@ -204,6 +218,7 @@ function buildListings(): DayPassListing[] {
 
   Object.keys(CITY_NAMES).forEach((city) => {
     const localities = cityToLocalities[city];
+    if (!localities) return;
     templates.forEach((template, index) => {
       seed += 1;
       const r1 = seededRandom(seed);

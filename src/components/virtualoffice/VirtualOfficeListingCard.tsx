@@ -68,10 +68,13 @@ export default function VirtualOfficeListingCard({ listing, layout = "row" }: Vi
         ) : undefined
       }
       ratingBadge={
-        <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2 py-1 text-[11px] font-bold text-white">
-          <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
-          {listing.rating.toFixed(1)} ({listing.reviews})
-        </span>
+        listing.rating > 0 ? (
+          <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2 py-1 text-[11px] font-bold text-white">
+            <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
+            {listing.rating.toFixed(1)}
+            {listing.reviews > 0 ? ` (${listing.reviews})` : ""}
+          </span>
+        ) : undefined
       }
       extraBadges={
         listing.gstEligible ? (

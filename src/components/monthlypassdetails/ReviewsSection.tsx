@@ -11,6 +11,15 @@ interface ReviewsSectionProps {
 }
 
 export default function ReviewsSection({ rating, reviewCount, ratingBreakdown, aiLovedTags, reviews }: ReviewsSectionProps) {
+  if (reviewCount === 0) {
+    return (
+      <section className="m-0">
+        <SectionLabel title="Reviews & Ratings" />
+        <p className="text-sm text-[#64748B]">No reviews yet — be the first to join and review this space.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="m-0">
       <SectionLabel title="Reviews & Ratings" />

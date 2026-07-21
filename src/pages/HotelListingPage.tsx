@@ -6,25 +6,16 @@ import HotelSearchBar from "../components/hotel/HotelSearchBar";
 import HotelFilterSidebar from "../components/hotel/HotelFilterSidebar";
 import HotelListingCard from "../components/hotel/HotelListingCard";
 import HotelCardSkeleton from "../components/hotel/HotelCardSkeleton";
-import PromoStrip from "../components/hotel/PromoStrip";
 import BokkoExpertCard from "../components/hotel/BokkoExpertCard";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
 import { metroBySlug } from "../data/metros";
-import {
-  CITY_NAMES,
-  allCategories,
-  allHotelAmenities,
-  allHotelChains,
-  allPopularTags,
-  allRatingThresholds,
-  allStayTypes,
-  cityToLocalities,
-} from "../data/hotelListings";
+import { CITY_NAMES, allRatingThresholds } from "../data/hotelListings";
 import type { HotelFilters, HotelListing, HotelSortOption } from "../data/hotelListings";
 import { apiGet } from "../lib/api";
 import { apiToHotelListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 
 const PRICE_MIN = 300;
 const PRICE_MAX = 5000;
@@ -54,7 +45,6 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
   const citySlug = lockedCitySlug ?? "";
   const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
   const pageLabel = landingLabel ?? "Hotels";
-  const areas = lockedCitySlug ? cityToLocalities[lockedCitySlug] ?? [] : [];
 
   const [searchParams, setSearchParams] = useSearchParams();
   const seeded = useRef(false);
@@ -62,7 +52,6 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
   const [checkIn, setCheckIn] = useState(() => new Date().toISOString().slice(0, 10));
   const [checkOut, setCheckOut] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10));
   const [guests, setGuests] = useState(2);
-  const [hotelType, setHotelType] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [layout, setLayout] = useState<"list" | "grid">("list");
   const [showMap, setShowMap] = useState(true);
@@ -114,6 +103,14 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
     );
   }, [cityName, pageLabel]);
 
+  // Filter options derived from the real fetched listings.
+  const stayTypeOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.stayTypes)), [listings]);
+  const areaOptions = useMemo(() => uniqueSorted(listings.map((l) => l.locality)), [listings]);
+  const categoryOptions = useMemo(() => uniqueSorted(listings.map((l) => l.category)), [listings]);
+  const popularTagOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.popularTags)), [listings]);
+  const chainOptions = useMemo(() => uniqueSorted(listings.map((l) => l.chain)), [listings]);
+  const amenityOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.amenities)), [listings]);
+
   const filters: HotelFilters = useMemo(() => {
     const parseList = (key: string, options: readonly string[]) => {
       const raw = searchParams.get(key)?.split(",").filter(Boolean) ?? [];
@@ -123,21 +120,20 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
     };
     const ratingsRaw = searchParams.get("ratings")?.split(",").filter(Boolean) ?? [];
     return {
-      stayTypes: parseList("stayTypes", allStayTypes),
+      stayTypes: parseList("stayTypes", stayTypeOptions),
       durations: searchParams.get("durations")?.split(",").filter(Boolean) ?? [],
-      areas: parseList("areas", areas),
+      areas: parseList("areas", areaOptions),
       priceMin: Number(searchParams.get("priceMin") ?? PRICE_MIN),
       priceMax: Number(searchParams.get("priceMax") ?? PRICE_MAX),
       ratings: ratingsRaw.map(Number).filter((n) => allRatingThresholds.includes(n)),
-      categories: parseList("categories", allCategories),
-      popularTags: parseList("popularTags", allPopularTags),
-      chains: parseList("chains", allHotelChains),
-      amenities: parseList("amenities", allHotelAmenities),
+      categories: parseList("categories", categoryOptions),
+      popularTags: parseList("popularTags", popularTagOptions),
+      chains: parseList("chains", chainOptions),
+      amenities: parseList("amenities", amenityOptions),
       sort: (searchParams.get("sort") as HotelSortOption) ?? "recommended",
       q: searchParams.get("q") ?? "",
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, citySlug]);
+  }, [searchParams, stayTypeOptions, areaOptions, categoryOptions, popularTagOptions, chainOptions, amenityOptions]);
 
   const activeFilterCount =
     filters.stayTypes.length +
@@ -259,8 +255,6 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
           onCheckOutChange={setCheckOut}
           guests={guests}
           onGuestsChange={setGuests}
-          hotelType={hotelType}
-          onHotelTypeChange={setHotelType}
           onSubmit={() => setVisibleCount(PAGE_SIZE)}
         />
 
@@ -279,9 +273,6 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
             {pageLabel} in {cityName}
           </h1>
 
-          <div className="mt-6">
-            <PromoStrip />
-          </div>
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-base font-semibold text-primary-text">
@@ -310,7 +301,12 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
               <div className="sticky top-44 flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto pr-1">
                 <HotelFilterSidebar
                   filters={filters}
-                  areas={areas}
+                  stayTypeOptions={stayTypeOptions}
+                  areaOptions={areaOptions}
+                  categoryOptions={categoryOptions}
+                  popularTagOptions={popularTagOptions}
+                  chainOptions={chainOptions}
+                  amenityOptions={amenityOptions}
                   toggleArrayValue={toggleArrayValue}
                   toggleRating={toggleRating}
                   setSort={setSort}
@@ -331,8 +327,17 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-sm border border-border bg-card text-center">
                   <Hotel size={40} strokeWidth={1.5} className="text-[#94A3B8]" />
-                  <p className="text-base font-bold text-primary-text">No Hotels Found</p>
-                  <p className="text-sm text-muted-text">Try changing filters.</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-primary-text">Coming soon to {cityName}</p>
+                      <p className="text-sm text-muted-text">We're onboarding hotels in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-primary-text">No Hotels Found</p>
+                      <p className="text-sm text-muted-text">Try changing filters.</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
@@ -401,7 +406,12 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
             <div className="flex-1 overflow-y-auto px-5 py-5">
               <HotelFilterSidebar
                 filters={filters}
-                areas={areas}
+                stayTypeOptions={stayTypeOptions}
+                areaOptions={areaOptions}
+                categoryOptions={categoryOptions}
+                popularTagOptions={popularTagOptions}
+                chainOptions={chainOptions}
+                amenityOptions={amenityOptions}
                 toggleArrayValue={toggleArrayValue}
                 toggleRating={toggleRating}
                 setSort={setSort}

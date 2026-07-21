@@ -1,21 +1,18 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import {
-  allCategories,
-  allDurations,
-  allHotelAmenities,
-  allHotelChains,
-  allPopularTags,
-  allRatingThresholds,
-  allStayTypes,
-} from "../../data/hotelListings";
+import { allDurations, allRatingThresholds } from "../../data/hotelListings";
 import type { HotelFilters, HotelSortOption } from "../../data/hotelListings";
 
 type ArrayFilterKey = "stayTypes" | "durations" | "areas" | "categories" | "popularTags" | "chains" | "amenities";
 
 interface HotelFilterSidebarProps {
   filters: HotelFilters;
-  areas: string[];
+  stayTypeOptions: string[];
+  areaOptions: string[];
+  categoryOptions: string[];
+  popularTagOptions: string[];
+  chainOptions: string[];
+  amenityOptions: string[];
   toggleArrayValue: (key: ArrayFilterKey, value: string) => void;
   toggleRating: (value: number) => void;
   setSort: (value: HotelSortOption) => void;
@@ -75,7 +72,12 @@ function FilterCard({
 
 export default function HotelFilterSidebar({
   filters,
-  areas,
+  stayTypeOptions,
+  areaOptions,
+  categoryOptions,
+  popularTagOptions,
+  chainOptions,
+  amenityOptions,
   toggleArrayValue,
   toggleRating,
   setSort,
@@ -83,22 +85,24 @@ export default function HotelFilterSidebar({
   clearArrayFilter,
 }: HotelFilterSidebarProps) {
   const [areaQuery, setAreaQuery] = useState("");
-  const visibleAreas = areas.filter((area) => area.toLowerCase().includes(areaQuery.toLowerCase()));
+  const visibleAreas = areaOptions.filter((area) => area.toLowerCase().includes(areaQuery.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-5">
-      <FilterCard title="Stay Type" onClear={() => clearArrayFilter("stayTypes")}>
-        <div className="flex flex-col">
-          {allStayTypes.map((type) => (
-            <CheckboxRow
-              key={type}
-              label={type}
-              checked={filters.stayTypes.includes(type)}
-              onChange={() => toggleArrayValue("stayTypes", type)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {stayTypeOptions.length > 1 && (
+        <FilterCard title="Stay Type" onClear={() => clearArrayFilter("stayTypes")}>
+          <div className="flex flex-col">
+            {stayTypeOptions.map((type) => (
+              <CheckboxRow
+                key={type}
+                label={type}
+                checked={filters.stayTypes.includes(type)}
+                onChange={() => toggleArrayValue("stayTypes", type)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Duration" onClear={() => clearArrayFilter("durations")}>
         <div className="flex flex-col">
@@ -113,27 +117,29 @@ export default function HotelFilterSidebar({
         </div>
       </FilterCard>
 
-      <FilterCard title="Areas" onClear={() => clearArrayFilter("areas")}>
-        <div className="relative">
-          <input
-            type="text"
-            value={areaQuery}
-            onChange={(event) => setAreaQuery(event.target.value)}
-            placeholder="Search areas"
-            className="mb-2 h-9 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]"
-          />
-        </div>
-        <div className="flex max-h-44 flex-col overflow-y-auto">
-          {visibleAreas.map((area) => (
-            <CheckboxRow
-              key={area}
-              label={area}
-              checked={filters.areas.includes(area)}
-              onChange={() => toggleArrayValue("areas", area)}
+      {areaOptions.length > 0 && (
+        <FilterCard title="Areas" onClear={() => clearArrayFilter("areas")}>
+          <div className="relative">
+            <input
+              type="text"
+              value={areaQuery}
+              onChange={(event) => setAreaQuery(event.target.value)}
+              placeholder="Search areas"
+              className="mb-2 h-9 w-full rounded-lg border border-[#E2E8F0] px-3 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]"
             />
-          ))}
-        </div>
-      </FilterCard>
+          </div>
+          <div className="flex max-h-44 flex-col overflow-y-auto">
+            {visibleAreas.map((area) => (
+              <CheckboxRow
+                key={area}
+                label={area}
+                checked={filters.areas.includes(area)}
+                onChange={() => toggleArrayValue("areas", area)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Price Range">
         <p className="text-xs text-[#64748B]">
@@ -196,64 +202,72 @@ export default function HotelFilterSidebar({
         </div>
       </FilterCard>
 
-      <FilterCard title="Hotel Categories" onClear={() => clearArrayFilter("categories")}>
-        <div className="flex flex-col">
-          {allCategories.map((category) => (
-            <CheckboxRow
-              key={category}
-              label={category}
-              checked={filters.categories.includes(category)}
-              onChange={() => toggleArrayValue("categories", category)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {categoryOptions.length > 1 && (
+        <FilterCard title="Hotel Categories" onClear={() => clearArrayFilter("categories")}>
+          <div className="flex flex-col">
+            {categoryOptions.map((category) => (
+              <CheckboxRow
+                key={category}
+                label={category}
+                checked={filters.categories.includes(category)}
+                onChange={() => toggleArrayValue("categories", category)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Popular Tags" onClear={() => clearArrayFilter("popularTags")}>
-        <div className="flex flex-wrap gap-2">
-          {allPopularTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleArrayValue("popularTags", tag)}
-              className={
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
-                (filters.popularTags.includes(tag)
-                  ? "border-[#2563EB] bg-[#2563EB] text-white"
-                  : "border-[#E2E8F0] text-[#334155] hover:border-[#94A3B8]")
-              }
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      </FilterCard>
+      {popularTagOptions.length > 0 && (
+        <FilterCard title="Popular Tags" onClear={() => clearArrayFilter("popularTags")}>
+          <div className="flex flex-wrap gap-2">
+            {popularTagOptions.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleArrayValue("popularTags", tag)}
+                className={
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
+                  (filters.popularTags.includes(tag)
+                    ? "border-[#2563EB] bg-[#2563EB] text-white"
+                    : "border-[#E2E8F0] text-[#334155] hover:border-[#94A3B8]")
+                }
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Hotel Chains" onClear={() => clearArrayFilter("chains")}>
-        <div className="flex flex-col">
-          {allHotelChains.map((chain) => (
-            <CheckboxRow
-              key={chain}
-              label={chain}
-              checked={filters.chains.includes(chain)}
-              onChange={() => toggleArrayValue("chains", chain)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {chainOptions.length > 0 && (
+        <FilterCard title="Hotel Provider" onClear={() => clearArrayFilter("chains")}>
+          <div className="flex flex-col">
+            {chainOptions.map((chain) => (
+              <CheckboxRow
+                key={chain}
+                label={chain}
+                checked={filters.chains.includes(chain)}
+                onChange={() => toggleArrayValue("chains", chain)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Amenities" onClear={() => clearArrayFilter("amenities")}>
-        <div className="flex flex-col">
-          {allHotelAmenities.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.amenities.includes(item)}
-              onChange={() => toggleArrayValue("amenities", item)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {amenityOptions.length > 0 && (
+        <FilterCard title="Amenities" onClear={() => clearArrayFilter("amenities")}>
+          <div className="flex flex-col">
+            {amenityOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.amenities.includes(item)}
+                onChange={() => toggleArrayValue("amenities", item)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Sort By">
         <div className="flex flex-col gap-1.5">

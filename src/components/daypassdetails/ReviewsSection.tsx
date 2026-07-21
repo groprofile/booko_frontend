@@ -14,6 +14,15 @@ export default function ReviewsSection({ rating, reviews, brand, details }: Revi
   const [showAll, setShowAll] = useState(false);
   const visibleReviews = showAll ? details.reviews : details.reviews.slice(0, 2);
 
+  if (reviews === 0) {
+    return (
+      <section className="m-0">
+        <SectionLabel title="Reviews & Ratings" />
+        <p className="text-sm text-muted-text">No reviews yet — be the first to book and review {brand}.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="m-0">
       <SectionLabel title="Reviews & Ratings" />

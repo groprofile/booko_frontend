@@ -18,34 +18,32 @@ interface ListingCardShellProps {
   subtitle?: string;
   locality: string;
   distanceKm?: number;
-  /** Amenity/equipment/service labels — rendered as small resolved icons
-   * (myHQ-style), not text pills. */
+  /** Amenity/equipment/service labels — rendered as small outlined
+   * icon+label pills, myHQ-style (max 2 shown, rest collapse to "+N"). */
   tags?: string[];
   maxTags?: number;
   priceBlock: ReactNode;
   actions: ReactNode;
-  /** "row" (default) — horizontal card for a single-column list.
-   * "grid" — vertical card (image on top) sized for a 2-up grid. */
+  /** Accepted for backwards compatibility with existing call sites — no
+   * longer changes the card's own layout (see note below). */
   layout?: "row" | "grid";
 }
 
-function AmenityIconRow({ tags, maxTags }: { tags: string[]; maxTags: number }) {
+function AmenityPillRow({ tags, maxTags }: { tags: string[]; maxTags: number }) {
   const visible = tags.slice(0, maxTags);
   const extra = Math.max(0, tags.length - maxTags);
-  // Always occupy the same height (a fixed slot), whether a listing has 0
-  // tags or several — this is what keeps every card exactly the same size
-  // regardless of how much data an individual listing has.
+  if (!visible.length) return null;
   return (
-    <div className="mt-1.5 flex h-6 items-center gap-1.5">
+    <div className="mt-2 flex items-center gap-1.5 overflow-hidden">
       {visible.map((tag) => {
         const Icon = resolveAmenityIcon(tag);
         return (
           <span
             key={tag}
-            title={tag}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary-blue/15 bg-primary-blue/8 text-primary-blue"
+            className="inline-flex max-w-[130px] shrink-0 items-center gap-1 truncate rounded-full border border-border px-2 py-1 text-[11px] font-medium text-secondary-text"
           >
-            <Icon size={12} strokeWidth={1.75} />
+            <Icon size={12} strokeWidth={1.75} className="shrink-0 text-muted-text" />
+            <span className="truncate">{tag}</span>
           </span>
         );
       })}
@@ -55,12 +53,14 @@ function AmenityIconRow({ tags, maxTags }: { tags: string[]; maxTags: number }) 
 }
 
 /**
- * Shared myHQ-style listing card. Two fixed-size layouts share the same
- * content contract so every card on every listing page — Day Pass, Hotel,
- * Meeting Room, Monthly Pass, Virtual Office, Coworking — renders at the
- * exact same size regardless of how much content an individual listing has:
- *  - "row": compact horizontal card for the single-column + map view.
- *  - "grid": compact vertical card for the 2-up grid view.
+ * Shared myHQ-style listing card. myHQ's own "Grid" view isn't a different
+ * card design — it's this exact same horizontal row card, just wrapped in a
+ * 2-column page grid instead of stacked in one column (verified by
+ * inspecting myhq.in directly). Critically, the card has no fixed height:
+ * it sizes to its own content, top-aligned, with normal margins — that's
+ * what keeps it free of dead space regardless of how many amenity tags or
+ * how much text a given listing has. The `layout` prop only controls the
+ * *page's* wrapping grid (see the six listing pages), not this component.
  */
 export default function ListingCardShell({
   href,
@@ -78,72 +78,66 @@ export default function ListingCardShell({
   locality,
   distanceKm,
   tags,
-  maxTags = 4,
+  maxTags = 2,
   priceBlock,
   actions,
-  layout = "row",
 }: ListingCardShellProps) {
-  const imageBlock = (
-    <Link
-      to={href}
-      className={
-        "group/image relative shrink-0 overflow-hidden " +
-        (layout === "grid" ? "h-[132px] w-full" : "aspect-[4/3] w-full sm:h-full sm:w-[280px]")
-      }
-    >
-      <img
-        src={images[imageIndex]}
-        alt={name}
-        loading="lazy"
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/image:scale-105"
-      />
+  return (
+    <div className="group flex overflow-hidden rounded-sm border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-soft-lg">
+      <Link
+        to={href}
+        className="group/image relative w-[240px] shrink-0 overflow-hidden max-sm:w-[120px]"
+      >
+        <img
+          src={images[imageIndex]}
+          alt={name}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/image:scale-105"
+        />
 
-      {topLeftBadge && <div className="absolute left-2 top-2 z-10">{topLeftBadge}</div>}
-      {topRightBadge && <div className="absolute right-2 top-2 z-10">{topRightBadge}</div>}
+        {topLeftBadge && <div className="absolute left-2 top-2 z-10">{topLeftBadge}</div>}
+        {topRightBadge && <div className="absolute right-2 top-2 z-10">{topRightBadge}</div>}
 
-      {images.length > 1 && (onPrevImage || onNextImage) && (
-        <>
-          <button
-            type="button"
-            aria-label="Previous image"
-            onClick={(e) => {
-              e.preventDefault();
-              onPrevImage?.();
-            }}
-            className="absolute left-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-primary-text opacity-0 shadow-soft transition-opacity hover:bg-white group-hover/image:opacity-100"
-          >
-            <ChevronLeft size={12} strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            aria-label="Next image"
-            onClick={(e) => {
-              e.preventDefault();
-              onNextImage?.();
-            }}
-            className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-primary-text opacity-0 shadow-soft transition-opacity hover:bg-white group-hover/image:opacity-100"
-          >
-            <ChevronRight size={12} strokeWidth={1.75} />
-          </button>
-        </>
-      )}
-    </Link>
-  );
+        {images.length > 1 && (onPrevImage || onNextImage) && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={(e) => {
+                e.preventDefault();
+                onPrevImage?.();
+              }}
+              className="absolute left-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-primary-text opacity-0 shadow-soft transition-opacity hover:bg-white group-hover/image:opacity-100"
+            >
+              <ChevronLeft size={12} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={(e) => {
+                e.preventDefault();
+                onNextImage?.();
+              }}
+              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-primary-text opacity-0 shadow-soft transition-opacity hover:bg-white group-hover/image:opacity-100"
+            >
+              <ChevronRight size={12} strokeWidth={1.75} />
+            </button>
+          </>
+        )}
+      </Link>
 
-  const contentBlock = (
-    <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5 overflow-hidden p-3">
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col p-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {ratingBadge}
           {extraBadges}
         </div>
 
-        <Link to={href} className="mt-1 block truncate text-sm font-bold text-primary-text hover:text-primary-blue">
+        <Link to={href} className="mt-1.5 block truncate text-sm font-bold text-primary-text hover:text-primary-blue">
           {title}
         </Link>
         {subtitle && <p className="truncate text-[11px] font-semibold text-secondary-text">{subtitle}</p>}
 
-        <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-text">
+        <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted-text">
           <MapPin size={11} strokeWidth={1.75} className="shrink-0" />
           <span className="truncate">
             {locality}
@@ -151,29 +145,13 @@ export default function ListingCardShell({
           </span>
         </p>
 
-        <AmenityIconRow tags={tags ?? []} maxTags={maxTags} />
-      </div>
+        <AmenityPillRow tags={tags ?? []} maxTags={maxTags} />
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-        {priceBlock}
-        <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+          {priceBlock}
+          <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
+        </div>
       </div>
-    </div>
-  );
-
-  if (layout === "grid") {
-    return (
-      <div className="group flex h-[300px] flex-col overflow-hidden rounded-sm border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-soft-lg">
-        {imageBlock}
-        {contentBlock}
-      </div>
-    );
-  }
-
-  return (
-    <div className="group flex flex-col overflow-hidden rounded-sm border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-soft-lg sm:h-[172px] sm:flex-row">
-      {imageBlock}
-      {contentBlock}
     </div>
   );
 }

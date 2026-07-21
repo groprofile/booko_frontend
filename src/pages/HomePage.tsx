@@ -1,6 +1,7 @@
 import MainLayout from "../components/layout/MainLayout";
 import Hero from "../components/Hero";
 import ExploreCategoriesSection from "../components/ExploreCategoriesSection";
+import PopularCitiesSection from "../components/PopularCitiesSection";
 import FindYourSpaceSection from "../components/FindYourSpaceSection";
 import RecommendedSpacesSection from "../components/RecommendedSpacesSection";
 import OffersSection from "../components/OffersSection";
@@ -14,6 +15,7 @@ export default function HomePage() {
     <MainLayout>
       <Hero />
       <ExploreCategoriesSection />
+      <PopularCitiesSection />
       <FindYourSpaceSection />
       <RecommendedSpacesSection />
       <OffersSection />

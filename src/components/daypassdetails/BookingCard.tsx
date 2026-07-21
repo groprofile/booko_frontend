@@ -121,12 +121,14 @@ export default function BookingCard({
         <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">
           <div className="flex items-center justify-between text-sm text-muted-text">
             <span>Price ({members} × ₹{selected.price})</span>
-            <span className="line-through">₹{(selected.price * members).toLocaleString()}</span>
+            <span>₹{(selected.price * members).toLocaleString()}</span>
           </div>
-          <div className="flex items-center justify-between text-sm font-semibold text-success">
-            <span>Offer Applied · {selected.offerCode}</span>
-            <span>- ₹{(selected.price * members - total).toLocaleString()}</span>
-          </div>
+          {selected.offerCode && selected.price * members > total && (
+            <div className="flex items-center justify-between text-sm font-semibold text-success">
+              <span>Offer Applied · {selected.offerCode}</span>
+              <span>- ₹{(selected.price * members - total).toLocaleString()}</span>
+            </div>
+          )}
           <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-lg font-extrabold text-primary-text">
             <span>Total Amount</span>
             <span>₹{total.toLocaleString()}</span>

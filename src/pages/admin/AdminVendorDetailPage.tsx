@@ -3,15 +3,16 @@ import { useEffect, useState, useCallback } from "react";
 import {
   ArrowLeft, Building2, MapPin, Phone, Mail, CreditCard,
   CheckCircle, XCircle, ShieldOff, Shield, FileText,
-  Eye, Loader2, X, ChevronLeft, ChevronRight, Users, KeyRound,
+  Eye, Loader2, X, ChevronLeft, ChevronRight, Users, KeyRound, Upload, Trash2,
 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import StatusBadge from "../../components/admin/StatusBadge";
 import GeneratedCredentialsModal from "../../components/admin/GeneratedCredentialsModal";
 import RejectReasonModal from "../../components/admin/RejectReasonModal";
+import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import { showToast } from "../../components/admin/Toast";
 import { useAdmin } from "../../context/AdminContext";
-import { apiGet, apiPost, getAdminToken, ApiError } from "../../lib/api";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, apiUploadFile, getAdminToken, ApiError } from "../../lib/api";
 
 const fmt = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
@@ -74,6 +75,39 @@ interface BankDetail {
   ifsc_code?: string;
   bank_name?: string;
   verification_status?: string;
+}
+
+interface RawVendorBooking {
+  id: string;
+  product_type?: string;
+  total_paise?: number | string;
+  payment_status?: string;
+  created_at?: string;
+  users?: { full_name?: string };
+  centers?: { center_name?: string };
+}
+
+interface VendorBooking {
+  id: string;
+  customerName: string;
+  product: string;
+  centerName: string;
+  date: string;
+  amount: number;
+  paymentStatus: string;
+}
+
+function normalizeVendorBooking(raw: RawVendorBooking): VendorBooking {
+  const paise = typeof raw.total_paise === "string" ? parseInt(raw.total_paise, 10) : (raw.total_paise ?? 0);
+  return {
+    id: raw.id,
+    customerName: raw.users?.full_name ?? "Guest",
+    product: raw.product_type ?? "",
+    centerName: raw.centers?.center_name ?? "",
+    date: raw.created_at?.slice(0, 10) ?? "",
+    amount: paise ? Math.round(paise / 100) : 0,
+    paymentStatus: raw.payment_status ?? "pending",
+  };
 }
 
 interface ViewerState {
@@ -188,9 +222,14 @@ function DocViewer({
 export default function AdminVendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
-  const { vendors, bookings, approveVendor, rejectVendor, blockVendor, unblockVendor, regenerateVendorPassword } = useAdmin();
+  const { vendors, approveVendor, rejectVendor, blockVendor, unblockVendor, regenerateVendorPassword } = useAdmin();
   const [regenerating, setRegenerating] = useState(false);
+  // `credentials` drives the persistent Login Info panel — once set, it stays
+  // visible for the rest of this page visit (never re-fetched: the backend
+  // never returns a plaintext password after initial creation, by design).
+  // `credsModalOpen` only controls the transient confirmation popup on top of it.
   const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [credsModalOpen, setCredsModalOpen] = useState(false);
 
   const [vendorDocs, setVendorDocs] = useState<VendorDocument[]>([]);
   const [staff, setStaff] = useState<CenterManager[]>([]);
@@ -202,10 +241,18 @@ export default function AdminVendorDetailPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectCenterTarget, setRejectCenterTarget] = useState<string | null>(null);
   const [centerActionId, setCenterActionId] = useState<string | null>(null);
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [deleteDocTarget, setDeleteDocTarget] = useState<{ docType: string; label: string } | null>(null);
+  const [bankActionLoading, setBankActionLoading] = useState<"verified" | "rejected" | null>(null);
+  const [bankFormOpen, setBankFormOpen] = useState(false);
+  const [bankForm, setBankForm] = useState({ accountHolder: "", accountNumber: "", ifscCode: "", bankName: "" });
+  const [savingBank, setSavingBank] = useState(false);
+  const [bankFormError, setBankFormError] = useState("");
 
   const vendor = vendors.find((v) => v.id === vendorId);
 
-  useEffect(() => {
+  const loadDocuments = useCallback(() => {
     if (!vendorId) return;
     const token = getAdminToken();
     if (!token) return;
@@ -213,6 +260,117 @@ export default function AdminVendorDetailPage() {
       .then(setVendorDocs)
       .catch(() => {});
   }, [vendorId]);
+
+  useEffect(() => { loadDocuments(); }, [loadDocuments]);
+
+  const [vendorBookings, setVendorBookings] = useState<VendorBooking[]>([]);
+  const [vendorBookingsTotal, setVendorBookingsTotal] = useState(0);
+  const [vendorPaidRevenue, setVendorPaidRevenue] = useState(0);
+
+  useEffect(() => {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    apiGet<{ bookings: RawVendorBooking[]; total: number; paidTotalRupees: number }>(`/admin/vendors/${vendorId}/bookings`, token)
+      .then((res) => {
+        setVendorBookings((res.bookings ?? []).map(normalizeVendorBooking));
+        setVendorBookingsTotal(res.total ?? 0);
+        setVendorPaidRevenue(res.paidTotalRupees ?? 0);
+      })
+      .catch(() => { setVendorBookings([]); setVendorBookingsTotal(0); setVendorPaidRevenue(0); });
+  }, [vendorId]);
+
+  // Admin uploading/replacing a document on the vendor's behalf — e.g. when
+  // the vendor can't upload it themselves. Same file-type/size rules as the
+  // vendor's own upload (backend validates PDF/JPEG/PNG, max 5MB).
+  async function handleUploadDoc(docType: string, file: File) {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    setUploadingDocType(docType);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("docType", docType);
+      await apiUploadFile(`/admin/vendors/${vendorId}/kyc/upload`, formData, token);
+      loadDocuments();
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : "Failed to upload document");
+    } finally {
+      setUploadingDocType(null);
+    }
+  }
+
+  async function handleDeleteDoc() {
+    if (!vendorId || !deleteDocTarget) return;
+    const token = getAdminToken();
+    if (!token) return;
+    try {
+      await apiDelete(`/admin/vendors/${vendorId}/documents/${deleteDocTarget.docType}`, token);
+      setDeleteDocTarget(null);
+      loadDocuments();
+      showToast("Document removed", "success");
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : "Failed to remove document");
+      setDeleteDocTarget(null);
+    }
+  }
+
+  function openBankForm() {
+    setBankForm({
+      accountHolder: bank?.account_holder_name ?? "",
+      accountNumber: bank?.account_number ?? "",
+      ifscCode: bank?.ifsc_code ?? "",
+      bankName: bank?.bank_name ?? "",
+    });
+    setBankFormError("");
+    setBankFormOpen(true);
+  }
+
+  async function handleSaveBank() {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    const { accountHolder, accountNumber, ifscCode, bankName } = bankForm;
+    if (!accountHolder.trim() || !accountNumber.trim() || !ifscCode.trim() || !bankName.trim()) {
+      setBankFormError("All fields are required.");
+      return;
+    }
+    setSavingBank(true);
+    setBankFormError("");
+    try {
+      const saved = await apiPut<BankDetail>(`/admin/vendors/${vendorId}/bank`, {
+        accountHolder: accountHolder.trim(),
+        accountNumber: accountNumber.trim(),
+        ifscCode: ifscCode.trim().toUpperCase(),
+        bankName: bankName.trim(),
+      }, token);
+      setBank(saved);
+      setBankFormOpen(false);
+      showToast("Bank details saved", "success");
+    } catch (err) {
+      setBankFormError(err instanceof ApiError ? err.message : "Failed to save bank details");
+    } finally {
+      setSavingBank(false);
+    }
+  }
+
+  async function handleVerifyBank(status: "verified" | "rejected") {
+    if (!vendorId) return;
+    const token = getAdminToken();
+    if (!token) return;
+    setBankActionLoading(status);
+    try {
+      await apiPatch(`/admin/vendors/${vendorId}/bank/verify`, { status }, token);
+      setBank((prev) => (prev ? { ...prev, verification_status: status } : prev));
+      showToast(status === "verified" ? "Bank details verified" : "Bank details rejected", "success");
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Failed to update bank details", "error");
+    } finally {
+      setBankActionLoading(null);
+    }
+  }
 
   useEffect(() => {
     if (!vendorId) return;
@@ -281,6 +439,7 @@ export default function AdminVendorDetailPage() {
     setRegenerating(false);
     if (result.success && result.password) {
       setCredentials({ email: vendor.email, password: result.password });
+      setCredsModalOpen(true);
     }
   }
 
@@ -361,8 +520,6 @@ export default function AdminVendorDetailPage() {
     </AdminLayout>
   );
 
-  const vBookings = bookings.filter((b) => b.vendorId === vendorId);
-  const vRevenue = vBookings.filter((b) => b.paymentStatus === "paid").reduce((a, b) => a + b.amount, 0);
 
   const docMap = Object.fromEntries(vendorDocs.map((d) => [d.doc_type, d.file_key]));
   const extraDocTypes = vendorDocs.map((d) => d.doc_type).filter((t) => !MANDATORY_DOC_TYPES.includes(t));
@@ -443,10 +600,41 @@ export default function AdminVendorDetailPage() {
             </p>
           )}
 
+          {/* Login Info — email is always shown; the password only appears
+              right after Regenerate is used on this page visit (it's never
+              stored or re-fetchable afterward, by design). */}
+          <div className="mt-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">Login Info</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <span className="flex items-center gap-1.5 text-[#0F172A]">
+                <Mail size={13} className="text-[#94A3B8]" />
+                {vendor.email}
+              </span>
+              {credentials ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-[#94A3B8]">Password:</span>
+                  <code className="font-mono font-bold text-[#0F172A]">{credentials.password}</code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(credentials.password)}
+                    className="rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-[10px] font-semibold text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB]"
+                  >
+                    Copy
+                  </button>
+                </span>
+              ) : (
+                <span className="text-xs text-[#94A3B8]">
+                  {vendor.source === "admin_created" && vendor.mustChangePassword
+                    ? "Password not shown — use Regenerate Password above to issue a new one-time password."
+                    : "Vendor has set their own password."}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
-              { label: "Total Revenue", value: fmt(vRevenue) },
-              { label: "Total Bookings", value: vBookings.length.toString() },
+              { label: "Total Revenue", value: fmt(vendorPaidRevenue) },
+              { label: "Total Bookings", value: vendorBookingsTotal.toString() },
               { label: "Centers", value: realCenters.length.toString() },
             ].map((m) => (
               <div key={m.label} className="rounded-xl bg-[#F8FAFC] p-3 text-center">
@@ -471,9 +659,9 @@ export default function AdminVendorDetailPage() {
               <StatusBadge status={vendor.kycStatus} />
             </div>
 
-            {viewError && (
+            {(viewError || uploadError) && (
               <div className="mb-3 rounded-xl bg-[#FEE2E2] px-4 py-2.5 text-xs text-[#B91C1C]">
-                {viewError}
+                {viewError || uploadError}
               </div>
             )}
 
@@ -523,6 +711,34 @@ export default function AdminVendorDetailPage() {
                           View
                         </button>
                       )}
+                      <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors">
+                        {uploadingDocType === docType ? (
+                          <Loader2 size={10} className="animate-spin" />
+                        ) : (
+                          <Upload size={10} />
+                        )}
+                        {hasFile ? "Replace" : "Upload"}
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="hidden"
+                          disabled={uploadingDocType === docType}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (file) handleUploadDoc(docType, file);
+                          }}
+                        />
+                      </label>
+                      {hasFile && (
+                        <button
+                          onClick={() => setDeleteDocTarget({ docType, label })}
+                          className="rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-[#94A3B8] hover:border-red-300 hover:text-red-500 transition-colors"
+                          title="Remove document"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -534,26 +750,171 @@ export default function AdminVendorDetailPage() {
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <p className="font-bold text-[#0F172A]">Bank Details</p>
-              <StatusBadge status={bank ? (bank.verification_status ?? "submitted") : "not_submitted"} />
-            </div>
-            {bank ? (
-              <div className="flex flex-col gap-3">
-                {[
-                  { label: "Account Holder", value: bank.account_holder_name ?? "—" },
-                  { label: "Account Number", value: bank.account_number ? `••••${bank.account_number.slice(-4)}` : "—" },
-                  { label: "IFSC Code", value: bank.ifsc_code ?? "—" },
-                  { label: "Bank Name", value: bank.bank_name ?? "—" },
-                ].map((r) => (
-                  <div key={r.label} className="flex items-center justify-between border-b border-[#F8FAFC] pb-3 last:border-0 last:pb-0">
-                    <span className="text-xs text-[#64748B]">{r.label}</span>
-                    <span className="text-xs font-semibold text-[#0F172A]">{r.value}</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <StatusBadge status={bank ? (bank.verification_status ?? "pending") : "not_submitted"} />
+                {!bankFormOpen && (
+                  <button
+                    onClick={openBankForm}
+                    className="text-[11px] font-semibold text-[#2563EB] hover:underline"
+                  >
+                    {bank ? "Edit" : "Add Bank Details"}
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CreditCard size={28} className="text-[#E2E8F0]" />
-                <p className="mt-2 text-sm text-[#94A3B8]">Bank details not submitted yet</p>
+            </div>
+
+            {bankFormOpen && (
+              <div className="mb-4 flex flex-col gap-3 rounded-xl border border-[#2563EB]/30 bg-[#F8FAFF] p-4">
+                <p className="text-xs text-[#64748B]">
+                  {bank ? "Editing on the vendor's behalf resets verification to pending." : "Adding this on the vendor's behalf — they can still update it themselves later."}
+                </p>
+                {[
+                  { key: "accountHolder" as const, label: "Account Holder Name" },
+                  { key: "accountNumber" as const, label: "Account Number" },
+                  { key: "ifscCode" as const, label: "IFSC Code" },
+                  { key: "bankName" as const, label: "Bank Name" },
+                ].map((f) => (
+                  <label key={f.key} className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-[#475569]">{f.label}</span>
+                    <input
+                      type="text"
+                      value={bankForm[f.key]}
+                      onChange={(e) => setBankForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]"
+                    />
+                  </label>
+                ))}
+                {bankFormError && <p className="text-xs font-medium text-red-500">{bankFormError}</p>}
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => setBankFormOpen(false)}
+                    disabled={savingBank}
+                    className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-xs font-semibold text-[#64748B] hover:bg-white disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveBank}
+                    disabled={savingBank}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-bold text-white hover:bg-[#1D4ED8] disabled:opacity-50"
+                  >
+                    {savingBank && <Loader2 size={12} className="animate-spin" />}
+                    Save Bank Details
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!bankFormOpen && (
+              <div className="flex flex-col gap-3">
+                {bank ? (
+                  [
+                    { label: "Account Holder", value: bank.account_holder_name ?? "—" },
+                    { label: "Account Number", value: bank.account_number ? `••••${bank.account_number.slice(-4)}` : "—" },
+                    { label: "IFSC Code", value: bank.ifsc_code ?? "—" },
+                    { label: "Bank Name", value: bank.bank_name ?? "—" },
+                  ].map((r) => (
+                    <div key={r.label} className="flex items-center justify-between border-b border-[#F8FAFC] pb-3">
+                      <span className="text-xs text-[#64748B]">{r.label}</span>
+                      <span className="text-xs font-semibold text-[#0F172A]">{r.value}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#E2E8F0] py-6 text-center">
+                    <CreditCard size={24} className="text-[#E2E8F0]" />
+                    <p className="mt-2 text-xs text-[#94A3B8]">Account details not added yet — the proof document below can still be uploaded independently.</p>
+                  </div>
+                )}
+
+                {/* Bank proof (cancelled cheque) — always uploadable, even
+                    before the account fields above are filled in, same as
+                    every other document in the KYC list. */}
+                {(() => {
+                  const docType = "cancelled_cheque";
+                  const fileKey = docMap[docType];
+                  const hasFile = !!fileKey;
+                  const isLoading = loadingViewKey === fileKey;
+                  return (
+                    <div className="flex items-center justify-between border-b border-[#F8FAFC] pb-3 last:border-0 last:pb-0">
+                      <div>
+                        <span className="text-xs text-[#64748B]">Bank Proof (Cancelled Cheque)</span>
+                        <div className="mt-1">
+                          <StatusBadge status={hasFile ? "submitted" : "not_submitted"} size="sm" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {hasFile && (
+                          <button
+                            onClick={() => openViewer(fileKey, "Cancelled Cheque")}
+                            disabled={isLoading}
+                            className="flex items-center gap-1 rounded-lg bg-[#0F172A] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50 transition-colors"
+                          >
+                            {isLoading ? <Loader2 size={10} className="animate-spin" /> : <Eye size={10} />}
+                            View
+                          </button>
+                        )}
+                        <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors">
+                          {uploadingDocType === docType ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} />}
+                          {hasFile ? "Replace" : "Upload"}
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            disabled={uploadingDocType === docType}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              e.target.value = "";
+                              if (file) handleUploadDoc(docType, file);
+                            }}
+                          />
+                        </label>
+                        {hasFile && (
+                          <button
+                            onClick={() => setDeleteDocTarget({ docType, label: "Cancelled Cheque" })}
+                            className="rounded-lg border border-[#E2E8F0] bg-white p-1.5 text-[#94A3B8] hover:border-red-300 hover:text-red-500 transition-colors"
+                            title="Remove document"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Verify / reject the account details — only meaningful once
+                    there's an actual account record to verify. */}
+                {bank && bank.verification_status !== "verified" && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleVerifyBank("verified")}
+                      disabled={bankActionLoading !== null}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#DCFCE7] py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0] disabled:opacity-50"
+                    >
+                      {bankActionLoading === "verified" ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                      Verify
+                    </button>
+                    {bank.verification_status !== "rejected" && (
+                      <button
+                        onClick={() => handleVerifyBank("rejected")}
+                        disabled={bankActionLoading !== null}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#FEE2E2] py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA] disabled:opacity-50"
+                      >
+                        {bankActionLoading === "rejected" ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                        Reject
+                      </button>
+                    )}
+                  </div>
+                )}
+                {bank && bank.verification_status === "verified" && (
+                  <button
+                    onClick={() => handleVerifyBank("rejected")}
+                    disabled={bankActionLoading !== null}
+                    className="pt-1 text-left text-[11px] font-semibold text-[#DC2626] hover:underline disabled:opacity-50"
+                  >
+                    Revoke verification
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -632,16 +993,16 @@ export default function AdminVendorDetailPage() {
 
           {/* Recent Bookings */}
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
-            <p className="mb-4 font-bold text-[#0F172A]">Recent Bookings ({vBookings.length})</p>
-            {vBookings.length === 0 ? (
+            <p className="mb-4 font-bold text-[#0F172A]">Recent Bookings ({vendorBookingsTotal})</p>
+            {vendorBookings.length === 0 ? (
               <p className="py-6 text-center text-sm text-[#94A3B8]">No bookings yet.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                {vBookings.slice(0, 6).map((b) => (
+                {vendorBookings.slice(0, 6).map((b) => (
                   <div key={b.id} className="flex items-center justify-between rounded-xl border border-[#F1F5F9] bg-[#F8FAFC] px-3 py-2.5">
                     <div>
                       <p className="text-xs font-semibold text-[#0F172A]">{b.customerName}</p>
-                      <p className="text-[11px] text-[#94A3B8]">{b.product} · {b.date}</p>
+                      <p className="text-[11px] text-[#94A3B8]">{b.product}{b.centerName ? ` · ${b.centerName}` : ""} · {b.date}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-bold text-[#0F172A]">₹{b.amount}</p>
@@ -655,11 +1016,11 @@ export default function AdminVendorDetailPage() {
         </div>
       </AdminLayout>
 
-      {credentials && (
+      {credsModalOpen && credentials && (
         <GeneratedCredentialsModal
           email={credentials.email}
           password={credentials.password}
-          onClose={() => setCredentials(null)}
+          onClose={() => setCredsModalOpen(false)}
         />
       )}
 
@@ -680,6 +1041,15 @@ export default function AdminVendorDetailPage() {
           if (rejectCenterTarget) await handleCenterReject(rejectCenterTarget, reason);
           setRejectCenterTarget(null);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteDocTarget}
+        title="Remove this document?"
+        description={deleteDocTarget ? `"${deleteDocTarget.label}" will be removed and marked as not submitted. The vendor (or you) can upload it again anytime.` : undefined}
+        confirmLabel="Remove Document"
+        onCancel={() => setDeleteDocTarget(null)}
+        onConfirm={handleDeleteDoc}
       />
     </>
   );

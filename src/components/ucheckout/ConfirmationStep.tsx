@@ -6,7 +6,7 @@ interface ConfirmationStepProps {
   booking: UniversalCheckoutState;
   bookingId: string;
   totalAmount: number;
-  totalSaved: number;
+  totalSaved?: number;
   guestName: string;
   guestEmail: string;
   paymentMethod: string;
@@ -126,10 +126,10 @@ export default function ConfirmationStep({
             ? "Your application is under review. A Bokko Expert will call within 24–48 hours to complete verification."
             : `You're all set! Show your OTP at reception and enjoy your workspace.`}
         </p>
-        {totalSaved > 0 && (
+        {(totalSaved ?? 0) > 0 && (
           <div className="flex items-center gap-2 rounded-full bg-[#DCFCE7] px-4 py-2">
             <Sparkles size={15} className="text-[#16A34A]" />
-            <p className="text-sm font-bold text-[#15803D]">You saved ₹{totalSaved.toLocaleString()} with Bokko!</p>
+            <p className="text-sm font-bold text-[#15803D]">You saved ₹{(totalSaved ?? 0).toLocaleString()} with Bokko!</p>
           </div>
         )}
       </div>

@@ -7,23 +7,12 @@ interface VirtualOfficeSearchBarProps {
   near?: boolean;
   area: string;
   onAreaChange: (value: string) => void;
-  planType: string;
-  onPlanTypeChange: (value: string) => void;
   gstRequired: boolean;
   onGstRequiredChange: (value: boolean) => void;
   priceRange: string;
   onPriceRangeChange: (value: string) => void;
   onSubmit: () => void;
 }
-
-const planTypeOptions = [
-  "Virtual Office",
-  "Business Address",
-  "GST Registration",
-  "Company Registration",
-  "Mail Handling",
-  "Business Package",
-];
 
 const priceRangeOptions = ["Any Budget", "Under ₹1000", "₹1000 - ₹2000", "₹2000 - ₹3000", "₹3000+"];
 
@@ -35,8 +24,6 @@ export default function VirtualOfficeSearchBar({
   near = false,
   area,
   onAreaChange,
-  planType,
-  onPlanTypeChange,
   gstRequired,
   onGstRequiredChange,
   priceRange,
@@ -80,22 +67,6 @@ export default function VirtualOfficeSearchBar({
             placeholder="All Areas"
             className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none placeholder:font-normal placeholder:text-[#94A3B8]"
           />
-        </label>
-
-        <label className={fieldClass}>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">Plan Type</span>
-          <select
-            value={planType}
-            onChange={(event) => onPlanTypeChange(event.target.value)}
-            className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
-          >
-            <option value="">Any Plan Type</option>
-            {planTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
         </label>
 
         <label className={fieldClass}>

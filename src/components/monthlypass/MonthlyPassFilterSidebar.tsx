@@ -1,15 +1,13 @@
 import { useState } from "react";
-import {
-  allLockInOptions,
-  allMonthlyAccessibility,
-  allMonthlyBrands,
-  allMonthlySeatingTypes,
-  allMonthlySpaceTypes,
-} from "../../data/monthlyPassListings";
 import type { MonthlyPassFilters, MonthlySortOption } from "../../data/monthlyPassListings";
 
 interface MonthlyPassFilterSidebarProps {
   filters: MonthlyPassFilters;
+  seatingOptions: string[];
+  brandOptions: string[];
+  accessibilityOptions: string[];
+  lockInOptions: string[];
+  spaceTypeOptions: string[];
   toggleArrayValue: (key: "seating" | "brands" | "accessibility" | "lockIn", value: string) => void;
   setSpaceType: (value: string | null) => void;
   setSort: (value: MonthlySortOption) => void;
@@ -47,31 +45,38 @@ function CheckboxRow({
 
 export default function MonthlyPassFilterSidebar({
   filters,
+  seatingOptions,
+  brandOptions,
+  accessibilityOptions,
+  lockInOptions,
+  spaceTypeOptions,
   toggleArrayValue,
   setSpaceType,
   setSort,
   setPriceRange,
 }: MonthlyPassFilterSidebarProps) {
   const [brandsExpanded, setBrandsExpanded] = useState(false);
-  const visibleBrands = brandsExpanded ? allMonthlyBrands : allMonthlyBrands.slice(0, 4);
+  const visibleBrands = brandsExpanded ? brandOptions : brandOptions.slice(0, 4);
 
   return (
     <div className="flex flex-col gap-7">
-      <div>
-        <h3 className="text-sm font-bold text-[#0F172A]">Seating Options</h3>
-        <div className="mt-2 flex flex-col">
-          {allMonthlySeatingTypes.map((seating) => (
-            <CheckboxRow
-              key={seating}
-              label={seating}
-              checked={filters.seating.includes(seating)}
-              onChange={() => toggleArrayValue("seating", seating)}
-            />
-          ))}
+      {seatingOptions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-[#0F172A]">Seating Options</h3>
+          <div className="mt-2 flex flex-col">
+            {seatingOptions.map((seating) => (
+              <CheckboxRow
+                key={seating}
+                label={seating}
+                checked={filters.seating.includes(seating)}
+                onChange={() => toggleArrayValue("seating", seating)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
+      <div className={seatingOptions.length > 0 ? "border-t border-[#E2E8F0] pt-6" : ""}>
         <h3 className="text-sm font-bold text-[#0F172A]">Sort By</h3>
         <div className="mt-2 flex flex-col gap-1.5">
           {sortOptions.map((option) => (
@@ -89,33 +94,35 @@ export default function MonthlyPassFilterSidebar({
         </div>
       </div>
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Space Type</h3>
-        <div className="mt-2 flex flex-col gap-1.5">
-          <label className="flex cursor-pointer items-center gap-2.5 py-0.5">
-            <input
-              type="radio"
-              name="monthly-spaceType"
-              checked={filters.spaceType === null}
-              onChange={() => setSpaceType(null)}
-              className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
-            />
-            <span className="text-sm text-[#334155]">All</span>
-          </label>
-          {allMonthlySpaceTypes.map((type) => (
-            <label key={type} className="flex cursor-pointer items-center gap-2.5 py-0.5">
+      {spaceTypeOptions.length > 1 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Space Type</h3>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2.5 py-0.5">
               <input
                 type="radio"
                 name="monthly-spaceType"
-                checked={filters.spaceType === type}
-                onChange={() => setSpaceType(type)}
+                checked={filters.spaceType === null}
+                onChange={() => setSpaceType(null)}
                 className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
               />
-              <span className="text-sm text-[#334155]">{type}</span>
+              <span className="text-sm text-[#334155]">All</span>
             </label>
-          ))}
+            {spaceTypeOptions.map((type) => (
+              <label key={type} className="flex cursor-pointer items-center gap-2.5 py-0.5">
+                <input
+                  type="radio"
+                  name="monthly-spaceType"
+                  checked={filters.spaceType === type}
+                  onChange={() => setSpaceType(type)}
+                  className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
+                />
+                <span className="text-sm text-[#334155]">{type}</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border-t border-[#E2E8F0] pt-6">
         <h3 className="text-sm font-bold text-[#0F172A]">Price Per Month</h3>
@@ -159,56 +166,62 @@ export default function MonthlyPassFilterSidebar({
         </div>
       </div>
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Lock-in Period</h3>
-        <div className="mt-2 flex flex-col">
-          {allLockInOptions.map((option) => (
-            <CheckboxRow
-              key={option}
-              label={option}
-              checked={filters.lockIn.includes(option)}
-              onChange={() => toggleArrayValue("lockIn", option)}
-            />
-          ))}
+      {lockInOptions.length > 1 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Lock-in Period</h3>
+          <div className="mt-2 flex flex-col">
+            {lockInOptions.map((option) => (
+              <CheckboxRow
+                key={option}
+                label={option}
+                checked={filters.lockIn.includes(option)}
+                onChange={() => toggleArrayValue("lockIn", option)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Brands</h3>
-        <div className="mt-2 flex flex-col">
-          {visibleBrands.map((brand) => (
-            <CheckboxRow
-              key={brand}
-              label={brand}
-              checked={filters.brands.includes(brand)}
-              onChange={() => toggleArrayValue("brands", brand)}
-            />
-          ))}
+      {brandOptions.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Space Provider</h3>
+          <div className="mt-2 flex flex-col">
+            {visibleBrands.map((brand) => (
+              <CheckboxRow
+                key={brand}
+                label={brand}
+                checked={filters.brands.includes(brand)}
+                onChange={() => toggleArrayValue("brands", brand)}
+              />
+            ))}
+          </div>
+          {!brandsExpanded && brandOptions.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setBrandsExpanded(true)}
+              className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
+            >
+              View all ({brandOptions.length})
+            </button>
+          )}
         </div>
-        {!brandsExpanded && allMonthlyBrands.length > 4 && (
-          <button
-            type="button"
-            onClick={() => setBrandsExpanded(true)}
-            className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
-          >
-            View all ({allMonthlyBrands.length})
-          </button>
-        )}
-      </div>
+      )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Workspace Accessibility</h3>
-        <div className="mt-2 flex flex-col">
-          {allMonthlyAccessibility.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.accessibility.includes(item)}
-              onChange={() => toggleArrayValue("accessibility", item)}
-            />
-          ))}
+      {accessibilityOptions.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Workspace Accessibility</h3>
+          <div className="mt-2 flex flex-col">
+            {accessibilityOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.accessibility.includes(item)}
+                onChange={() => toggleArrayValue("accessibility", item)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

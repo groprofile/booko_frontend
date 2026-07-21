@@ -129,8 +129,7 @@ export default function DayPassStep1({
           <div className="flex items-center gap-2 rounded-xl bg-[#FFF7ED] px-4 py-2.5">
             <Zap size={14} className="shrink-0 text-[#F59E0B]" />
             <p className="text-xs font-semibold text-[#92400E]">
-              {members} × ₹{selectedOption.bestPrice} = <span className="text-[#0F172A]">₹{(selectedOption.bestPrice * members).toLocaleString()}</span>
-              {" "}(saved ₹{((selectedOption.price - selectedOption.bestPrice) * members).toLocaleString()} with {selectedOption.offerCode})
+              {members} × ₹{selectedOption.price} = <span className="text-[#0F172A]">₹{(selectedOption.price * members).toLocaleString()}</span>
             </p>
           </div>
         )}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus, Sparkles } from "lucide-react";
+import { Search, CheckCircle, X, MapPin, Building2, Clock, RefreshCw, Plus, Sparkles, EyeOff } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ManageCenterPanel from "../../components/admin/ManageCenterPanel";
 import { apiGet, apiPost, apiPatch, getAdminToken, ApiError } from "../../lib/api";
 
 interface ApiCenter {
@@ -437,61 +437,17 @@ function AddCenterModal({ onClose, onCreated }: { onClose: () => void; onCreated
 
 // Numeric priority for a promoted center. Lower number = shown first across
 // the "Bokko Recommended" / "Top Spaces" rails and listing default sorts.
-// Commits on blur or Enter (not per keystroke) to avoid a PATCH per digit.
-function PriorityInput({
-  value,
-  onCommit,
-}: {
-  value: number | null | undefined;
-  onCommit: (rank: number | null) => void;
-}) {
-  const [draft, setDraft] = useState(value == null ? "" : String(value));
-
-  // Keep the input in sync when the row's rank changes elsewhere (e.g. revert).
-  useEffect(() => {
-    setDraft(value == null ? "" : String(value));
-  }, [value]);
-
-  function commit() {
-    const trimmed = draft.trim();
-    const parsed = trimmed === "" ? null : Math.max(0, Math.floor(Number(trimmed)));
-    onCommit(trimmed === "" ? null : Number.isFinite(parsed as number) ? parsed : null);
-  }
-
-  return (
-    <label className="flex items-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-2.5 py-2 text-xs text-[#64748B]">
-      <span className="font-semibold text-[#0F172A]">Priority</span>
-      <input
-        type="number"
-        min={0}
-        inputMode="numeric"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-        placeholder="—"
-        title="Lower number shows first. Leave blank for unranked."
-        className="w-12 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-0.5 text-center text-xs font-bold text-[#2563EB] outline-none focus:border-[#2563EB]"
-      />
-    </label>
-  );
-}
-
 export default function AdminCentersPage() {
   const [centers, setCenters] = useState<ApiCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [featuringId, setFeaturingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiCenter | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [manageCenterId, setManageCenterId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     const token = getAdminToken();
@@ -571,6 +527,26 @@ export default function AdminCentersPage() {
     } catch (err) {
       setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, featured_rank: prevRank } : c)));
       setError(err instanceof ApiError ? err.message : "Failed to update priority");
+    }
+  }
+
+  // Hide/show one specific center from customers — independent of
+  // approval_status (a hidden-but-approved center stays approved).
+  const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
+  async function handleToggleActive(center: ApiCenter) {
+    const token = getAdminToken();
+    if (!token) return;
+    setTogglingActiveId(center.id);
+    setError(null);
+    const next = !center.is_active;
+    setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_active: next } : c)));
+    try {
+      await apiPatch(`/admin/centers/${center.id}/active`, { isActive: next }, token);
+    } catch (err) {
+      setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, is_active: !next } : c)));
+      setError(err instanceof ApiError ? err.message : "Failed to update visibility");
+    } finally {
+      setTogglingActiveId(null);
     }
   }
 
@@ -672,6 +648,11 @@ export default function AdminCentersPage() {
                         <Sparkles size={9} /> Promoted{c.featured_rank != null ? ` #${c.featured_rank}` : ""}
                       </span>
                     )}
+                    {!c.is_active && (
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500" title="Hidden from customers">
+                        <EyeOff size={9} /> Hidden
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-xs text-[#64748B] truncate">
                     {c.vendors?.business_name ?? "Unknown vendor"}
@@ -710,22 +691,19 @@ export default function AdminCentersPage() {
                 })}
               </div>
 
-              {/* Commission — set per category on the Commissions page, not per center */}
-              <div className="mt-2 flex items-center justify-between rounded-lg bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-[#64748B]">
-                <span>
-                  Commission:{" "}
-                  {c.categories?.commission_percent != null
-                    ? `${c.categories.commission_percent}% (${c.categories.name})`
-                    : "Platform default"}
-                </span>
-                <Link to="/admin/commissions" className="font-semibold text-[#2563EB] hover:underline">
-                  Manage
-                </Link>
-              </div>
+              {/* Primary action — everything else (pricing, promotion, commission,
+                  approve/reject) lives in the Manage Center panel. */}
+              <button
+                onClick={() => setManageCenterId(c.id)}
+                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] py-2.5 text-xs font-bold text-[#0F172A] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
+              >
+                Manage Center
+              </button>
 
-              {/* Actions */}
+              {/* Quick triage for pending centers — kept on the card since
+                  admins review these in bulk; everything else moved to the panel. */}
               {c.approval_status === "pending" && (
-                <div className="mt-4 flex gap-2">
+                <div className="mt-2 flex gap-2">
                   <button
                     onClick={() => handleApprove(c)}
                     disabled={approvingId === c.id}
@@ -740,43 +718,6 @@ export default function AdminCentersPage() {
                   >
                     <X size={12} /> Reject
                   </button>
-                </div>
-              )}
-
-              {c.approval_status === "approved" && (
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="flex flex-1 items-center justify-center rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] px-3 py-2 text-xs text-emerald-700 text-center font-semibold">
-                    ✓ Live
-                  </div>
-                  {/* Priority appears once promoted — controls ordering among
-                      promoted centers on the customer rails. */}
-                  {c.is_featured && (
-                    <PriorityInput value={c.featured_rank} onCommit={(rank) => handleSetRank(c, rank)} />
-                  )}
-                  <button
-                    onClick={() => handleToggleFeatured(c)}
-                    disabled={featuringId === c.id}
-                    aria-pressed={Boolean(c.is_featured)}
-                    title={c.is_featured ? "Remove from Bokko Recommended" : "Promote to Bokko Recommended"}
-                    className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50 ${
-                      c.is_featured
-                        ? "border-[#2563EB] bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
-                        : "border-[#E2E8F0] text-[#2563EB] hover:bg-[#EFF6FF]"
-                    }`}
-                  >
-                    <Sparkles size={12} />
-                    {featuringId === c.id
-                      ? "Saving…"
-                      : c.is_featured
-                      ? "Promoted"
-                      : "Promote"}
-                  </button>
-                </div>
-              )}
-
-              {c.approval_status === "rejected" && (
-                <div className="mt-4 rounded-xl bg-[#FEF2F2] border border-[#FEE2E2] px-3 py-2 text-xs text-red-600 text-center font-semibold">
-                  Rejected
                 </div>
               )}
             </div>
@@ -802,6 +743,21 @@ export default function AdminCentersPage() {
             setShowAddModal(false);
             load();
           }}
+        />
+      )}
+
+      {manageCenterId && centers.find((c) => c.id === manageCenterId) && (
+        <ManageCenterPanel
+          center={centers.find((c) => c.id === manageCenterId) as ApiCenter}
+          onClose={() => setManageCenterId(null)}
+          approvingId={approvingId}
+          featuringId={featuringId}
+          togglingActiveId={togglingActiveId}
+          onApprove={(c) => { handleApprove(c); setManageCenterId(null); }}
+          onReject={(c) => { setRejectTarget(c); setManageCenterId(null); }}
+          onToggleFeatured={handleToggleFeatured}
+          onSetRank={handleSetRank}
+          onToggleActive={handleToggleActive}
         />
       )}
     </AdminLayout>

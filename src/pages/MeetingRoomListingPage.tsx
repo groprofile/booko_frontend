@@ -6,22 +6,14 @@ import MeetingRoomSearchBar from "../components/meetingroom/MeetingRoomSearchBar
 import MeetingRoomFilterSidebar from "../components/meetingroom/MeetingRoomFilterSidebar";
 import MeetingRoomListingCard from "../components/meetingroom/MeetingRoomListingCard";
 import MeetingRoomListingCardSkeleton from "../components/meetingroom/MeetingRoomListingCardSkeleton";
-import PromoBanner from "../components/meetingroom/PromoBanner";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
-import {
-  CITY_NAMES,
-  allAmenities,
-  allBookingOptions,
-  allBrands,
-  allEquipment,
-  allRoomTypes,
-  allSeatingCapacities,
-} from "../data/meetingRoomListings";
+import { CITY_NAMES } from "../data/meetingRoomListings";
 import type { MeetingRoomFilters, MeetingRoomListing, MeetingSortOption } from "../data/meetingRoomListings";
 import { apiGet } from "../lib/api";
 import { apiToMeetingRoomListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 import { metroBySlug, centerInMetro, haversineKm, NEAR_ME_RADIUS_KM } from "../data/metros";
 import { useGeolocation } from "../hooks/useGeolocation";
 
@@ -51,8 +43,6 @@ export default function MeetingRoomListingPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState("10:00");
   const [duration, setDuration] = useState(1);
-  const [capacity, setCapacity] = useState(4);
-  const [roomTypeField, setRoomTypeField] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [layout, setLayout] = useState<"list" | "grid">("list");
   const [showMap, setShowMap] = useState(true);
@@ -69,14 +59,23 @@ export default function MeetingRoomListingPage() {
 
   useEffect(() => {
     setApiLoading(true);
+    // Geo box only matches centers with saved coordinates — most don't yet,
+    // so fall back to a plain city= match if the geo-scoped fetch is empty.
     const metro = metroBySlug(lockedCitySlug);
-    let scope = "";
-    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
-    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
+    const geoScope = metro ? `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}` : "";
+    const cityScope = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    const scope = geoScope || cityScope;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
       `/centers/list?productType=${PRODUCT_TYPE.meetingRoom}&pageSize=100${scope}`,
     )
-      .then((res) => setListings(res.data.map(apiToMeetingRoomListing)))
+      .then((res) => {
+        if (res.data.length === 0 && geoScope && cityScope) {
+          return apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+            `/centers/list?productType=${PRODUCT_TYPE.meetingRoom}&pageSize=100${cityScope}`,
+          ).then((fallback) => setListings(fallback.data.map(apiToMeetingRoomListing)));
+        }
+        setListings(res.data.map(apiToMeetingRoomListing));
+      })
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
   }, [lockedCitySlug, cityName]);
@@ -95,6 +94,14 @@ export default function MeetingRoomListingPage() {
     );
   }, [cityName]);
 
+  // Filter options derived from the real fetched centres.
+  const roomTypeOptions = useMemo(() => uniqueSorted(listings.map((l) => l.roomType)), [listings]);
+  const seatingCapacityOptions = useMemo(() => uniqueSorted(listings.map((l) => l.seatingCapacity)), [listings]);
+  const equipmentOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.equipment)), [listings]);
+  const brandOptions = useMemo(() => uniqueSorted(listings.map((l) => l.brand)), [listings]);
+  const amenityOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.amenities)), [listings]);
+  const bookingOptionOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.bookingOptions)), [listings]);
+
   const filters: MeetingRoomFilters = useMemo(() => {
     const parseList = (key: string, options: readonly string[]) => {
       const raw = searchParams.get(key)?.split(",").filter(Boolean) ?? [];
@@ -103,18 +110,18 @@ export default function MeetingRoomListingPage() {
         .filter((value): value is string => Boolean(value));
     };
     return {
-      roomTypes: parseList("roomTypes", allRoomTypes),
-      seatingCapacity: parseList("seatingCapacity", allSeatingCapacities),
-      equipment: parseList("equipment", allEquipment),
-      brands: parseList("brands", allBrands),
-      amenities: parseList("amenities", allAmenities),
-      bookingOptions: parseList("bookingOptions", allBookingOptions),
+      roomTypes: parseList("roomTypes", roomTypeOptions),
+      seatingCapacity: parseList("seatingCapacity", seatingCapacityOptions),
+      equipment: parseList("equipment", equipmentOptions),
+      brands: parseList("brands", brandOptions),
+      amenities: parseList("amenities", amenityOptions),
+      bookingOptions: parseList("bookingOptions", bookingOptionOptions),
       priceMin: Number(searchParams.get("priceMin") ?? PRICE_MIN),
       priceMax: Number(searchParams.get("priceMax") ?? PRICE_MAX),
       sort: (searchParams.get("sort") as MeetingSortOption) ?? "popularity",
       q: searchParams.get("q") ?? "",
     };
-  }, [searchParams]);
+  }, [searchParams, roomTypeOptions, seatingCapacityOptions, equipmentOptions, brandOptions, amenityOptions, bookingOptionOptions]);
 
   const activeFilterCount =
     filters.roomTypes.length +
@@ -157,17 +164,6 @@ export default function MeetingRoomListingPage() {
       else next.delete("priceMin");
       if (max < PRICE_MAX) next.set("priceMax", String(max));
       else next.delete("priceMax");
-    });
-  }
-
-  function applySearchBarFilters() {
-    updateParams((next) => {
-      if (roomTypeField) next.set("roomTypes", slugify(roomTypeField));
-      else next.delete("roomTypes");
-
-      const bucket =
-        capacity <= 4 ? "4 Seater" : capacity <= 6 ? "6 Seater" : capacity <= 8 ? "8 Seater" : "Board Room";
-      next.set("seatingCapacity", slugify(bucket));
     });
   }
 
@@ -247,11 +243,7 @@ export default function MeetingRoomListingPage() {
           onTimeChange={setTime}
           duration={duration}
           onDurationChange={setDuration}
-          capacity={capacity}
-          onCapacityChange={setCapacity}
-          roomType={roomTypeField}
-          onRoomTypeChange={setRoomTypeField}
-          onSubmit={applySearchBarFilters}
+          onSubmit={() => {}}
         />
 
         <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
@@ -297,6 +289,12 @@ export default function MeetingRoomListingPage() {
               <div className="sticky top-44 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
                 <MeetingRoomFilterSidebar
                   filters={filters}
+                  roomTypeOptions={roomTypeOptions}
+                  seatingCapacityOptions={seatingCapacityOptions}
+                  equipmentOptions={equipmentOptions}
+                  brandOptions={brandOptions}
+                  amenityOptions={amenityOptions}
+                  bookingOptionOptions={bookingOptionOptions}
                   toggleArrayValue={toggleArrayValue}
                   setSort={setSort}
                   setPriceRange={setPriceRange}
@@ -313,8 +311,17 @@ export default function MeetingRoomListingPage() {
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-border bg-card text-center">
-                  <p className="text-base font-bold text-primary-text">No meeting rooms found.</p>
-                  <p className="mt-1 text-sm text-muted-text">Try changing filters.</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-primary-text">Coming soon to {cityName}</p>
+                      <p className="mt-1 text-sm text-muted-text">We're onboarding meeting rooms in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-primary-text">No meeting rooms found.</p>
+                      <p className="mt-1 text-sm text-muted-text">Try changing filters.</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
@@ -325,7 +332,6 @@ export default function MeetingRoomListingPage() {
                       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
                     >
                       <MeetingRoomListingCard listing={listing} defaultHours={duration} layout={layout === "grid" ? "grid" : "row"} />
-                      {layout === "list" && index === 3 && <div className="mt-4"><PromoBanner /></div>}
                     </div>
                   ))}
 
@@ -388,6 +394,12 @@ export default function MeetingRoomListingPage() {
             <div className="flex-1 overflow-y-auto px-5 py-5">
               <MeetingRoomFilterSidebar
                 filters={filters}
+                roomTypeOptions={roomTypeOptions}
+                seatingCapacityOptions={seatingCapacityOptions}
+                equipmentOptions={equipmentOptions}
+                brandOptions={brandOptions}
+                amenityOptions={amenityOptions}
+                bookingOptionOptions={bookingOptionOptions}
                 toggleArrayValue={toggleArrayValue}
                 setSort={setSort}
                 setPriceRange={setPriceRange}

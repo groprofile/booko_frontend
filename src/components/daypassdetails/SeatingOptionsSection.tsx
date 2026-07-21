@@ -52,12 +52,14 @@ export default function SeatingOptionsSection({
                     {option.price}
                     <span className="text-xs font-medium text-muted-text ml-1">/person</span>
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-success">
-                    {option.bestPrice} Best
-                    <span className="block text-xs font-medium text-secondary-text">
-                      Use {option.offerCode}
-                    </span>
-                  </p>
+                  {option.offerCode && option.bestPrice < option.price && (
+                    <p className="mt-2 text-sm font-semibold text-success">
+                      {option.bestPrice} Best
+                      <span className="block text-xs font-medium text-secondary-text">
+                        Use {option.offerCode}
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 <button

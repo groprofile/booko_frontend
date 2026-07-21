@@ -298,10 +298,6 @@ export function getHotelDetails(listing: HotelListing): HotelDetails {
     ],
     reviews,
     aiReviewSummary: ["Clean rooms", "Fast check-in", "Excellent staff", "Prime location", "Good breakfast"],
-    coupons: [
-      { code: "BOKKO10", description: "Flat 10% off on all bookings", discountPercent: 10 },
-      { code: "FIRSTSTAY15", description: "15% off on your first Bokko booking", discountPercent: 15 },
-      { code: "CORP20", description: "20% off for corporate bookings", discountPercent: 20 },
-    ],
+    coupons: [],
   };
 }

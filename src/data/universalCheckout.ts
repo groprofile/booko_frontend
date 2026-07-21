@@ -88,20 +88,6 @@ export type UniversalCheckoutState =
   | VirtualOfficeCheckoutState
   | MonthlyPassCheckoutState;
 
-export interface UCoupon {
-  code: string;
-  description: string;
-  discountPercent: number;
-  kind: "general" | "referral" | "corporate";
-}
-
-export const universalCoupons: UCoupon[] = [
-  { code: "BOKKO10", description: "10% off your booking", discountPercent: 10, kind: "general" },
-  { code: "FIRSTBOOK15", description: "15% off — first-time Bokko user", discountPercent: 15, kind: "general" },
-  { code: "REFER20", description: "Referral reward — 20% off", discountPercent: 20, kind: "referral" },
-  { code: "CORP25", description: "Corporate rate — 25% off", discountPercent: 25, kind: "corporate" },
-];
-
 export interface UAddOn {
   key: string;
   label: string;
@@ -143,10 +129,6 @@ export const businessTypes = [
   "One Person Company",
   "Other",
 ];
-
-export const U_TAX_RATE = 0.18;
-export const U_CONVENIENCE_FEE = 99;
-export const U_AUTO_DISCOUNT = 8;
 
 export const billingTierLabels: Record<string, string> = {
   monthly: "Monthly",

@@ -108,7 +108,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours, layout =
             ₹{(defaultTier?.price ?? listing.bestPrice).toLocaleString()}
             <span className="text-[10px] font-medium text-muted-text"> /{defaultTier?.label ?? "hr"}</span>
           </p>
-          <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>
+          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
         </div>
       }
       actions={

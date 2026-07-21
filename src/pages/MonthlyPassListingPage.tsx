@@ -3,7 +3,6 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import MonthlyPassSearchBar from "../components/monthlypass/MonthlyPassSearchBar";
-import MonthlyPassOffersRail from "../components/monthlypass/MonthlyPassOffersRail";
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import MonthlyPassFilterSidebar from "../components/monthlypass/MonthlyPassFilterSidebar";
 import MonthlyPassListingCard from "../components/monthlypass/MonthlyPassListingCard";
@@ -11,18 +10,12 @@ import MonthlyPassListingCardSkeleton from "../components/monthlypass/MonthlyPas
 import TalkToExpertCard from "../components/monthlypass/TalkToExpertCard";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
-import {
-  CITY_NAMES,
-  allLockInOptions,
-  allMonthlyAccessibility,
-  allMonthlyBrands,
-  allMonthlySeatingTypes,
-  allMonthlySpaceTypes,
-} from "../data/monthlyPassListings";
+import { CITY_NAMES } from "../data/monthlyPassListings";
 import type { MonthlyPassFilters, MonthlyPassListing, MonthlySortOption } from "../data/monthlyPassListings";
 import { apiGet } from "../lib/api";
 import { apiToMonthlyPassListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 import { metroBySlug, centerInMetro, haversineKm, NEAR_ME_RADIUS_KM } from "../data/metros";
 import { useGeolocation } from "../hooks/useGeolocation";
 
@@ -61,14 +54,23 @@ export default function MonthlyPassListingPage() {
 
   useEffect(() => {
     setApiLoading(true);
+    // Geo box only matches centers with saved coordinates — most don't yet,
+    // so fall back to a plain city= match if the geo-scoped fetch is empty.
     const metro = metroBySlug(lockedCitySlug);
-    let scope = "";
-    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
-    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
+    const geoScope = metro ? `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}` : "";
+    const cityScope = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    const scope = geoScope || cityScope;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
       `/centers/list?productType=${PRODUCT_TYPE.monthlyPass}&pageSize=100${scope}`,
     )
-      .then((res) => setListings(res.data.map(apiToMonthlyPassListing)))
+      .then((res) => {
+        if (res.data.length === 0 && geoScope && cityScope) {
+          return apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+            `/centers/list?productType=${PRODUCT_TYPE.monthlyPass}&pageSize=100${cityScope}`,
+          ).then((fallback) => setListings(fallback.data.map(apiToMonthlyPassListing)));
+        }
+        setListings(res.data.map(apiToMonthlyPassListing));
+      })
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
   }, [lockedCitySlug, cityName]);
@@ -89,6 +91,13 @@ export default function MonthlyPassListingPage() {
 
   const location = searchParams.get("location") ?? "";
 
+  // Filter options derived from the real fetched centres.
+  const seatingOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.seatingTypes)), [listings]);
+  const brandOptions = useMemo(() => uniqueSorted(listings.map((l) => l.brand)), [listings]);
+  const accessibilityOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.accessibility)), [listings]);
+  const lockInOptions = useMemo(() => uniqueSorted(listings.map((l) => l.lockIn)), [listings]);
+  const spaceTypeOptions = useMemo(() => uniqueSorted(listings.map((l) => l.spaceType)), [listings]);
+
   const filters: MonthlyPassFilters = useMemo(() => {
     const parseList = (key: string, options: readonly string[]) => {
       const raw = searchParams.get(key)?.split(",").filter(Boolean) ?? [];
@@ -98,17 +107,17 @@ export default function MonthlyPassListingPage() {
     };
     const spaceTypeSlug = searchParams.get("spaceType");
     return {
-      seating: parseList("seating", allMonthlySeatingTypes),
-      brands: parseList("brands", allMonthlyBrands),
-      accessibility: parseList("accessibility", allMonthlyAccessibility),
-      lockIn: parseList("lockIn", allLockInOptions),
-      spaceType: spaceTypeSlug ? findByDeslug(allMonthlySpaceTypes, spaceTypeSlug) ?? null : null,
+      seating: parseList("seating", seatingOptions),
+      brands: parseList("brands", brandOptions),
+      accessibility: parseList("accessibility", accessibilityOptions),
+      lockIn: parseList("lockIn", lockInOptions),
+      spaceType: spaceTypeSlug ? findByDeslug(spaceTypeOptions, spaceTypeSlug) ?? null : null,
       priceMin: Number(searchParams.get("priceMin") ?? 0),
       priceMax: Number(searchParams.get("priceMax") ?? 25000),
       sort: (searchParams.get("sort") as MonthlySortOption) ?? "recommended",
       q: searchParams.get("q") ?? "",
     };
-  }, [searchParams]);
+  }, [searchParams, seatingOptions, brandOptions, accessibilityOptions, lockInOptions, spaceTypeOptions]);
 
   const activeFilterCount =
     filters.seating.length +
@@ -271,9 +280,6 @@ export default function MonthlyPassListingPage() {
             />
           </div>
 
-          <div className="mt-8">
-            <MonthlyPassOffersRail />
-          </div>
 
           <div className="mt-8 max-w-xl">
             <WorkspaceSearchBar value={filters.q} onChange={setQuery} />
@@ -313,6 +319,11 @@ export default function MonthlyPassListingPage() {
               <div className="sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col gap-5 overflow-y-auto rounded-sm border border-border bg-card p-5">
                 <MonthlyPassFilterSidebar
                   filters={filters}
+                  seatingOptions={seatingOptions}
+                  brandOptions={brandOptions}
+                  accessibilityOptions={accessibilityOptions}
+                  lockInOptions={lockInOptions}
+                  spaceTypeOptions={spaceTypeOptions}
                   toggleArrayValue={toggleArrayValue}
                   setSpaceType={setSpaceType}
                   setSort={setSort}
@@ -333,8 +344,17 @@ export default function MonthlyPassListingPage() {
                 </div>
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-border bg-card text-center">
-                  <p className="text-base font-bold text-primary-text">No workspaces match your filters</p>
-                  <p className="mt-1 text-sm text-muted-text">Try adjusting or clearing some filters.</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-primary-text">Coming soon to {cityName}</p>
+                      <p className="mt-1 text-sm text-muted-text">We're onboarding workspaces in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-primary-text">No workspaces match your filters</p>
+                      <p className="mt-1 text-sm text-muted-text">Try adjusting or clearing some filters.</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 lg:pb-0" : "flex flex-col gap-4 pb-16 lg:pb-0"}>
@@ -393,6 +413,11 @@ export default function MonthlyPassListingPage() {
             <div className="flex-1 overflow-y-auto px-5 py-5">
               <MonthlyPassFilterSidebar
                 filters={filters}
+                seatingOptions={seatingOptions}
+                brandOptions={brandOptions}
+                accessibilityOptions={accessibilityOptions}
+                lockInOptions={lockInOptions}
+                spaceTypeOptions={spaceTypeOptions}
                 toggleArrayValue={toggleArrayValue}
                 setSpaceType={setSpaceType}
                 setSort={setSort}

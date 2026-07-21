@@ -31,16 +31,14 @@ export default function HotelListingCard({ listing, layout = "row" }: HotelListi
       imageIndex={imageIndex}
       onPrevImage={showPrev}
       onNextImage={showNext}
-      topLeftBadge={
-        <span className="inline-flex items-center gap-1 rounded-sm bg-white/95 px-2 py-1 text-[11px] font-semibold text-success shadow-soft">
-          Offers Available
-        </span>
-      }
       ratingBadge={
-        <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2 py-1 text-[11px] font-bold text-white">
-          <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
-          {listing.rating.toFixed(1)} ({listing.reviews})
-        </span>
+        listing.rating > 0 ? (
+          <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2 py-1 text-[11px] font-bold text-white">
+            <Star size={11} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
+            {listing.rating.toFixed(1)}
+            {listing.reviews > 0 ? ` (${listing.reviews})` : ""}
+          </span>
+        ) : undefined
       }
       extraBadges={listing.badges.slice(0, 1).map((badge) => (
         <span
@@ -62,7 +60,7 @@ export default function HotelListingCard({ listing, layout = "row" }: HotelListi
             ₹{listing.bestPrice.toLocaleString()}
             <span className="text-[10px] font-medium text-muted-text"> /night</span>
           </p>
-          <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>
+          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
         </div>
       }
       actions={

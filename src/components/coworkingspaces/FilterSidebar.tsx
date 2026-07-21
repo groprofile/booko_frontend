@@ -1,4 +1,4 @@
-import { allServiceOptions, allProviders } from "../../data/coworkingSpaces";
+import { allServiceOptions } from "../../data/coworkingSpaces";
 import type { ServiceKey, SortOption } from "../../data/coworkingSpaces";
 
 export interface ToggleFilters {
@@ -16,6 +16,7 @@ interface FilterSidebarProps {
   cityOptions: { slug: string; label: string }[];
   selectedCities: string[];
   onToggleCity: (citySlug: string) => void;
+  providerOptions: string[];
   providers: string[];
   onToggleProvider: (provider: string) => void;
   services: ServiceKey[];
@@ -64,6 +65,7 @@ export default function FilterSidebar({
   cityOptions,
   selectedCities,
   onToggleCity,
+  providerOptions,
   providers,
   onToggleProvider,
   services,
@@ -104,14 +106,16 @@ export default function FilterSidebar({
         </div>
       )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Provider</h3>
-        <div className="mt-2 flex flex-col">
-          {allProviders.map((provider) => (
-            <CheckboxRow key={provider} label={provider} checked={providers.includes(provider)} onChange={() => onToggleProvider(provider)} />
-          ))}
+      {providerOptions.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Provider</h3>
+          <div className="mt-2 flex flex-col">
+            {providerOptions.map((provider) => (
+              <CheckboxRow key={provider} label={provider} checked={providers.includes(provider)} onChange={() => onToggleProvider(provider)} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border-t border-[#E2E8F0] pt-6">
         <h3 className="text-sm font-bold text-[#0F172A]">Workspace Features</h3>

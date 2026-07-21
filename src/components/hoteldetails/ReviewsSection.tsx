@@ -18,6 +18,15 @@ export default function ReviewsSection({ rating, reviewCount, details }: Reviews
   const filteredReviews = details.reviews.filter((review) => filter === "All" || review.travelerType === filter);
   const visibleReviews = showAll ? filteredReviews : filteredReviews.slice(0, 3);
 
+  if (reviewCount === 0) {
+    return (
+      <section className="m-0">
+        <SectionLabel title="User Reviews" />
+        <p className="text-sm text-muted-text">No reviews yet — be the first to stay and review this property.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="m-0">
       <SectionLabel title="User Reviews" />

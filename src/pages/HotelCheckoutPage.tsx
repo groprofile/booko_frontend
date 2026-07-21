@@ -9,7 +9,6 @@ import BookingSummaryCard from "../components/checkout/BookingSummaryCard";
 import GuestDetailsSection from "../components/checkout/GuestDetailsSection";
 import type { AdditionalGuest, PrimaryGuest } from "../components/checkout/GuestDetailsSection";
 import SpecialRequestsSection from "../components/checkout/SpecialRequestsSection";
-import OffersCouponSection from "../components/checkout/OffersCouponSection";
 import WhyBookSection from "../components/checkout/WhyBookSection";
 import LoginBenefitsSection from "../components/checkout/LoginBenefitsSection";
 import ConfidenceBar from "../components/checkout/ConfidenceBar";
@@ -19,14 +18,15 @@ import MobileContinueBar from "../components/checkout/MobileContinueBar";
 import { ShieldCheck } from "lucide-react";
 import { apiPost, getUserToken } from "../lib/api";
 import { submitPayuForm } from "../lib/payu";
-import type { Coupon } from "../data/hotelDetails";
 import type { CheckoutBookingState } from "../data/checkoutConfig";
 
 interface HotelQuote {
   nights: number;
   totalRupees: number;
   finalTotalRupees?: number;
-  couponDiscountRupees?: number;
+  centerPriceRupees?: number;
+  commissionRupees?: number;
+  gstRupees?: number;
 }
 
 function nightsBetween(checkIn: string, checkOut: string): number {
@@ -47,7 +47,6 @@ export default function HotelCheckoutPage() {
   const [companyName, setCompanyName] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [specialRequests, setSpecialRequests] = useState<string[]>([]);
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
@@ -79,7 +78,6 @@ export default function HotelCheckoutPage() {
       checkoutDate: booking.checkOut,
       roomCount: booking.roomCount,
       guestCount: booking.guests,
-      couponCode: appliedCoupon?.code,
     }, token)
       .then((result) => {
         if (!cancelled) setQuote(result);
@@ -94,7 +92,7 @@ export default function HotelCheckoutPage() {
         if (!cancelled) setQuoteLoading(false);
       });
     return () => { cancelled = true; };
-  }, [booking, appliedCoupon]);
+  }, [booking]);
 
   function toggleSpecialRequest(request: string) {
     setSpecialRequests((current) => (current.includes(request) ? current.filter((r) => r !== request) : [...current, request]));
@@ -108,22 +106,11 @@ export default function HotelCheckoutPage() {
     setAdditionalGuests((current) => current.filter((guest) => guest.id !== id));
   }
 
-  function applyCouponByCode(code: string) {
-    if (!booking) return;
-    const matched = booking.coupons.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-    if (matched) setAppliedCoupon(matched);
-  }
-
-  function autoApplyBestCoupon() {
-    if (!booking || booking.coupons.length === 0) return;
-    const best = [...booking.coupons].sort((a, b) => b.discountPercent - a.discountPercent)[0];
-    setAppliedCoupon(best);
-  }
-
   const roomCost = booking ? booking.stayPrice * booking.roomCount * nights : 0;
-  const estimatedTotal = roomCost;
-  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : estimatedTotal;
-  const couponSavings = quote?.couponDiscountRupees ?? 0;
+  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : roomCost;
+  const centerPrice = quote?.centerPriceRupees ?? roomCost;
+  const commission = quote?.commissionRupees ?? 0;
+  const gst = quote?.gstRupees ?? 0;
 
   const guestDetailsValid = Boolean(
     primaryGuest.firstName.trim() && primaryGuest.lastName.trim() && primaryGuest.email.trim() && primaryGuest.mobile.trim().length >= 10,
@@ -153,7 +140,6 @@ export default function HotelCheckoutPage() {
         checkoutDate: booking.checkOut,
         roomCount: booking.roomCount,
         guestCount: booking.guests,
-        couponCode: appliedCoupon?.code,
       }, token);
       const newBookingId = created.payment?.bookingId ?? created.booking?.id ?? created.bookingId;
       if (!newBookingId) throw new Error("Booking created but its ID was missing. Please contact support.");
@@ -238,13 +224,6 @@ export default function HotelCheckoutPage() {
                   </div>
                 </div>
               </div>
-              <OffersCouponSection
-                coupons={booking.coupons}
-                appliedCoupon={appliedCoupon}
-                onApply={applyCouponByCode}
-                onAutoApplyBest={autoApplyBestCoupon}
-                couponSavings={couponSavings}
-              />
               <WhyBookSection />
               {!getUserToken() && <LoginBenefitsSection onSignIn={() => setLoginOpen(true)} />}
               <ConfidenceBar freeCancellation={isFreeCancellation} />
@@ -255,8 +234,9 @@ export default function HotelCheckoutPage() {
                 <BookingSidebar
                   roomName={booking.roomName}
                   nights={nights}
-                  roomCost={roomCost}
-                  couponSavings={couponSavings}
+                  centerPrice={centerPrice}
+                  commission={commission}
+                  gst={gst}
                   totalAmount={totalAmount}
                   isEstimate={!quote}
                   quoteLoading={quoteLoading}

@@ -3,10 +3,6 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Briefcase, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import VirtualOfficeSearchBar from "../components/virtualoffice/VirtualOfficeSearchBar";
-import TrustStrip from "../components/virtualoffice/TrustStrip";
-import StatsStrip from "../components/virtualoffice/StatsStrip";
-import PromoStrip from "../components/virtualoffice/PromoStrip";
-import TrustBadgesRow from "../components/virtualoffice/TrustBadgesRow";
 import VirtualOfficeFilterSidebar from "../components/virtualoffice/VirtualOfficeFilterSidebar";
 import VirtualOfficeListingCard from "../components/virtualoffice/VirtualOfficeListingCard";
 import VirtualOfficeListingCardSkeleton from "../components/virtualoffice/VirtualOfficeListingCardSkeleton";
@@ -14,23 +10,15 @@ import BokkoExpertGlassCard from "../components/virtualoffice/BokkoExpertGlassCa
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
 import { metroBySlug } from "../data/metros";
-import {
-  CITY_NAMES,
-  allBrands,
-  allBuildingTypes,
-  allDurations,
-  allPopularTags,
-  allRatingThresholds,
-  allServices,
-  cityToLocalities,
-} from "../data/virtualOfficeListings";
+import { CITY_NAMES, allRatingThresholds } from "../data/virtualOfficeListings";
 import type { VirtualOfficeListing, VirtualOfficeFilters, VOSortOption } from "../data/virtualOfficeListings";
 import { apiGet } from "../lib/api";
 import { apiToVirtualOfficeListing, PRODUCT_TYPE, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 
 const PRICE_MIN = 500;
-const PRICE_MAX = 2000;
+const PRICE_MAX = 5000;
 const PAGE_SIZE = 6;
 
 type ArrayFilterKey = "areas" | "services" | "durations" | "popularTags" | "buildingTypes" | "brands";
@@ -54,17 +42,12 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
   const lockedCitySlug = params.city ? params.city.toLowerCase() : null;
   const citySlug = lockedCitySlug ?? "";
   const cityName = lockedCitySlug ? cityLabel(lockedCitySlug) : "India";
-  const areas = lockedCitySlug ? cityToLocalities[lockedCitySlug] ?? [] : [];
-  const rawAreaSlug = params.area ?? areaSlug;
-  const resolvedAreaParam = rawAreaSlug ? findByDeslug(areas, rawAreaSlug) : undefined;
   const pageLabel = "Virtual Office";
-  const locationLabel = resolvedAreaParam ? `${resolvedAreaParam}, ${cityName}` : cityName;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const seeded = useRef(false);
 
   const [areaField, setAreaField] = useState("");
-  const [planType, setPlanType] = useState("");
   const [gstRequired, setGstRequired] = useState(false);
   const [priceRangeField, setPriceRangeField] = useState("Any Budget");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -74,6 +57,18 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [listings, setListings] = useState<VirtualOfficeListing[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
+
+  // Filter options derived from the real fetched listings.
+  const areaOptions = useMemo(() => uniqueSorted(listings.map((l) => l.area)), [listings]);
+  const serviceOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.servicesIncluded)), [listings]);
+  const durationOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.durations)), [listings]);
+  const popularTagOptions = useMemo(() => uniqueSorted(listings.flatMap((l) => l.popularTags)), [listings]);
+  const buildingTypeOptions = useMemo(() => uniqueSorted(listings.map((l) => l.buildingType)), [listings]);
+  const brandOptions = useMemo(() => uniqueSorted(listings.map((l) => l.brand)), [listings]);
+
+  const rawAreaSlug = params.area ?? areaSlug;
+  const resolvedAreaParam = rawAreaSlug ? findByDeslug(areaOptions, rawAreaSlug) : undefined;
+  const locationLabel = resolvedAreaParam ? `${resolvedAreaParam}, ${cityName}` : cityName;
 
   useEffect(() => {
     setApiLoading(true);
@@ -121,20 +116,19 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
     };
     const ratingsRaw = searchParams.get("ratings")?.split(",").filter(Boolean) ?? [];
     return {
-      areas: parseList("areas", areas),
-      services: parseList("services", allServices),
-      durations: parseList("durations", allDurations),
+      areas: parseList("areas", areaOptions),
+      services: parseList("services", serviceOptions),
+      durations: parseList("durations", durationOptions),
       priceMin: Number(searchParams.get("priceMin") ?? PRICE_MIN),
       priceMax: Number(searchParams.get("priceMax") ?? PRICE_MAX),
-      popularTags: parseList("popularTags", allPopularTags),
-      buildingTypes: parseList("buildingTypes", allBuildingTypes),
-      brands: parseList("brands", allBrands),
+      popularTags: parseList("popularTags", popularTagOptions),
+      buildingTypes: parseList("buildingTypes", buildingTypeOptions),
+      brands: parseList("brands", brandOptions),
       ratings: ratingsRaw.map(Number).filter((n) => allRatingThresholds.includes(n)),
       sort: (searchParams.get("sort") as VOSortOption) ?? "recommended",
       q: searchParams.get("q") ?? "",
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, citySlug]);
+  }, [searchParams, areaOptions, serviceOptions, durationOptions, popularTagOptions, buildingTypeOptions, brandOptions]);
 
   const activeFilterCount =
     filters.areas.length +
@@ -193,7 +187,7 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
   function applySearchBarFilters() {
     updateParams((next) => {
       if (areaField.trim()) {
-        const match = areas.find((area) => area.toLowerCase().includes(areaField.trim().toLowerCase()));
+        const match = areaOptions.find((area) => area.toLowerCase().includes(areaField.trim().toLowerCase()));
         if (match) next.set("areas", slugify(match));
       }
       if (gstRequired) {
@@ -201,6 +195,11 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
         const gstSlug = slugify("GST Registration");
         if (!current.includes(gstSlug)) next.set("services", [...current, gstSlug].join(","));
       }
+      if (priceRangeField === "Under ₹1000") { next.set("priceMin", "500"); next.set("priceMax", "1000"); }
+      else if (priceRangeField === "₹1000 - ₹2000") { next.set("priceMin", "1000"); next.set("priceMax", "2000"); }
+      else if (priceRangeField === "₹2000 - ₹3000") { next.set("priceMin", "2000"); next.set("priceMax", "3000"); }
+      else if (priceRangeField === "₹3000+") { next.set("priceMin", "3000"); next.set("priceMax", String(PRICE_MAX)); }
+      else { next.delete("priceMin"); next.delete("priceMax"); }
     });
   }
 
@@ -260,8 +259,6 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
           citySlug={citySlug}
           area={areaField}
           onAreaChange={setAreaField}
-          planType={planType}
-          onPlanTypeChange={setPlanType}
           gstRequired={gstRequired}
           onGstRequiredChange={setGstRequired}
           priceRange={priceRangeField}
@@ -290,21 +287,6 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
             {pageLabel} in {locationLabel}
           </h1>
 
-          <div className="mt-5">
-            <TrustStrip />
-          </div>
-
-          <div className="mt-6">
-            <StatsStrip />
-          </div>
-
-          <div className="mt-6">
-            <PromoStrip />
-          </div>
-
-          <div className="mt-6">
-            <TrustBadgesRow />
-          </div>
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-base font-semibold text-primary-text">
@@ -331,7 +313,12 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
               <div className="sticky top-44 flex max-h-[calc(100vh-12rem)] flex-col gap-5 overflow-y-auto pr-1">
                 <VirtualOfficeFilterSidebar
                   filters={filters}
-                  areas={areas}
+                  areaOptions={areaOptions}
+                  serviceOptions={serviceOptions}
+                  durationOptions={durationOptions}
+                  popularTagOptions={popularTagOptions}
+                  buildingTypeOptions={buildingTypeOptions}
+                  brandOptions={brandOptions}
                   toggleArrayValue={toggleArrayValue}
                   toggleRating={toggleRating}
                   setSort={setSort}
@@ -351,8 +338,17 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
               ) : filteredListings.length === 0 ? (
                 <div className="flex h-[320px] flex-col items-center justify-center gap-2 rounded-sm border border-border bg-card text-center">
                   <Briefcase size={40} strokeWidth={1.5} className="text-[#94A3B8]" />
-                  <p className="text-base font-bold text-primary-text">No Virtual Offices Found</p>
-                  <p className="text-sm text-muted-text">Try changing filters</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-primary-text">Coming soon to {locationLabel}</p>
+                      <p className="text-sm text-muted-text">We're onboarding virtual offices in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-primary-text">No Virtual Offices Found</p>
+                      <p className="text-sm text-muted-text">Try changing filters</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
@@ -421,7 +417,12 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
             <div className="flex-1 overflow-y-auto px-5 py-5">
               <VirtualOfficeFilterSidebar
                 filters={filters}
-                areas={areas}
+                areaOptions={areaOptions}
+                serviceOptions={serviceOptions}
+                durationOptions={durationOptions}
+                popularTagOptions={popularTagOptions}
+                buildingTypeOptions={buildingTypeOptions}
+                brandOptions={brandOptions}
                 toggleArrayValue={toggleArrayValue}
                 toggleRating={toggleRating}
                 setSort={setSort}

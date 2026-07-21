@@ -13,7 +13,7 @@ export interface AdminUser {
 
 export type VendorStatus = "approved" | "pending" | "under_review" | "rejected" | "blocked" | "draft";
 export type KycStatus = "not_submitted" | "submitted" | "approved" | "rejected";
-export type BankStatus = "not_submitted" | "submitted" | "verified";
+export type BankStatus = "not_submitted" | "pending" | "verified" | "rejected";
 
 export interface Vendor {
   id: string; businessName: string; ownerName: string;
@@ -125,7 +125,7 @@ function normalizeVendor(raw: any): Vendor {
     centerType: "single",
     status: normalizeVendorStatus(raw.status ?? "pending"),
     kycStatus: (raw.kyc_status ?? "not_submitted") as KycStatus,
-    bankStatus: "not_submitted",
+    bankStatus: (raw.bank_status ?? "not_submitted") as BankStatus,
     joinedAt: raw.created_at?.slice(0, 10) ?? "",
     approvedAt: raw.approved_at?.slice(0, 10),
     totalRevenue: 0,

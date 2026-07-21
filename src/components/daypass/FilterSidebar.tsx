@@ -1,14 +1,12 @@
 import { useState } from "react";
-import {
-  allAccessibility,
-  allBrands,
-  allSeatingTypes,
-  allSpaceTypes,
-} from "../../data/dayPassListings";
 import type { DayPassFilters, SortOption } from "../../data/dayPassListings";
 
 interface FilterSidebarProps {
   filters: DayPassFilters;
+  seatingOptions: string[];
+  brandOptions: string[];
+  accessibilityOptions: string[];
+  spaceTypeOptions: string[];
   toggleArrayValue: (key: "seating" | "brands" | "accessibility" | "timings", value: string) => void;
   setSpaceType: (value: string | null) => void;
   setSort: (value: SortOption) => void;
@@ -23,9 +21,8 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ];
 
 const timingOptions = [
-  { value: "open-now", label: "Open Now" },
-  { value: "open-early", label: "Open Early", hint: "(Opens before 9 am)" },
-  { value: "closes-late", label: "Closes Late", hint: "(Closes after 7 pm)" },
+  { value: "open-early", label: "Open Early", hint: "(Opens before 8 am)" },
+  { value: "closes-late", label: "Closes Late", hint: "(Closes after 10 pm)" },
 ];
 
 function CheckboxRow({
@@ -52,31 +49,37 @@ function CheckboxRow({
 
 export default function FilterSidebar({
   filters,
+  seatingOptions,
+  brandOptions,
+  accessibilityOptions,
+  spaceTypeOptions,
   toggleArrayValue,
   setSpaceType,
   setSort,
   setPriceRange,
 }: FilterSidebarProps) {
   const [brandsExpanded, setBrandsExpanded] = useState(false);
-  const visibleBrands = brandsExpanded ? allBrands : allBrands.slice(0, 4);
+  const visibleBrands = brandsExpanded ? brandOptions : brandOptions.slice(0, 4);
 
   return (
     <div className="flex flex-col gap-7">
-      <div>
-        <h3 className="text-sm font-bold text-[#0F172A]">Seating Options</h3>
-        <div className="mt-2 flex flex-col">
-          {allSeatingTypes.map((seating) => (
-            <CheckboxRow
-              key={seating}
-              label={seating}
-              checked={filters.seating.includes(seating)}
-              onChange={() => toggleArrayValue("seating", seating)}
-            />
-          ))}
+      {seatingOptions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-[#0F172A]">Seating Options</h3>
+          <div className="mt-2 flex flex-col">
+            {seatingOptions.map((seating) => (
+              <CheckboxRow
+                key={seating}
+                label={seating}
+                checked={filters.seating.includes(seating)}
+                onChange={() => toggleArrayValue("seating", seating)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
+      <div className={seatingOptions.length > 0 ? "border-t border-[#E2E8F0] pt-6" : ""}>
         <h3 className="text-sm font-bold text-[#0F172A]">Sort By</h3>
         <div className="mt-2 flex flex-col gap-1.5">
           {sortOptions.map((option) => (
@@ -94,33 +97,35 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Space Type</h3>
-        <div className="mt-2 flex flex-col gap-1.5">
-          <label className="flex cursor-pointer items-center gap-2.5 py-0.5">
-            <input
-              type="radio"
-              name="spaceType"
-              checked={filters.spaceType === null}
-              onChange={() => setSpaceType(null)}
-              className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
-            />
-            <span className="text-sm text-[#334155]">All</span>
-          </label>
-          {allSpaceTypes.map((type) => (
-            <label key={type} className="flex cursor-pointer items-center gap-2.5 py-0.5">
+      {spaceTypeOptions.length > 1 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Space Type</h3>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2.5 py-0.5">
               <input
                 type="radio"
                 name="spaceType"
-                checked={filters.spaceType === type}
-                onChange={() => setSpaceType(type)}
+                checked={filters.spaceType === null}
+                onChange={() => setSpaceType(null)}
                 className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
               />
-              <span className="text-sm text-[#334155]">{type}</span>
+              <span className="text-sm text-[#334155]">All</span>
             </label>
-          ))}
+            {spaceTypeOptions.map((type) => (
+              <label key={type} className="flex cursor-pointer items-center gap-2.5 py-0.5">
+                <input
+                  type="radio"
+                  name="spaceType"
+                  checked={filters.spaceType === type}
+                  onChange={() => setSpaceType(type)}
+                  className="h-4 w-4 border-[#CBD5E1] text-[#2563EB] focus:ring-[#2563EB]"
+                />
+                <span className="text-sm text-[#334155]">{type}</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border-t border-[#E2E8F0] pt-6">
         <h3 className="text-sm font-bold text-[#0F172A]">Price Per Day</h3>
@@ -184,42 +189,46 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Brands</h3>
-        <div className="mt-2 flex flex-col">
-          {visibleBrands.map((brand) => (
-            <CheckboxRow
-              key={brand}
-              label={brand}
-              checked={filters.brands.includes(brand)}
-              onChange={() => toggleArrayValue("brands", brand)}
-            />
-          ))}
+      {brandOptions.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Space Provider</h3>
+          <div className="mt-2 flex flex-col">
+            {visibleBrands.map((brand) => (
+              <CheckboxRow
+                key={brand}
+                label={brand}
+                checked={filters.brands.includes(brand)}
+                onChange={() => toggleArrayValue("brands", brand)}
+              />
+            ))}
+          </div>
+          {!brandsExpanded && brandOptions.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setBrandsExpanded(true)}
+              className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
+            >
+              View all ({brandOptions.length})
+            </button>
+          )}
         </div>
-        {!brandsExpanded && allBrands.length > 4 && (
-          <button
-            type="button"
-            onClick={() => setBrandsExpanded(true)}
-            className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
-          >
-            View all ({allBrands.length})
-          </button>
-        )}
-      </div>
+      )}
 
-      <div className="border-t border-[#E2E8F0] pt-6">
-        <h3 className="text-sm font-bold text-[#0F172A]">Workspace Accessibility</h3>
-        <div className="mt-2 flex flex-col">
-          {allAccessibility.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.accessibility.includes(item)}
-              onChange={() => toggleArrayValue("accessibility", item)}
-            />
-          ))}
+      {accessibilityOptions.length > 0 && (
+        <div className="border-t border-[#E2E8F0] pt-6">
+          <h3 className="text-sm font-bold text-[#0F172A]">Workspace Accessibility</h3>
+          <div className="mt-2 flex flex-col">
+            {accessibilityOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.accessibility.includes(item)}
+                onChange={() => toggleArrayValue("accessibility", item)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -10,19 +10,8 @@ interface HotelSearchBarProps {
   onCheckOutChange: (value: string) => void;
   guests: number;
   onGuestsChange: (value: number) => void;
-  hotelType: string;
-  onHotelTypeChange: (value: string) => void;
   onSubmit: () => void;
 }
-
-const hotelTypeOptions = [
-  "Hourly Stay - 3 Hours",
-  "Hourly Stay - 6 Hours",
-  "Hourly Stay - 12 Hours",
-  "Full Day Stay",
-  "Workcation",
-  "Business Hotel",
-];
 
 const fieldClass =
   "flex h-14 flex-1 flex-col gap-0.5 rounded-2xl border border-[#E2E8F0] bg-white px-4 py-2 transition-colors focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/15";
@@ -35,8 +24,6 @@ export default function HotelSearchBar({
   onCheckOutChange,
   guests,
   onGuestsChange,
-  hotelType,
-  onHotelTypeChange,
   onSubmit,
 }: HotelSearchBarProps) {
   const navigate = useNavigate();
@@ -95,24 +82,6 @@ export default function HotelSearchBar({
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
                 {n} {n === 1 ? "Guest" : "Guests"}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={fieldClass + " lg:flex-[1.3]"}>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748B]">
-            Hotel Type
-          </span>
-          <select
-            value={hotelType}
-            onChange={(event) => onHotelTypeChange(event.target.value)}
-            className="w-full bg-transparent text-sm font-semibold text-[#0F172A] outline-none"
-          >
-            <option value="">Any Hotel Type</option>
-            {hotelTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
               </option>
             ))}
           </select>

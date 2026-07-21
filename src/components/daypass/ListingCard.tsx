@@ -80,10 +80,12 @@ export default function ListingCard({ listing, layout = "row" }: ListingCardProp
         ) : undefined
       }
       ratingBadge={
-        <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-text">
-          <Star size={13} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
-          {listing.rating.toFixed(2)}
-        </span>
+        listing.rating > 0 ? (
+          <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-text">
+            <Star size={13} strokeWidth={1.75} className="fill-[#FBBF24] text-[#FBBF24]" />
+            {listing.rating.toFixed(2)}
+          </span>
+        ) : undefined
       }
       extraBadges={
         listing.premier ? (
@@ -102,7 +104,7 @@ export default function ListingCard({ listing, layout = "row" }: ListingCardProp
             ₹{listing.bestPrice}
             <span className="text-[10px] font-medium text-muted-text"> /day</span>
           </p>
-          <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>
+          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
         </div>
       }
       actions={

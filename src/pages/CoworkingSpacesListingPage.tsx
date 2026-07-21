@@ -17,11 +17,12 @@ import SimilarWorkspacesCarousel from "../components/coworkingspaces/SimilarWork
 import ExploreCitiesSection from "../components/coworkingspaces/ExploreCitiesSection";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
-import { CITY_NAMES, allProviders, sortSpaces } from "../data/coworkingSpaces";
+import { CITY_NAMES, sortSpaces } from "../data/coworkingSpaces";
 import type { CoworkingSpace, ServiceKey, SortOption } from "../data/coworkingSpaces";
 import { apiGet } from "../lib/api";
 import { apiToCoworkingSpace, type CentreApiRow } from "../lib/centreAdapter";
 import { findByDeslug, slugify } from "../utils/slug";
+import { uniqueSorted } from "../utils/filterOptions";
 import {
   METROS, metroBySlug, centerInMetro, haversineKm,
   NEAR_ME_SLUG, NEAR_ME_RADIUS_KM,
@@ -66,15 +67,24 @@ export default function CoworkingSpacesListingPage() {
     setApiLoading(true);
     // For a city-locked route, narrow the fetch by the metro's geo box so
     // Thane/Navi Mumbai (etc.) come back too; we tighten to the exact radius
-    // client-side below. Falls back to a plain city= filter for unknown slugs.
+    // client-side below. The geo box only matches centers with saved
+    // coordinates — most don't yet, so if that comes back empty, retry once
+    // with a plain city= text match rather than showing zero results.
     const metro = metroBySlug(lockedCitySlug);
-    let scope = "";
-    if (metro) scope = `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}`;
-    else if (lockedCitySlug) scope = `&city=${encodeURIComponent(cityName)}`;
+    const geoScope = metro ? `&lat=${metro.lat}&lng=${metro.lng}&radius=${metro.radiusKm}` : "";
+    const cityScope = lockedCitySlug ? `&city=${encodeURIComponent(cityName)}` : "";
+    const scope = geoScope || cityScope;
     apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
       `/centers/list?pageSize=200${scope}`,
     )
-      .then((res) => setListings(res.data.map(apiToCoworkingSpace)))
+      .then((res) => {
+        if (res.data.length === 0 && geoScope && cityScope) {
+          return apiGet<{ data: CentreApiRow[]; page: number; pageSize: number }>(
+            `/centers/list?pageSize=200${cityScope}`,
+          ).then((fallback) => setListings(fallback.data.map(apiToCoworkingSpace)));
+        }
+        setListings(res.data.map(apiToCoworkingSpace));
+      })
       .catch(() => setListings([]))
       .finally(() => setApiLoading(false));
   }, [lockedCitySlug, cityName]);
@@ -101,12 +111,17 @@ export default function CoworkingSpacesListingPage() {
     );
   }, [lockedCitySlug, cityName]);
 
+  // Provider options derived from the real fetched listings, not a static
+  // mock brand list — otherwise selecting a provider that no real centre has
+  // silently returns zero results.
+  const providerOptions = useMemo(() => uniqueSorted(listings.map((l) => l.brand)), [listings]);
+
   const query = searchParams.get("q") ?? "";
   const area = searchParams.get("area") ?? "";
   const selectedCities = lockedCitySlug ? [lockedCitySlug] : searchParams.get("cities")?.split(",").filter(Boolean) ?? [];
   const selectedProviders = useMemo(
-    () => (searchParams.get("providers")?.split(",").filter(Boolean) ?? []).map((slug) => findByDeslug(allProviders, slug)).filter((v): v is string => Boolean(v)),
-    [searchParams],
+    () => (searchParams.get("providers")?.split(",").filter(Boolean) ?? []).map((slug) => findByDeslug(providerOptions, slug)).filter((v): v is string => Boolean(v)),
+    [searchParams, providerOptions],
   );
   const selectedServices = (searchParams.get("services")?.split(",").filter(Boolean) ?? []) as ServiceKey[];
   const sort = (searchParams.get("sort") as SortOption) ?? "popularity";
@@ -268,6 +283,7 @@ export default function CoworkingSpacesListingPage() {
     cityOptions,
     selectedCities,
     onToggleCity: toggleCity,
+    providerOptions,
     providers: selectedProviders,
     onToggleProvider: toggleProvider,
     services: selectedServices,
@@ -358,8 +374,17 @@ export default function CoworkingSpacesListingPage() {
                 </div>
               ) : filteredSpaces.length === 0 ? (
                 <div className="flex h-[300px] flex-col items-center justify-center rounded-sm border border-[#E2E8F0] bg-white text-center">
-                  <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
-                  <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>
+                  {listings.length === 0 ? (
+                    <>
+                      <p className="text-base font-bold text-[#0F172A]">Coming soon to {cityName}</p>
+                      <p className="mt-1 text-sm text-[#64748B]">We're onboarding workspaces in this city — check back soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-bold text-[#0F172A]">No workspaces match your filters</p>
+                      <p className="mt-1 text-sm text-[#64748B]">Try adjusting or clearing some filters.</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>

@@ -1,19 +1,17 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import {
-  allAmenities,
-  allBookingOptions,
-  allBrands,
-  allEquipment,
-  allRoomTypes,
-  allSeatingCapacities,
-} from "../../data/meetingRoomListings";
 import type { MeetingRoomFilters, MeetingSortOption } from "../../data/meetingRoomListings";
 
 type ArrayFilterKey = "roomTypes" | "seatingCapacity" | "equipment" | "brands" | "amenities" | "bookingOptions";
 
 interface MeetingRoomFilterSidebarProps {
   filters: MeetingRoomFilters;
+  roomTypeOptions: string[];
+  seatingCapacityOptions: string[];
+  equipmentOptions: string[];
+  brandOptions: string[];
+  amenityOptions: string[];
+  bookingOptionOptions: string[];
   toggleArrayValue: (key: ArrayFilterKey, value: string) => void;
   setSort: (value: MeetingSortOption) => void;
   setPriceRange: (min: number, max: number) => void;
@@ -64,40 +62,50 @@ function FilterCard({ title, children }: { title: string; children: ReactNode })
 
 export default function MeetingRoomFilterSidebar({
   filters,
+  roomTypeOptions,
+  seatingCapacityOptions,
+  equipmentOptions,
+  brandOptions,
+  amenityOptions,
+  bookingOptionOptions,
   toggleArrayValue,
   setSort,
   setPriceRange,
 }: MeetingRoomFilterSidebarProps) {
   const [brandsExpanded, setBrandsExpanded] = useState(false);
-  const visibleBrands = brandsExpanded ? allBrands : allBrands.slice(0, 4);
+  const visibleBrands = brandsExpanded ? brandOptions : brandOptions.slice(0, 4);
 
   return (
     <div className="flex flex-col gap-5">
-      <FilterCard title="Meeting Room Type">
-        <div className="flex flex-col">
-          {allRoomTypes.map((type) => (
-            <CheckboxRow
-              key={type}
-              label={type}
-              checked={filters.roomTypes.includes(type)}
-              onChange={() => toggleArrayValue("roomTypes", type)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {roomTypeOptions.length > 1 && (
+        <FilterCard title="Meeting Room Type">
+          <div className="flex flex-col">
+            {roomTypeOptions.map((type) => (
+              <CheckboxRow
+                key={type}
+                label={type}
+                checked={filters.roomTypes.includes(type)}
+                onChange={() => toggleArrayValue("roomTypes", type)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Seating Capacity">
-        <div className="flex flex-col">
-          {allSeatingCapacities.map((capacity) => (
-            <CheckboxRow
-              key={capacity}
-              label={capacity}
-              checked={filters.seatingCapacity.includes(capacity)}
-              onChange={() => toggleArrayValue("seatingCapacity", capacity)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {seatingCapacityOptions.length > 1 && (
+        <FilterCard title="Seating Capacity">
+          <div className="flex flex-col">
+            {seatingCapacityOptions.map((capacity) => (
+              <CheckboxRow
+                key={capacity}
+                label={capacity}
+                checked={filters.seatingCapacity.includes(capacity)}
+                onChange={() => toggleArrayValue("seatingCapacity", capacity)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
       <FilterCard title="Sort By">
         <div className="flex flex-col gap-1.5">
@@ -116,40 +124,44 @@ export default function MeetingRoomFilterSidebar({
         </div>
       </FilterCard>
 
-      <FilterCard title="Equipment">
-        <div className="flex flex-col">
-          {allEquipment.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.equipment.includes(item)}
-              onChange={() => toggleArrayValue("equipment", item)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {equipmentOptions.length > 0 && (
+        <FilterCard title="Equipment">
+          <div className="flex flex-col">
+            {equipmentOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.equipment.includes(item)}
+                onChange={() => toggleArrayValue("equipment", item)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Brands">
-        <div className="flex flex-col">
-          {visibleBrands.map((brand) => (
-            <CheckboxRow
-              key={brand}
-              label={brand}
-              checked={filters.brands.includes(brand)}
-              onChange={() => toggleArrayValue("brands", brand)}
-            />
-          ))}
-        </div>
-        {!brandsExpanded && allBrands.length > 4 && (
-          <button
-            type="button"
-            onClick={() => setBrandsExpanded(true)}
-            className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
-          >
-            View all ({allBrands.length})
-          </button>
-        )}
-      </FilterCard>
+      {brandOptions.length > 0 && (
+        <FilterCard title="Space Provider">
+          <div className="flex flex-col">
+            {visibleBrands.map((brand) => (
+              <CheckboxRow
+                key={brand}
+                label={brand}
+                checked={filters.brands.includes(brand)}
+                onChange={() => toggleArrayValue("brands", brand)}
+              />
+            ))}
+          </div>
+          {!brandsExpanded && brandOptions.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setBrandsExpanded(true)}
+              className="mt-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]"
+            >
+              View all ({brandOptions.length})
+            </button>
+          )}
+        </FilterCard>
+      )}
 
       <FilterCard title="Price Per Hour">
         <p className="text-xs text-[#64748B]">
@@ -192,31 +204,35 @@ export default function MeetingRoomFilterSidebar({
         </div>
       </FilterCard>
 
-      <FilterCard title="Amenities">
-        <div className="flex flex-col">
-          {allAmenities.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.amenities.includes(item)}
-              onChange={() => toggleArrayValue("amenities", item)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {amenityOptions.length > 0 && (
+        <FilterCard title="Amenities">
+          <div className="flex flex-col">
+            {amenityOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.amenities.includes(item)}
+                onChange={() => toggleArrayValue("amenities", item)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
 
-      <FilterCard title="Booking Options">
-        <div className="flex flex-col">
-          {allBookingOptions.map((item) => (
-            <CheckboxRow
-              key={item}
-              label={item}
-              checked={filters.bookingOptions.includes(item)}
-              onChange={() => toggleArrayValue("bookingOptions", item)}
-            />
-          ))}
-        </div>
-      </FilterCard>
+      {bookingOptionOptions.length > 0 && (
+        <FilterCard title="Booking Options">
+          <div className="flex flex-col">
+            {bookingOptionOptions.map((item) => (
+              <CheckboxRow
+                key={item}
+                label={item}
+                checked={filters.bookingOptions.includes(item)}
+                onChange={() => toggleArrayValue("bookingOptions", item)}
+              />
+            ))}
+          </div>
+        </FilterCard>
+      )}
     </div>
   );
 }

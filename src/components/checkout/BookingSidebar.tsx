@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 interface BookingSidebarProps {
   roomName: string;
   nights: number;
-  roomCost: number;
-  couponSavings: number;
+  centerPrice: number;
+  commission: number;
+  gst: number;
   totalAmount: number;
   isEstimate: boolean;
   quoteLoading: boolean;
@@ -14,14 +15,12 @@ interface BookingSidebarProps {
   onContinue: () => void;
 }
 
-function Row({ label, value, isDiscount = false }: { label: string; value: number; isDiscount?: boolean }) {
+function Row({ label, value, muted = false }: { label: string; value: number; muted?: boolean }) {
   if (value === 0) return null;
   return (
-    <div className={"flex items-center justify-between text-sm " + (isDiscount ? "text-[#16A34A]" : "text-[#64748B]")}>
+    <div className={"flex items-center justify-between text-sm " + (muted ? "text-[#94A3B8]" : "text-[#64748B]")}>
       <span>{label}</span>
-      <span>
-        {isDiscount ? "- " : ""}₹{value.toLocaleString()}
-      </span>
+      <span className={muted ? "" : "font-medium text-[#0F172A]"}>₹{value.toLocaleString()}</span>
     </div>
   );
 }
@@ -29,8 +28,9 @@ function Row({ label, value, isDiscount = false }: { label: string; value: numbe
 export default function BookingSidebar({
   roomName,
   nights,
-  roomCost,
-  couponSavings,
+  centerPrice,
+  commission,
+  gst,
   totalAmount,
   isEstimate,
   quoteLoading,
@@ -64,8 +64,9 @@ export default function BookingSidebar({
       >
         <div className="overflow-hidden">
           <div className="mt-2 flex flex-col gap-1.5 border-b border-[#E2E8F0] pb-3">
-            <Row label={`Room Cost (${nights} night${nights > 1 ? "s" : ""})`} value={roomCost} />
-            <Row label="Coupon Savings" value={couponSavings} isDiscount />
+            <Row label={`Centre price (${nights} night${nights > 1 ? "s" : ""})`} value={centerPrice} />
+            <Row label="Bokko commission" value={commission} />
+            <Row label="GST" value={gst} muted />
           </div>
         </div>
       </div>
@@ -74,16 +75,9 @@ export default function BookingSidebar({
         <span>Total Amount</span>
         <span>{quoteLoading ? "…" : `₹${totalAmount.toLocaleString()}`}</span>
       </div>
-      {isEstimate && (
-        <p className="mt-1 text-xs text-[#94A3B8]">Estimated — taxes and fees are confirmed after sign-in.</p>
-      )}
-
-      {couponSavings > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#ECFDF5] px-3.5 py-2.5 text-sm font-bold text-[#16A34A]">
-          <Sparkles size={15} />
-          You Saved ₹{couponSavings.toLocaleString()} with Bokko
-        </div>
-      )}
+      <p className="mt-1 text-xs text-[#94A3B8]">
+        {isEstimate ? "Estimated — commission & GST are confirmed after sign-in." : "Inclusive of all taxes. No hidden charges."}
+      </p>
 
       <button
         type="button"

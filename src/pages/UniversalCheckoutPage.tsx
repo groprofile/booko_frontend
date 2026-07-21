@@ -20,13 +20,23 @@ import MonthlyPassStep1 from "../components/ucheckout/MonthlyPassStep1";
 import ReviewStep from "../components/ucheckout/ReviewStep";
 import ConfirmationStep from "../components/ucheckout/ConfirmationStep";
 import {
-  U_TAX_RATE, U_CONVENIENCE_FEE, U_AUTO_DISCOUNT,
-  universalCoupons, dayPassAddOns, meetingRoomCateringAddOns,
+  dayPassAddOns, meetingRoomCateringAddOns,
   billingTierMultipliers,
 } from "../data/universalCheckout";
-import type { UniversalCheckoutState, UCoupon } from "../data/universalCheckout";
+import type { UniversalCheckoutState } from "../data/universalCheckout";
 
 interface Props { booking: UniversalCheckoutState; }
+
+/** Authoritative price breakdown from POST /bookings/quote. commission/GST
+ * fields are optional so the UI degrades gracefully until the backend adds
+ * them; `totalRupees` is the amount the user is actually charged. */
+interface BookingQuote {
+  centerPriceRupees?: number;
+  commissionRupees?: number;
+  gstRupees?: number;
+  totalRupees: number;
+  finalTotalRupees?: number;
+}
 
 let memberIdCounter = 0;
 
@@ -108,7 +118,8 @@ export default function UniversalCheckoutPage({ booking }: Props) {
   const [voContactPhone, setVoContactPhone] = useState("");
 
   // ─── Shared state ───
-  const [appliedCoupon, setAppliedCoupon] = useState<UCoupon | null>(null);
+  const [quote, setQuote] = useState<BookingQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [bookingId] = useState(() => {
@@ -117,35 +128,83 @@ export default function UniversalCheckoutPage({ booking }: Props) {
   });
 
   // ─── Price calculation ───
-  const prices = useMemo(() => {
-    let basePrice = 0;
-    let addOnsTotal = 0;
-
+  // Vendor centre base price for the current selection. Commission, GST and the
+  // authoritative total come from the backend quote (below) so the amount shown
+  // always equals what PayU charges. Before the quote resolves we fall back to
+  // showing the centre price alone (commission/GST rows stay hidden).
+  const centerPrice = useMemo(() => {
     if (booking.productType === "day-pass") {
       const opt = booking.seatingOptions.find((o) => o.type === dpPassType) ?? booking.seatingOptions[0];
-      basePrice = (opt?.bestPrice ?? 0) * dpMembers;
-      addOnsTotal = dayPassAddOns.filter((a) => dpAddOnKeys.includes(a.key)).reduce((s, a) => s + a.price, 0);
-    } else if (booking.productType === "meeting-room") {
+      return (opt?.price ?? opt?.bestPrice ?? 0) * dpMembers;
+    }
+    if (booking.productType === "meeting-room") {
       const room = booking.siblingRoomTypes.find((r) => r.id === mrRoomId) ?? booking.siblingRoomTypes[0];
       const tier = room?.pricing.find((t) => t.key === mrDurationKey) ?? room?.pricing[0];
-      basePrice = tier?.price ?? 0;
-      addOnsTotal = meetingRoomCateringAddOns.filter((a) => mrCateringKeys.includes(a.key)).reduce((s, a) => s + a.price, 0);
-    } else if (booking.productType === "virtual-office") {
+      return tier?.price ?? 0;
+    }
+    if (booking.productType === "virtual-office") {
       const plan = booking.plans.find((p) => p.key === voPlanKey) ?? booking.plans[0];
-      basePrice = Math.round((plan?.price ?? 0) * (billingTierMultipliers[voBillingKey] ?? 1));
+      return Math.round((plan?.price ?? 0) * (billingTierMultipliers[voBillingKey] ?? 1));
+    }
+    if (booking.productType === "monthly-pass") {
+      const mp = booking.membershipTypes.find((t) => t.key === mpMembershipKey) ?? booking.membershipTypes[0];
+      return Math.round((mp?.price ?? 0) * (billingTierMultipliers[mpBillingKey] ?? 1) * mpSeats);
+    }
+    return 0;
+  }, [booking, dpPassType, dpMembers, mrRoomId, mrDurationKey, voPlanKey, voBillingKey, mpMembershipKey, mpBillingKey, mpSeats]);
+
+  const displayCenterPrice = quote?.centerPriceRupees ?? centerPrice;
+  const commission = quote?.commissionRupees ?? 0;
+  const gst = quote?.gstRupees ?? 0;
+  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : centerPrice;
+
+  // Fetch the authoritative breakdown for plan-based products. Mirrors the
+  // create-booking DTO exactly so quote == charge. Requires sign-in (like the
+  // hotel checkout); fails silently and falls back to the centre price.
+  // Meeting rooms price against selected slots (resolved at Confirm & Pay), so
+  // they aren't quoted here.
+  useEffect(() => {
+    const token = getUserToken();
+    if (!token) { setQuote(null); return; }
+
+    const productTypeMap: Record<string, string> = {
+      "day-pass": "coworking_day_pass",
+      "monthly-pass": "coworking_monthly_pass",
+      "virtual-office": "coworking_monthly_pass",
+    };
+    const backendProductType = productTypeMap[booking.productType];
+    if (!backendProductType) { setQuote(null); return; }
+
+    let planId: string | undefined;
+    let extra: Record<string, unknown> = {};
+    if (booking.productType === "day-pass") {
+      const opt = booking.seatingOptions.find((o) => o.type === dpPassType) ?? booking.seatingOptions[0];
+      planId = opt?.planId;
+      extra = { bookingDate: dpDate, memberCount: dpMembers };
     } else if (booking.productType === "monthly-pass") {
       const mp = booking.membershipTypes.find((t) => t.key === mpMembershipKey) ?? booking.membershipTypes[0];
-      basePrice = Math.round((mp?.price ?? 0) * (billingTierMultipliers[mpBillingKey] ?? 1) * mpSeats);
+      planId = mp?.planId ?? mp?.key;
+      extra = { bookingDate: new Date().toISOString().slice(0, 10), memberCount: mpSeats };
+    } else if (booking.productType === "virtual-office") {
+      const plan = booking.plans.find((p) => p.key === voPlanKey) ?? booking.plans[0];
+      planId = plan?.planId ?? plan?.key;
+      extra = { bookingDate: new Date().toISOString().slice(0, 10) };
     }
+    if (!planId) { setQuote(null); return; }
 
-    const autoDiscount = Math.round(basePrice * (U_AUTO_DISCOUNT / 100));
-    const taxes = Math.round((basePrice + addOnsTotal) * U_TAX_RATE);
-    const preCoupon = basePrice + addOnsTotal - autoDiscount + taxes + U_CONVENIENCE_FEE;
-    const couponSavings = appliedCoupon ? Math.round((preCoupon * appliedCoupon.discountPercent) / 100) : 0;
-    const totalAmount = preCoupon - couponSavings;
-    const totalSaved = autoDiscount + couponSavings;
-    return { basePrice, addOnsTotal, autoDiscount, taxes, convenienceFee: U_CONVENIENCE_FEE, couponSavings, totalAmount, totalSaved };
-  }, [booking, dpPassType, dpMembers, dpAddOnKeys, mrRoomId, mrDurationKey, mrCateringKeys, voPlanKey, voBillingKey, mpMembershipKey, mpBillingKey, mpSeats, appliedCoupon]);
+    let cancelled = false;
+    setQuoteLoading(true);
+    apiPost<BookingQuote>("/bookings/quote", {
+      centerId: booking.listingId,
+      productType: backendProductType,
+      planId,
+      ...extra,
+    }, token)
+      .then((res) => { if (!cancelled) setQuote(res); })
+      .catch(() => { if (!cancelled) setQuote(null); })
+      .finally(() => { if (!cancelled) setQuoteLoading(false); });
+    return () => { cancelled = true; };
+  }, [booking, dpPassType, dpMembers, dpDate, mpMembershipKey, mpSeats, voPlanKey]);
 
   // ─── Step validation ───
   const canAdvance = useMemo(() => {
@@ -189,7 +248,6 @@ export default function UniversalCheckoutPage({ booking }: Props) {
         let createDto: Record<string, unknown> = {
           centerId: booking.listingId,
           productType: backendProductType,
-          couponCode: appliedCoupon?.code,
         };
 
         if (booking.productType === "day-pass") {
@@ -420,7 +478,7 @@ export default function UniversalCheckoutPage({ booking }: Props) {
     );
     if (step === 4) return (
       <ConfirmationStep booking={booking} bookingId={bookingId}
-        totalAmount={prices.totalAmount} totalSaved={prices.totalSaved}
+        totalAmount={totalAmount}
         guestName={guestDisplayName || "Guest"} guestEmail={guestDisplayEmail}
         paymentMethod="Online" />
     );
@@ -497,20 +555,11 @@ export default function UniversalCheckoutPage({ booking }: Props) {
                   cityName={booking.cityName}
                   bookingMeta={bookingMeta()}
                   image={image}
-                  basePrice={prices.basePrice}
-                  addOnsTotal={prices.addOnsTotal}
-                  taxes={prices.taxes}
-                  convenienceFee={prices.convenienceFee}
-                  autoDiscount={prices.autoDiscount}
-                  couponSavings={prices.couponSavings}
-                  totalAmount={prices.totalAmount}
-                  totalSaved={prices.totalSaved}
-                  appliedCoupon={appliedCoupon}
-                  onApplyCoupon={(code) => {
-                    const c = universalCoupons.find((x) => x.code === code);
-                    if (c) setAppliedCoupon(c);
-                  }}
-                  onRemoveCoupon={() => setAppliedCoupon(null)}
+                  centerPrice={displayCenterPrice}
+                  commission={commission}
+                  gst={gst}
+                  totalAmount={totalAmount}
+                  priceLoading={quoteLoading}
                   canProceed={canAdvance}
                   submitting={submitting}
                   ctaLabel={ctaLabel}
@@ -527,7 +576,7 @@ export default function UniversalCheckoutPage({ booking }: Props) {
 
       {step < 4 && (
         <UniversalMobileCTA
-          totalAmount={prices.totalAmount}
+          totalAmount={totalAmount}
           label={ctaLabel}
           disabled={!canAdvance}
           submitting={submitting}

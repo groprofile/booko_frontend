@@ -11,6 +11,15 @@ export default function ReviewsSection({ details }: ReviewsSectionProps) {
   const [showAll, setShowAll] = useState(false);
   const visibleReviews = showAll ? details.reviews : details.reviews.slice(0, 3);
 
+  if (details.reviewCount === 0) {
+    return (
+      <section className="m-0">
+        <SectionLabel title="Customer Reviews" />
+        <p className="text-sm text-[#64748B]">No reviews yet — be the first to set up here and review this office.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="m-0">
       <SectionLabel title="Customer Reviews" />

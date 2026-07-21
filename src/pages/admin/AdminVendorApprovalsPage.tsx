@@ -70,7 +70,7 @@ export default function AdminVendorApprovalsPage() {
                     <div className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold ${v.kycStatus === "approved" ? "bg-[#DCFCE7] text-[#15803D]" : v.kycStatus === "submitted" ? "bg-[#DBEAFE] text-[#1D4ED8]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>
                       <FileText size={9} /> KYC: {v.kycStatus.replace("_", " ")}
                     </div>
-                    <div className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold ${v.bankStatus === "verified" ? "bg-[#DCFCE7] text-[#15803D]" : v.bankStatus === "submitted" ? "bg-[#DBEAFE] text-[#1D4ED8]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>
+                    <div className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold ${v.bankStatus === "verified" ? "bg-[#DCFCE7] text-[#15803D]" : v.bankStatus === "pending" ? "bg-[#DBEAFE] text-[#1D4ED8]" : v.bankStatus === "rejected" ? "bg-[#FEE2E2] text-[#B91C1C]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>
                       <CreditCard size={9} /> Bank: {v.bankStatus.replace("_", " ")}
                     </div>
                     <div className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold ${vCenters.length > 0 ? "bg-[#DBEAFE] text-[#1D4ED8]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>

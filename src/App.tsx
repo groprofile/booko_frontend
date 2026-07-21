@@ -49,6 +49,8 @@ import StaticPage from "./pages/StaticPage";
 import PartnerSignupPage from "./pages/partner/PartnerSignupPage";
 import PartnerSigninPage from "./pages/partner/PartnerSigninPage";
 import PartnerVerifyEmailPage from "./pages/partner/PartnerVerifyEmailPage";
+import PartnerForgotPasswordPage from "./pages/partner/PartnerForgotPasswordPage";
+import PartnerResetPasswordPage from "./pages/partner/PartnerResetPasswordPage";
 import ForcePasswordResetPage from "./pages/partner/ForcePasswordResetPage";
 import PartnerOnboardingPage from "./pages/partner/PartnerOnboardingPage";
 import PartnerPendingReviewPage from "./pages/partner/PartnerPendingReviewPage";
@@ -163,6 +165,8 @@ function App() {
       <Route path="/partner/signup" element={<PartnerSignupPage />} />
       <Route path="/partner/signin" element={<PartnerSigninPage />} />
       <Route path="/partner/verify-email" element={<PartnerVerifyEmailPage />} />
+      <Route path="/partner/forgot-password" element={<PartnerForgotPasswordPage />} />
+      <Route path="/partner/reset-password" element={<PartnerResetPasswordPage />} />
       <Route path="/partner/force-password-reset" element={<ForcePasswordResetPage />} />
       <Route path="/partner/pending-review" element={<PartnerPendingReviewPage />} />
       <Route path="/partner/onboarding" element={<OnboardingLayout />}>

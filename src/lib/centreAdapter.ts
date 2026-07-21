@@ -128,9 +128,9 @@ export function apiToDayPassListing(c: CentreApiRow): DayPassListing {
     accessibility: getTransitAmenities(c),
     price,
     bestPrice: price,
-    offerCode: 'BOKKO10',
+    offerCode: '',
     offerCount: Math.max(plans.length, 1),
-    rating: toRating(c.rating),
+    rating: toRating(c.rating, 0),
     reviews: 0,
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
@@ -162,7 +162,7 @@ export function apiToHotelListing(c: CentreApiRow): HotelListing {
     stayTypes: ['Hourly Stay'],
     category: c.categories?.name ?? 'Business',
     badges: [],
-    rating: toRating(c.rating),
+    rating: toRating(c.rating, 0),
     reviews: 0,
     amenities: getAmenityLabels(c),
     trustSignals: [],
@@ -171,7 +171,7 @@ export function apiToHotelListing(c: CentreApiRow): HotelListing {
       ? pricing
       : [{ key: 'full-day', label: 'Full Day', price: bestPrice, available: true }],
     bestPrice,
-    offerCode: 'BOKKO10',
+    offerCode: '',
     popular: toRating(c.rating, 0) >= 4.5,
     images: getImages(c),
     latitude: c.latitude,
@@ -213,7 +213,7 @@ export function apiToMeetingRoomListing(c: CentreApiRow): MeetingRoomListing {
       ? pricing
       : [{ hours: 1, label: '1 Hour', price: bestPrice }],
     bestPrice,
-    offerCode: 'BOKKO10',
+    offerCode: '',
     offerCount: Math.max(plans.length, 1),
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
@@ -245,9 +245,9 @@ export function apiToMonthlyPassListing(c: CentreApiRow): MonthlyPassListing {
     lockIn: '1 Month',
     price,
     bestPrice: price,
-    offerCode: 'BOKKO10',
+    offerCode: '',
     offerCount: Math.max(plans.length, 1),
-    rating: toRating(c.rating),
+    rating: toRating(c.rating, 0),
     reviews: 0,
     popular: toRating(c.rating, 0) >= 4.5,
     premier: toRating(c.rating, 0) >= 4.8,
@@ -280,7 +280,7 @@ export function apiToVirtualOfficeListing(c: CentreApiRow): VirtualOfficeListing
     area: c.locality ?? '',
     buildingType: c.categories?.name ?? 'Business Center',
     address: c.address ?? '',
-    rating: toRating(c.rating),
+    rating: toRating(c.rating, 0),
     reviews: 0,
     popularTags: [],
     servicesIncluded: getAmenityLabels(c),
@@ -357,7 +357,7 @@ export function apiToCoworkingSpace(c: CentreApiRow): CoworkingSpace {
 
   const allPrices = activePlans.map((p) => p.price).filter((p) => p != null);
   const startingPrice = allPrices.length > 0 ? Math.min(...allPrices) : (c.min_price ?? 0);
-  const rating = toRating(c.rating);
+  const rating = toRating(c.rating, 0);
 
   return {
     id: c.id,
@@ -409,8 +409,8 @@ export function apiToDayPassDetails(c: CentreApiRow): DayPassDetails {
     features: amenities.slice(0, 4),
     availability: 'Available',
     price: p.price,
-    bestPrice: Math.round(p.price * 0.9),
-    offerCode: 'BOKKO10',
+    bestPrice: p.price,
+    offerCode: '',
     image: images[0],
   }));
 
@@ -440,8 +440,8 @@ export function apiToDayPassDetails(c: CentreApiRow): DayPassDetails {
       features: amenities.slice(0, 4),
       availability: 'Available',
       price: c.min_price ?? 500,
-      bestPrice: Math.round((c.min_price ?? 500) * 0.9),
-      offerCode: 'BOKKO10',
+      bestPrice: c.min_price ?? 500,
+      offerCode: '',
       image: images[0],
     }],
     ratingBreakdown: [
@@ -540,7 +540,7 @@ export function apiToHotelDetails(c: CentreApiRow): HotelDetails {
       'Clean and comfortable rooms',
       'Professional staff',
     ],
-    coupons: [{ code: 'BOKKO10', description: '10% off on your first booking', discountPercent: 10 }],
+    coupons: [],
   };
 }
 
