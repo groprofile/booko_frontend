@@ -36,7 +36,7 @@ interface UniversalSidebarProps {
 
 export default function UniversalSidebar({
   productLabel, workspaceName, cityName, bookingMeta, image,
-  centerPrice, commission, gst, totalAmount, discount = 0, priceLoading,
+  centerPrice, commission, gst, totalAmount, discount = 0, couponCode, priceLoading,
   canProceed, submitting, ctaLabel, onProceed, currentStep,
 }: UniversalSidebarProps) {
   const [breakdownOpen, setBreakdownOpen] = useState(true);
@@ -96,7 +96,7 @@ export default function UniversalSidebar({
                     <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
                       OFFER
                     </span>
-                    applied
+                    {couponCode ? `"${couponCode}" applied` : "applied"}
                   </span>
                   <span className="font-semibold text-[#16A34A]">− ₹{discount.toLocaleString()}</span>
                 </div>

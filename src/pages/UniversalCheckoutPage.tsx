@@ -10,6 +10,8 @@ import ProgressBar from "../components/ucheckout/ProgressBar";
 import UniversalSidebar from "../components/ucheckout/UniversalSidebar";
 import CouponApply from "../components/checkout/CouponApply";
 import type { AvailableCoupon } from "../lib/offers";
+import { bestOfferForListing } from "../lib/offers";
+import { useActiveOffers } from "../hooks/useActiveOffers";
 import UniversalMobileCTA from "../components/ucheckout/UniversalMobileCTA";
 import DayPassStep1 from "../components/ucheckout/DayPassStep1";
 import DayPassStep2 from "../components/ucheckout/DayPassStep2";
@@ -161,11 +163,20 @@ export default function UniversalCheckoutPage({ booking }: Props) {
     return 0;
   }, [booking, dpPassType, dpMembers, mrRoomId, mrDurationKey, voPlanKey, voBillingKey, mpMembershipKey, mpBillingKey, mpSeats]);
 
+  const offers = useActiveOffers();
+  const estimatedOffer = useMemo(() => {
+    if (quote || !booking) return null;
+    const vertical = booking.productType;
+    return bestOfferForListing(offers, vertical, centerPrice, booking.listingId);
+  }, [offers, quote, centerPrice, booking]);
+
   const displayCenterPrice = quote?.centerPriceRupees ?? centerPrice;
   const commission = quote?.commissionRupees ?? 0;
   const gst = quote?.gstRupees ?? 0;
-  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : centerPrice;
-  const discount = quote?.couponDiscountRupees ?? 0;
+  const discount = quote ? (quote.couponDiscountRupees ?? 0) : (estimatedOffer?.discountRupees ?? 0);
+  const totalAmount = quote 
+    ? (quote.finalTotalRupees ?? (quote.totalRupees - discount)) 
+    : (estimatedOffer?.finalRupees ?? centerPrice);
 
   // Fetch the authoritative breakdown for plan-based products. Mirrors the
   // create-booking DTO exactly so quote == charge. Requires sign-in (like the

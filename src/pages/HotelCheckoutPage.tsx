@@ -15,6 +15,8 @@ import ConfidenceBar from "../components/checkout/ConfidenceBar";
 import BookingSidebar from "../components/checkout/BookingSidebar";
 import CouponApply from "../components/checkout/CouponApply";
 import type { AvailableCoupon } from "../lib/offers";
+import { bestOfferForListing } from "../lib/offers";
+import { useActiveOffers } from "../hooks/useActiveOffers";
 import BokkoExpertWidget from "../components/checkout/BokkoExpertWidget";
 import MobileContinueBar from "../components/checkout/MobileContinueBar";
 import { ShieldCheck } from "lucide-react";
@@ -127,12 +129,21 @@ export default function HotelCheckoutPage() {
     setAdditionalGuests((current) => current.filter((guest) => guest.id !== id));
   }
 
+  const offers = useActiveOffers();
   const roomCost = booking ? booking.stayPrice * booking.roomCount * nights : 0;
-  const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : roomCost;
+  
+  const estimatedOffer = useMemo(() => {
+    if (quote || !booking) return null;
+    return bestOfferForListing(offers, "hotel", roomCost, booking.hotelId);
+  }, [offers, quote, roomCost, booking]);
+
+  const discount = quote ? (quote.couponDiscountRupees ?? 0) : (estimatedOffer?.discountRupees ?? 0);
+  const totalAmount = quote 
+    ? (quote.finalTotalRupees ?? (quote.totalRupees - discount)) 
+    : (estimatedOffer?.finalRupees ?? roomCost);
   const centerPrice = quote?.centerPriceRupees ?? roomCost;
   const commission = quote?.commissionRupees ?? 0;
   const gst = quote?.gstRupees ?? 0;
-  const discount = quote?.couponDiscountRupees ?? 0;
 
   const guestDetailsValid = Boolean(
     primaryGuest.firstName.trim() && primaryGuest.lastName.trim() && primaryGuest.email.trim() && primaryGuest.mobile.trim().length >= 10,

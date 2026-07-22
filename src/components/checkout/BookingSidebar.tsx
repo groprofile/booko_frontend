@@ -35,6 +35,7 @@ export default function BookingSidebar({
   gst,
   totalAmount,
   discount = 0,
+  couponCode,
   isEstimate,
   quoteLoading,
   canContinue,
@@ -80,7 +81,7 @@ export default function BookingSidebar({
             <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
               OFFER
             </span>
-            applied automatically
+            {couponCode ? `"${couponCode}" applied` : "applied automatically"}
           </span>
           <span className="text-sm font-bold text-[#16A34A]">− ₹{discount.toLocaleString()}</span>
         </div>
