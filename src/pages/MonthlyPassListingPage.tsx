@@ -6,6 +6,7 @@ import MonthlyPassSearchBar from "../components/monthlypass/MonthlyPassSearchBar
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import MonthlyPassFilterSidebar from "../components/monthlypass/MonthlyPassFilterSidebar";
 import MonthlyPassListingCard from "../components/monthlypass/MonthlyPassListingCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import MonthlyPassListingCardSkeleton from "../components/monthlypass/MonthlyPassListingCardSkeleton";
 import TalkToExpertCard from "../components/monthlypass/TalkToExpertCard";
 import ListingsMap from "../components/common/ListingsMap";
@@ -336,6 +337,7 @@ export default function MonthlyPassListingPage() {
             </aside>
 
             <div>
+              <OffersStrip vertical="monthly-pass" />
               {apiLoading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 lg:pb-0" : "flex flex-col gap-4 pb-16 lg:pb-0"}>
                   {Array.from({ length: 4 }).map((_, i) => (

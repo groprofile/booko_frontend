@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
 import type { HotelListing } from "../../data/hotelListings";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferBadge, OfferPriceBlock } from "../common/OfferPrice";
 
 interface HotelListingCardProps {
   listing: HotelListing;
@@ -31,6 +32,7 @@ export default function HotelListingCard({ listing, layout = "row" }: HotelListi
       imageIndex={imageIndex}
       onPrevImage={showPrev}
       onNextImage={showNext}
+      topLeftBadge={<OfferBadge vertical="hotel" price={listing.bestPrice} centerId={listing.id} />}
       ratingBadge={
         listing.rating > 0 ? (
           <span className="inline-flex items-center gap-1 rounded-sm bg-[#0F172A] px-2 py-1 text-[11px] font-bold text-white">
@@ -54,15 +56,7 @@ export default function HotelListingCard({ listing, layout = "row" }: HotelListi
       distanceKm={listing.distanceKm}
       tags={listing.amenities}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{listing.bestPrice.toLocaleString()}
-            <span className="text-[10px] font-medium text-muted-text"> /night</span>
-          </p>
-          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="hotel" price={listing.bestPrice} centerId={listing.id} unit="/night" />}
       actions={
         <Link
           to={href}

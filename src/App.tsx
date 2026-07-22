@@ -21,6 +21,7 @@ import AdminEmployeesPage from "./pages/admin/AdminEmployeesPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 import AdminAuditLogsPage from "./pages/admin/AdminAuditLogsPage";
 import HomePage from "./pages/HomePage";
+import OffersPage from "./pages/OffersPage";
 import DayPassListingPage from "./pages/DayPassListingPage";
 import DayPassDetailsPage from "./pages/DayPassDetailsPage";
 import MonthlyPassListingPage from "./pages/MonthlyPassListingPage";
@@ -70,7 +71,6 @@ import SuperPartnerRevenuePage from "./pages/partner/dashboard/SuperPartnerReven
 import SuperPartnerTeamPage from "./pages/partner/dashboard/SuperPartnerTeamPage";
 import CenterManagePage from "./pages/partner/dashboard/CenterManagePage";
 import SuperPartnerSettlementsPage from "./pages/partner/dashboard/SuperPartnerSettlementsPage";
-import SuperPartnerCouponsPage from "./pages/partner/dashboard/SuperPartnerCouponsPage";
 // Partner — Center (Vendor) dashboard
 import CenterOverviewPage from "./pages/partner/center/CenterOverviewPage";
 import CenterBookingsPage from "./pages/partner/center/CenterBookingsPage";
@@ -79,7 +79,6 @@ import SpecialRequestsPage from "./pages/partner/center/SpecialRequestsPage";
 import CenterCalendarPage from "./pages/partner/center/CenterCalendarPage";
 import CenterManageRedirect from "./pages/partner/center/CenterManageRedirect";
 import SlotManagementPage from "./pages/partner/center/SlotManagementPage";
-import CenterCouponsPage from "./pages/partner/center/CenterCouponsPage";
 // Partner — shared settings
 import PartnerSettingsPage from "./pages/partner/PartnerSettingsPage";
 
@@ -87,6 +86,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/offers" element={<OffersPage />} />
       <Route path="/day-pass" element={<DayPassListingPage />} />
       <Route path="/:city/day-pass" element={<DayPassListingPage />} />
       <Route path="/day-pass/:listingId" element={<DayPassDetailsPage />} />
@@ -185,7 +185,6 @@ function App() {
         <Route path="/partner/bookings" element={<SuperPartnerBookingsPage />} />
         <Route path="/partner/revenue" element={<SuperPartnerRevenuePage />} />
         <Route path="/partner/settlements" element={<SuperPartnerSettlementsPage />} />
-        <Route path="/partner/coupons" element={<SuperPartnerCouponsPage />} />
         <Route path="/partner/centers/:id" element={<CenterManagePage />} />
         <Route path="/partner/team" element={<SuperPartnerTeamPage />} />
         {/* Center / Vendor (single center) */}
@@ -196,7 +195,6 @@ function App() {
         <Route path="/partner/center/calendar" element={<CenterCalendarPage />} />
         <Route path="/partner/center/manage" element={<CenterManageRedirect />} />
         <Route path="/partner/center/slots" element={<SlotManagementPage />} />
-        <Route path="/partner/center/coupons" element={<CenterCouponsPage />} />
         {/* Shared */}
         <Route path="/partner/settings" element={<PartnerSettingsPage />} />
       </Route>

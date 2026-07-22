@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ThumbsUp } from "lucide-react";
 import type { DayPassListing } from "../../data/dayPassListings";
 import type { SeatingOptionDetail } from "../../data/dayPassDetails";
+import CenterOffersButton from "../offers/CenterOffersButton";
 
 interface BookingCardProps {
   listing: DayPassListing;
@@ -115,6 +116,10 @@ export default function BookingCard({
             ))}
           </select>
         </label>
+      </div>
+
+      <div className="mt-4">
+        <CenterOffersButton vertical="day-pass" centerId={listing.id} centerName={listing.name} />
       </div>
 
       {selected && (

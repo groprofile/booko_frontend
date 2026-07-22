@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { AddOn, SiblingRoom } from "../../data/meetingRoomDetails";
 import type { MeetingRoomListing } from "../../data/meetingRoomListings";
+import CenterOffersButton from "../offers/CenterOffersButton";
 
 interface BookingCardProps {
   listing: MeetingRoomListing;
@@ -126,6 +127,10 @@ export default function BookingCard({
             ))}
           </select>
         </label>
+      </div>
+
+      <div className="mt-4">
+        <CenterOffersButton vertical="meeting-room" centerId={listing.id} centerName={listing.workspaceName} />
       </div>
 
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">Duration</p>

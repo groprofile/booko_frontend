@@ -4,7 +4,6 @@ import ExploreCategoriesSection from "../components/ExploreCategoriesSection";
 import PopularCitiesSection from "../components/PopularCitiesSection";
 import FindYourSpaceSection from "../components/FindYourSpaceSection";
 import RecommendedSpacesSection from "../components/RecommendedSpacesSection";
-import OffersSection from "../components/OffersSection";
 import WhyChooseBokkoSection from "../components/WhyChooseBokkoSection";
 import DownloadAppSection from "../components/DownloadAppSection";
 import PartnerCTA from "../components/PartnerCTA";
@@ -18,7 +17,6 @@ export default function HomePage() {
       <PopularCitiesSection />
       <FindYourSpaceSection />
       <RecommendedSpacesSection />
-      <OffersSection />
       <WhyChooseBokkoSection />
       <DownloadAppSection />
       <PartnerCTA />

@@ -11,6 +11,7 @@ const navLinks = [
   { label: "Day Pass", to: "/day-pass" },
   { label: "Meeting Rooms", to: "/meeting-rooms" },
   { label: "Virtual Office", to: "/virtual-office" },
+  { label: "Offers", to: "/offers" },
 ];
 
 export default function Header() {

@@ -9,6 +9,7 @@ import type { Persona } from "../components/coworkingspaces/RecommendedSection";
 import FilterSidebar from "../components/coworkingspaces/FilterSidebar";
 import type { ToggleFilters } from "../components/coworkingspaces/FilterSidebar";
 import WorkspaceCard from "../components/coworkingspaces/WorkspaceCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import WorkspaceCardSkeleton from "../components/coworkingspaces/WorkspaceCardSkeleton";
 import TrustSection from "../components/coworkingspaces/TrustSection";
 import BokkoExpertCard from "../components/coworkingspaces/BokkoExpertCard";
@@ -366,6 +367,7 @@ export default function CoworkingSpacesListingPage() {
             </aside>
 
             <div className="flex min-w-0 flex-col gap-8">
+              <OffersStrip vertical="coworking" />
               {apiLoading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
                   {Array.from({ length: 4 }).map((_, i) => (

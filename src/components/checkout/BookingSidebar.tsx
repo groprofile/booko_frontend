@@ -8,6 +8,8 @@ interface BookingSidebarProps {
   commission: number;
   gst: number;
   totalAmount: number;
+  discount?: number;
+  couponCode?: string | null;
   isEstimate: boolean;
   quoteLoading: boolean;
   canContinue: boolean;
@@ -32,6 +34,7 @@ export default function BookingSidebar({
   commission,
   gst,
   totalAmount,
+  discount = 0,
   isEstimate,
   quoteLoading,
   canContinue,
@@ -71,10 +74,27 @@ export default function BookingSidebar({
         </div>
       </div>
 
+      {discount > 0 && (
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-[#F0FDF4] px-3 py-2">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-[#15803D]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
+              OFFER
+            </span>
+            applied automatically
+          </span>
+          <span className="text-sm font-bold text-[#16A34A]">− ₹{discount.toLocaleString()}</span>
+        </div>
+      )}
+
       <div className="mt-3 flex items-center justify-between text-lg font-extrabold text-[#0F172A]">
         <span>Total Amount</span>
         <span>{quoteLoading ? "…" : `₹${totalAmount.toLocaleString()}`}</span>
       </div>
+      {discount > 0 && (
+        <div className="mt-2 rounded-lg bg-[#16A34A] px-3 py-1.5 text-center text-xs font-bold text-white">
+          🎉 You saved ₹{discount.toLocaleString()} on this booking
+        </div>
+      )}
       <p className="mt-1 text-xs text-[#94A3B8]">
         {isEstimate ? "Estimated — commission & GST are confirmed after sign-in." : "Inclusive of all taxes. No hidden charges."}
       </p>

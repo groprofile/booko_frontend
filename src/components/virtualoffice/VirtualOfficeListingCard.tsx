@@ -5,6 +5,7 @@ import type { VirtualOfficeListing } from "../../data/virtualOfficeListings";
 import { CITY_NAMES } from "../../data/dayPassListings";
 import RecommendedBadge from "../RecommendedBadge";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferPriceBlock } from "../common/OfferPrice";
 
 interface VirtualOfficeListingCardProps {
   listing: VirtualOfficeListing;
@@ -89,15 +90,7 @@ export default function VirtualOfficeListingCard({ listing, layout = "row" }: Vi
       locality={listing.area}
       tags={listing.servicesIncluded}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{startingPlan.price.toLocaleString()}
-            <span className="text-[10px] font-medium text-muted-text"> /mo</span>
-          </p>
-          <p className="text-[10px] font-semibold text-muted-text">Starting price</p>
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="virtual-office" price={startingPlan.price} centerId={listing.id} unit="/mo" />}
       actions={
         <button
           type="button"

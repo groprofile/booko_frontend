@@ -4,6 +4,7 @@ import { ShieldCheck, Star } from "lucide-react";
 import type { CoworkingSpace } from "../../data/coworkingSpaces";
 import RecommendedBadge from "../RecommendedBadge";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferPriceBlock } from "../common/OfferPrice";
 
 interface WorkspaceCardProps {
   space: CoworkingSpace;
@@ -69,15 +70,7 @@ export default function WorkspaceCard({ space, layout = "row" }: WorkspaceCardPr
       distanceKm={space.distanceKm}
       tags={amenityTags}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{space.startingPrice.toLocaleString()}
-            <span className="text-[10px] font-medium text-muted-text"> starting</span>
-          </p>
-          <p className="text-[10px] font-semibold text-muted-text">{space.services.length} services</p>
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="coworking" price={space.startingPrice} centerId={space.id} unit="starting" />}
       actions={
         <Link
           to={href}

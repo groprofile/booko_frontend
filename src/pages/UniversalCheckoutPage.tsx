@@ -8,6 +8,8 @@ import Footer from "../components/Footer";
 import LoginModal from "../components/LoginModal";
 import ProgressBar from "../components/ucheckout/ProgressBar";
 import UniversalSidebar from "../components/ucheckout/UniversalSidebar";
+import CouponApply from "../components/checkout/CouponApply";
+import type { AvailableCoupon } from "../lib/offers";
 import UniversalMobileCTA from "../components/ucheckout/UniversalMobileCTA";
 import DayPassStep1 from "../components/ucheckout/DayPassStep1";
 import DayPassStep2 from "../components/ucheckout/DayPassStep2";
@@ -36,6 +38,9 @@ interface BookingQuote {
   gstRupees?: number;
   totalRupees: number;
   finalTotalRupees?: number;
+  couponCode?: string;
+  couponDiscountRupees?: number;
+  availableCoupons?: AvailableCoupon[];
 }
 
 let memberIdCounter = 0;
@@ -120,6 +125,9 @@ export default function UniversalCheckoutPage({ booking }: Props) {
   // ─── Shared state ───
   const [quote, setQuote] = useState<BookingQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState<string | undefined>(undefined);
+  const [couponCleared, setCouponCleared] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [bookingId] = useState(() => {
@@ -157,6 +165,7 @@ export default function UniversalCheckoutPage({ booking }: Props) {
   const commission = quote?.commissionRupees ?? 0;
   const gst = quote?.gstRupees ?? 0;
   const totalAmount = quote ? (quote.finalTotalRupees ?? quote.totalRupees) : centerPrice;
+  const discount = quote?.couponDiscountRupees ?? 0;
 
   // Fetch the authoritative breakdown for plan-based products. Mirrors the
   // create-booking DTO exactly so quote == charge. Requires sign-in (like the
@@ -199,12 +208,18 @@ export default function UniversalCheckoutPage({ booking }: Props) {
       productType: backendProductType,
       planId,
       ...extra,
+      ...(couponCode ? { couponCode } : {}),
+      ...(couponCleared ? { applyBestOffer: false } : {}),
     }, token)
-      .then((res) => { if (!cancelled) setQuote(res); })
-      .catch(() => { if (!cancelled) setQuote(null); })
+      .then((res) => { if (!cancelled) { setQuote(res); setCouponError(null); } })
+      .catch((err) => {
+        if (cancelled) return;
+        if (couponCode) { setCouponError((err as Error).message ?? "Coupon could not be applied"); setCouponCode(undefined); }
+        else setQuote(null);
+      })
       .finally(() => { if (!cancelled) setQuoteLoading(false); });
     return () => { cancelled = true; };
-  }, [booking, dpPassType, dpMembers, dpDate, mpMembershipKey, mpSeats, voPlanKey]);
+  }, [booking, dpPassType, dpMembers, dpDate, mpMembershipKey, mpSeats, voPlanKey, couponCode, couponCleared]);
 
   // ─── Step validation ───
   const canAdvance = useMemo(() => {
@@ -276,6 +291,9 @@ export default function UniversalCheckoutPage({ booking }: Props) {
           if (!needed.length) throw new Error("No available slots for the selected time. Please choose a different time.");
           createDto = { ...createDto, slotIds: needed.map((s) => s.id), bookingDate: mrDate, guestCount: mrAttendees };
         }
+
+        if (couponCode) createDto = { ...createDto, couponCode };
+        if (couponCleared) createDto = { ...createDto, applyBestOffer: false };
 
         // The create-booking response shape differs by product: plan-based
         // (day pass / monthly / VO) returns { booking, payment: { bookingId } };
@@ -531,6 +549,19 @@ export default function UniversalCheckoutPage({ booking }: Props) {
               {/* Step content */}
               {stepContent()}
 
+              {/* Coupons & offers */}
+              {step >= 2 && step < 4 && getUserToken() && (
+                <CouponApply
+                  available={quote?.availableCoupons ?? []}
+                  appliedCode={quote?.couponCode ?? null}
+                  appliedDiscount={quote?.couponDiscountRupees ?? 0}
+                  loading={quoteLoading}
+                  error={couponError}
+                  onApply={(code) => { setCouponCleared(false); setCouponError(null); setCouponCode(code); }}
+                  onClear={() => { setCouponError(null); setCouponCode(undefined); setCouponCleared(true); }}
+                />
+              )}
+
               {/* Navigation buttons (bottom) */}
               {step < 4 && (
                 <div className="hidden lg:flex lg:justify-end">
@@ -559,6 +590,8 @@ export default function UniversalCheckoutPage({ booking }: Props) {
                   commission={commission}
                   gst={gst}
                   totalAmount={totalAmount}
+                  discount={discount}
+                  couponCode={quote?.couponCode}
                   priceLoading={quoteLoading}
                   canProceed={canAdvance}
                   submitting={submitting}

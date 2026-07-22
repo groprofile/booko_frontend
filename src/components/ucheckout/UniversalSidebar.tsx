@@ -19,8 +19,12 @@ interface UniversalSidebarProps {
   commission: number;
   /** GST in rupees — only shown when > 0 (backend-provided). */
   gst: number;
-  /** Authoritative total the user is charged (centre price + commission + GST). */
+  /** Authoritative total the user is charged (centre price + commission + GST − discount). */
   totalAmount: number;
+  /** Auto-applied offer discount in rupees — only shown when > 0. */
+  discount?: number;
+  /** Code of the auto-applied offer, for display. */
+  couponCode?: string | null;
   /** True while the backend quote is being fetched. */
   priceLoading?: boolean;
   canProceed: boolean;
@@ -32,7 +36,7 @@ interface UniversalSidebarProps {
 
 export default function UniversalSidebar({
   productLabel, workspaceName, cityName, bookingMeta, image,
-  centerPrice, commission, gst, totalAmount, priceLoading,
+  centerPrice, commission, gst, totalAmount, discount = 0, priceLoading,
   canProceed, submitting, ctaLabel, onProceed, currentStep,
 }: UniversalSidebarProps) {
   const [breakdownOpen, setBreakdownOpen] = useState(true);
@@ -86,10 +90,27 @@ export default function UniversalSidebar({
                 </div>
               ))}
 
+              {discount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5 text-[#15803D]">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
+                      OFFER
+                    </span>
+                    applied
+                  </span>
+                  <span className="font-semibold text-[#16A34A]">− ₹{discount.toLocaleString()}</span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-3 text-base font-extrabold text-[#0F172A]">
                 <span>Total Payable</span>
                 <span>{priceLoading ? "…" : `₹${totalAmount.toLocaleString()}`}</span>
               </div>
+              {discount > 0 && (
+                <div className="rounded-lg bg-[#16A34A] px-3 py-1.5 text-center text-xs font-bold text-white">
+                  🎉 You saved ₹{discount.toLocaleString()} on this booking
+                </div>
+              )}
               <p className="text-[11px] text-[#94A3B8]">Inclusive of all taxes. No hidden charges.</p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import DayPassSearchBar from "../components/daypass/DayPassSearchBar";
 import WorkspaceSearchBar from "../components/daypass/WorkspaceSearchBar";
 import FilterSidebar from "../components/daypass/FilterSidebar";
 import ListingCard from "../components/daypass/ListingCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import ListingCardSkeleton from "../components/daypass/ListingCardSkeleton";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
@@ -355,6 +356,7 @@ export default function DayPassListingPage() {
             </aside>
 
             <div>
+              <OffersStrip vertical="day-pass" />
               {apiLoading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 pb-16 sm:grid-cols-2 lg:pb-0" : "flex flex-col gap-3 pb-16 lg:pb-0"}>
                   {Array.from({ length: 4 }).map((_, i) => (

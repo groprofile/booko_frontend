@@ -13,6 +13,8 @@ import WhyBookSection from "../components/checkout/WhyBookSection";
 import LoginBenefitsSection from "../components/checkout/LoginBenefitsSection";
 import ConfidenceBar from "../components/checkout/ConfidenceBar";
 import BookingSidebar from "../components/checkout/BookingSidebar";
+import CouponApply from "../components/checkout/CouponApply";
+import type { AvailableCoupon } from "../lib/offers";
 import BokkoExpertWidget from "../components/checkout/BokkoExpertWidget";
 import MobileContinueBar from "../components/checkout/MobileContinueBar";
 import { ShieldCheck } from "lucide-react";
@@ -27,6 +29,9 @@ interface HotelQuote {
   centerPriceRupees?: number;
   commissionRupees?: number;
   gstRupees?: number;
+  couponCode?: string;
+  couponDiscountRupees?: number;
+  availableCoupons?: AvailableCoupon[];
 }
 
 function nightsBetween(checkIn: string, checkOut: string): number {
@@ -53,6 +58,11 @@ export default function HotelCheckoutPage() {
   const [quote, setQuote] = useState<HotelQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
+  // Coupon state: a chosen code, or "cleared" (suppress auto-apply). undefined =
+  // let the backend auto-apply the best eligible offer.
+  const [couponCode, setCouponCode] = useState<string | undefined>(undefined);
+  const [couponCleared, setCouponCleared] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = booking ? `Checkout - ${booking.hotelName} | Bokko` : "Checkout | Bokko";
@@ -78,21 +88,32 @@ export default function HotelCheckoutPage() {
       checkoutDate: booking.checkOut,
       roomCount: booking.roomCount,
       guestCount: booking.guests,
+      ...(couponCode ? { couponCode } : {}),
+      ...(couponCleared ? { applyBestOffer: false } : {}),
     }, token)
       .then((result) => {
-        if (!cancelled) setQuote(result);
+        if (!cancelled) {
+          setQuote(result);
+          setCouponError(null);
+        }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (cancelled) return;
+        const msg = (err as Error).message ?? "Could not calculate the price. Please try again.";
+        if (couponCode) {
+          // The entered/chosen coupon isn't valid — surface it and revert to auto.
+          setCouponError(msg);
+          setCouponCode(undefined);
+        } else {
           setQuote(null);
-          setQuoteError((err as Error).message ?? "Could not calculate the price. Please try again.");
+          setQuoteError(msg);
         }
       })
       .finally(() => {
         if (!cancelled) setQuoteLoading(false);
       });
     return () => { cancelled = true; };
-  }, [booking]);
+  }, [booking, couponCode, couponCleared]);
 
   function toggleSpecialRequest(request: string) {
     setSpecialRequests((current) => (current.includes(request) ? current.filter((r) => r !== request) : [...current, request]));
@@ -111,6 +132,7 @@ export default function HotelCheckoutPage() {
   const centerPrice = quote?.centerPriceRupees ?? roomCost;
   const commission = quote?.commissionRupees ?? 0;
   const gst = quote?.gstRupees ?? 0;
+  const discount = quote?.couponDiscountRupees ?? 0;
 
   const guestDetailsValid = Boolean(
     primaryGuest.firstName.trim() && primaryGuest.lastName.trim() && primaryGuest.email.trim() && primaryGuest.mobile.trim().length >= 10,
@@ -140,6 +162,8 @@ export default function HotelCheckoutPage() {
         checkoutDate: booking.checkOut,
         roomCount: booking.roomCount,
         guestCount: booking.guests,
+        ...(couponCode ? { couponCode } : {}),
+        ...(couponCleared ? { applyBestOffer: false } : {}),
       }, token);
       const newBookingId = created.payment?.bookingId ?? created.booking?.id ?? created.bookingId;
       if (!newBookingId) throw new Error("Booking created but its ID was missing. Please contact support.");
@@ -212,6 +236,17 @@ export default function HotelCheckoutPage() {
                 onBillingAddressChange={setBillingAddress}
               />
               <SpecialRequestsSection selected={specialRequests} onToggle={toggleSpecialRequest} />
+              {getUserToken() && (
+                <CouponApply
+                  available={quote?.availableCoupons ?? []}
+                  appliedCode={quote?.couponCode ?? null}
+                  appliedDiscount={quote?.couponDiscountRupees ?? 0}
+                  loading={quoteLoading}
+                  error={couponError}
+                  onApply={(code) => { setCouponCleared(false); setCouponError(null); setCouponCode(code); }}
+                  onClear={() => { setCouponError(null); setCouponCode(undefined); setCouponCleared(true); }}
+                />
+              )}
               <div>
                 <h2 className="text-lg font-bold text-[#0F172A]">Payment</h2>
                 <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
@@ -238,6 +273,8 @@ export default function HotelCheckoutPage() {
                   commission={commission}
                   gst={gst}
                   totalAmount={totalAmount}
+                  discount={discount}
+                  couponCode={quote?.couponCode}
                   isEstimate={!quote}
                   quoteLoading={quoteLoading}
                   canContinue={canContinue}

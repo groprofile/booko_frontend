@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { HotelDetails, RoomOption } from "../../data/hotelDetails";
 import type { HotelListing } from "../../data/hotelListings";
+import CenterOffersButton from "../offers/CenterOffersButton";
 
 interface BookingCardProps {
   listing: HotelListing;
@@ -158,6 +159,10 @@ export default function BookingCard({
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <CenterOffersButton vertical="hotel" centerId={listing.id} centerName={listing.name} />
       </div>
 
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">Meal Options</p>

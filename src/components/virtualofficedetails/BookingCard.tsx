@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { VirtualOfficeListing, VOPlan } from "../../data/virtualOfficeListings";
 import { billingTiers } from "../../data/virtualOfficeDetails";
 import type { BillingTier } from "../../data/virtualOfficeDetails";
+import CenterOffersButton from "../offers/CenterOffersButton";
 
 interface BookingCardProps {
   listing: VirtualOfficeListing;
@@ -69,6 +70,10 @@ export default function BookingCard({ listing, citySlug, cityName, plans }: Book
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <CenterOffersButton vertical="virtual-office" centerId={listing.id} centerName={listing.centerName} />
       </div>
 
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">Billing Cycle</p>

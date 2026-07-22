@@ -5,6 +5,7 @@ import MainLayout from "../components/layout/MainLayout";
 import VirtualOfficeSearchBar from "../components/virtualoffice/VirtualOfficeSearchBar";
 import VirtualOfficeFilterSidebar from "../components/virtualoffice/VirtualOfficeFilterSidebar";
 import VirtualOfficeListingCard from "../components/virtualoffice/VirtualOfficeListingCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import VirtualOfficeListingCardSkeleton from "../components/virtualoffice/VirtualOfficeListingCardSkeleton";
 import BokkoExpertGlassCard from "../components/virtualoffice/BokkoExpertGlassCard";
 import ListingsMap from "../components/common/ListingsMap";
@@ -329,6 +330,7 @@ export default function VirtualOfficeListingPage({ areaSlug }: VirtualOfficeList
             </aside>
 
             <div className="min-w-0">
+              <OffersStrip vertical="virtual-office" />
               {apiLoading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
                   {Array.from({ length: 4 }).map((_, i) => (

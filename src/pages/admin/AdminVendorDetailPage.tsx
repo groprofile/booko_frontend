@@ -17,6 +17,9 @@ import { apiGet, apiPost, apiPatch, apiPut, apiDelete, apiUploadFile, getAdminTo
 const fmt = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
+// Approve/Reject are only meaningful while a vendor is still under review.
+const isAwaitingApproval = (s: string) => s === "pending" || s === "under_review" || s === "draft";
+
 const DOC_TYPE_LABELS: Record<string, string> = {
   company_pan: "Company PAN",
   owner_aadhaar: "Aadhaar",
@@ -562,23 +565,32 @@ export default function AdminVendorDetailPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              {vendor.status !== "approved" && (
+              {/* Approve + Reject: only while the vendor is still under review. */}
+              {isAwaitingApproval(vendor.status) && (
+                <>
+                  <button onClick={handleApprove} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
+                    <CheckCircle size={13} /> Approve vendor
+                  </button>
+                  <button onClick={() => setShowRejectModal(true)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
+                    <XCircle size={13} /> Reject vendor
+                  </button>
+                </>
+              )}
+              {/* Rejected vendors are locked out — re-approve reinstates them. */}
+              {vendor.status === "rejected" && (
                 <button onClick={handleApprove} className="flex items-center gap-1.5 rounded-xl bg-[#DCFCE7] px-3 py-2 text-xs font-bold text-[#15803D] hover:bg-[#BBF7D0]">
-                  <CheckCircle size={13} /> Approve vendor
+                  <CheckCircle size={13} /> Re-approve vendor
                 </button>
               )}
-              {vendor.status !== "rejected" && (
-                <button onClick={() => setShowRejectModal(true)} className="flex items-center gap-1.5 rounded-xl bg-[#FEE2E2] px-3 py-2 text-xs font-bold text-[#B91C1C] hover:bg-[#FECACA]">
-                  <XCircle size={13} /> Reject vendor
-                </button>
-              )}
-              {vendor.status === "blocked" ? (
-                <button onClick={handleUnblock} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
-                  <Shield size={13} /> Unblock vendor
-                </button>
-              ) : (
+              {/* Enable/Disable: reversible operational switch once past review. */}
+              {vendor.status === "approved" && (
                 <button onClick={handleBlock} className="flex items-center gap-1.5 rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-[#E2E8F0]">
-                  <ShieldOff size={13} /> Block vendor
+                  <ShieldOff size={13} /> Disable vendor
+                </button>
+              )}
+              {vendor.status === "blocked" && (
+                <button onClick={handleUnblock} className="flex items-center gap-1.5 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs font-bold text-[#2563EB] hover:bg-[#DBEAFE]">
+                  <Shield size={13} /> Enable vendor
                 </button>
               )}
               {vendor.source === "admin_created" && vendor.mustChangePassword && (
@@ -942,22 +954,47 @@ export default function AdminVendorDetailPage() {
                       </p>
                     </div>
                     <StatusBadge status={c.approval_status} size="sm" />
-                    {c.approval_status !== "approved" && (
+                    {/* Approve/Reject: only while the center is still under review —
+                        once approved, "reject" reads as a punitive action even though
+                        it's really just a visibility switch. Mirrors the vendor-level
+                        isAwaitingApproval gating above. */}
+                    {c.approval_status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => handleCenterApprove(c.id)}
+                          disabled={centerActionId === c.id}
+                          className="rounded-lg bg-[#DCFCE7] px-2.5 py-1.5 text-[11px] font-bold text-[#15803D] hover:bg-[#BBF7D0] disabled:opacity-50"
+                        >
+                          Approve center
+                        </button>
+                        <button
+                          onClick={() => setRejectCenterTarget(c.id)}
+                          disabled={centerActionId === c.id}
+                          className="rounded-lg bg-[#FEE2E2] px-2.5 py-1.5 text-[11px] font-bold text-[#B91C1C] hover:bg-[#FECACA] disabled:opacity-50"
+                        >
+                          Reject center
+                        </button>
+                      </>
+                    )}
+                    {/* Once past review: a reversible visibility switch, not a
+                        resubmit-for-review action. Same endpoints under the hood
+                        (approved+active vs rejected+inactive = shown vs hidden). */}
+                    {c.approval_status === "approved" && (
+                      <button
+                        onClick={() => setRejectCenterTarget(c.id)}
+                        disabled={centerActionId === c.id}
+                        className="rounded-lg bg-[#F1F5F9] px-2.5 py-1.5 text-[11px] font-bold text-[#64748B] hover:bg-[#E2E8F0] disabled:opacity-50"
+                      >
+                        Hide from customers
+                      </button>
+                    )}
+                    {c.approval_status === "rejected" && (
                       <button
                         onClick={() => handleCenterApprove(c.id)}
                         disabled={centerActionId === c.id}
                         className="rounded-lg bg-[#DCFCE7] px-2.5 py-1.5 text-[11px] font-bold text-[#15803D] hover:bg-[#BBF7D0] disabled:opacity-50"
                       >
-                        Approve center
-                      </button>
-                    )}
-                    {c.approval_status !== "rejected" && (
-                      <button
-                        onClick={() => setRejectCenterTarget(c.id)}
-                        disabled={centerActionId === c.id}
-                        className="rounded-lg bg-[#FEE2E2] px-2.5 py-1.5 text-[11px] font-bold text-[#B91C1C] hover:bg-[#FECACA] disabled:opacity-50"
-                      >
-                        Reject center
+                        Show again
                       </button>
                     )}
                   </div>
@@ -1034,7 +1071,11 @@ export default function AdminVendorDetailPage() {
 
       <RejectReasonModal
         open={!!rejectCenterTarget}
-        title="Reject This Center"
+        title={
+          realCenters.find((c) => c.id === rejectCenterTarget)?.approval_status === "approved"
+            ? "Hide This Center"
+            : "Reject This Center"
+        }
         description="This hides only this one center from users. The vendor and their other centers are unaffected. You can reverse it by approving this center again."
         onCancel={() => setRejectCenterTarget(null)}
         onConfirm={async (reason) => {

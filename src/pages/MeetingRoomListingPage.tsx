@@ -5,6 +5,7 @@ import MainLayout from "../components/layout/MainLayout";
 import MeetingRoomSearchBar from "../components/meetingroom/MeetingRoomSearchBar";
 import MeetingRoomFilterSidebar from "../components/meetingroom/MeetingRoomFilterSidebar";
 import MeetingRoomListingCard from "../components/meetingroom/MeetingRoomListingCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import MeetingRoomListingCardSkeleton from "../components/meetingroom/MeetingRoomListingCardSkeleton";
 import ListingsMap from "../components/common/ListingsMap";
 import ListingsViewControls from "../components/common/ListingsViewControls";
@@ -303,6 +304,7 @@ export default function MeetingRoomListingPage() {
             </aside>
 
             <div className="min-w-0">
+              <OffersStrip vertical="meeting-room" />
               {apiLoading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
                   {Array.from({ length: 4 }).map((_, i) => (

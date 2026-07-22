@@ -5,6 +5,7 @@ import MainLayout from "../components/layout/MainLayout";
 import HotelSearchBar from "../components/hotel/HotelSearchBar";
 import HotelFilterSidebar from "../components/hotel/HotelFilterSidebar";
 import HotelListingCard from "../components/hotel/HotelListingCard";
+import OffersStrip from "../components/offers/OffersStrip";
 import HotelCardSkeleton from "../components/hotel/HotelCardSkeleton";
 import BokkoExpertCard from "../components/hotel/BokkoExpertCard";
 import ListingsMap from "../components/common/ListingsMap";
@@ -318,6 +319,7 @@ export default function HotelListingPage({ presetStayType, presetTag, landingLab
             </aside>
 
             <div className="min-w-0">
+              <OffersStrip vertical="hotel" />
               {loading ? (
                 <div className={layout === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "flex flex-col gap-4"}>
                   {Array.from({ length: 4 }).map((_, i) => (

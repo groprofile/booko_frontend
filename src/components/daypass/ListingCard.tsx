@@ -7,6 +7,7 @@ import { apiGet } from "../../lib/api";
 import { apiToDayPassDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import RecommendedBadge from "../RecommendedBadge";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferPriceBlock } from "../common/OfferPrice";
 
 interface ListingCardProps {
   listing: DayPassListing;
@@ -98,15 +99,7 @@ export default function ListingCard({ listing, layout = "row" }: ListingCardProp
       distanceKm={listing.distanceKm}
       tags={listing.seatingTypes}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{listing.bestPrice}
-            <span className="text-[10px] font-medium text-muted-text"> /day</span>
-          </p>
-          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="day-pass" price={listing.bestPrice} centerId={listing.id} unit="/day" />}
       actions={
         <button
           type="button"

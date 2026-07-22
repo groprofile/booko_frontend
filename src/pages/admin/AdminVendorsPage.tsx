@@ -11,6 +11,9 @@ import { ApiError } from "../../lib/api";
 
 const fmt = (n: number) => n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}K` : `₹${n}`;
 
+// Approve/Reject are only meaningful while a vendor is still under review.
+const isAwaitingApproval = (s: VendorStatus) => s === "pending" || s === "under_review" || s === "draft";
+
 const STATUS_OPTS: Array<{ label: string; value: VendorStatus | "all" }> = [
   { label: "All", value: "all" }, { label: "Approved", value: "approved" },
   { label: "Pending", value: "pending" }, { label: "Under Review", value: "under_review" },
@@ -206,23 +209,34 @@ export default function AdminVendorsPage() {
                         </button>
                         {menuOpen === v.id && (
                           <div className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-[#E2E8F0] bg-white shadow-xl">
-                            {v.status !== "approved" && (
+                            {/* Approve + Reject are a review decision — only offered
+                                while the vendor is still awaiting approval. */}
+                            {isAwaitingApproval(v.status) && (
+                              <>
+                                <button onClick={() => { handleApprove(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#15803D] hover:bg-[#DCFCE7]">
+                                  <CheckCircle size={13} /> Approve Vendor
+                                </button>
+                                <button onClick={() => { setRejectTarget(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
+                                  <XCircle size={13} /> Reject Vendor
+                                </button>
+                              </>
+                            )}
+                            {/* A rejected vendor is locked out; re-approve reinstates them. */}
+                            {v.status === "rejected" && (
                               <button onClick={() => { handleApprove(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#15803D] hover:bg-[#DCFCE7]">
-                                <CheckCircle size={13} /> Approve Vendor
+                                <CheckCircle size={13} /> Re-approve Vendor
                               </button>
                             )}
-                            {v.status !== "rejected" && (
-                              <button onClick={() => { setRejectTarget(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
-                                <XCircle size={13} /> Reject Vendor
-                              </button>
-                            )}
-                            {v.status === "blocked" ? (
-                              <button onClick={() => { handleUnblock(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#2563EB] hover:bg-[#EFF6FF]">
-                                <Shield size={13} /> Unblock Vendor
-                              </button>
-                            ) : (
+                            {/* Enable/Disable is the reversible operational switch,
+                                available once the vendor is past review. */}
+                            {v.status === "approved" && (
                               <button onClick={() => { handleBlock(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#64748B] hover:bg-[#F1F5F9]">
-                                <ShieldOff size={13} /> Block Vendor
+                                <ShieldOff size={13} /> Disable Vendor
+                              </button>
+                            )}
+                            {v.status === "blocked" && (
+                              <button onClick={() => { handleUnblock(v.id); setMenuOpen(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-[#2563EB] hover:bg-[#EFF6FF]">
+                                <Shield size={13} /> Enable Vendor
                               </button>
                             )}
                             {v.source === "admin_created" && v.mustChangePassword && (

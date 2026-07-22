@@ -4,6 +4,7 @@ import { CalendarClock, MessageCircle } from "lucide-react";
 import type { MembershipType, BillingTier } from "../../data/monthlyPassDetails";
 import type { MonthlyPassListing } from "../../data/monthlyPassListings";
 import { CITY_NAMES } from "../../data/dayPassListings";
+import CenterOffersButton from "../offers/CenterOffersButton";
 
 interface BookingCardProps {
   membershipTypes: MembershipType[];
@@ -77,6 +78,10 @@ export default function BookingCard({ membershipTypes, billingTiers, listing }: 
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <CenterOffersButton vertical="monthly-pass" centerId={listing.id} centerName={listing.name} />
       </div>
 
       <p className="mt-4 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Billing Cycle</p>

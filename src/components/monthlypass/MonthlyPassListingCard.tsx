@@ -7,6 +7,7 @@ import { apiGet } from "../../lib/api";
 import { apiToMonthlyPassDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import RecommendedBadge from "../RecommendedBadge";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferPriceBlock } from "../common/OfferPrice";
 
 interface MonthlyPassListingCardProps {
   listing: MonthlyPassListing;
@@ -95,15 +96,7 @@ export default function MonthlyPassListingCard({ listing, layout = "row" }: Mont
       distanceKm={listing.distanceKm}
       tags={listing.seatingTypes}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{listing.bestPrice.toLocaleString()}
-            <span className="text-[10px] font-medium text-muted-text"> /seat/mo</span>
-          </p>
-          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="monthly-pass" price={listing.bestPrice} centerId={listing.id} unit="/seat/mo" />}
       actions={
         <button
           type="button"

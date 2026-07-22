@@ -7,6 +7,7 @@ import { apiGet } from "../../lib/api";
 import { apiToMeetingRoomDetails, type CentreApiRow } from "../../lib/centreAdapter";
 import RecommendedBadge from "../RecommendedBadge";
 import ListingCardShell from "../common/ListingCardShell";
+import { OfferPriceBlock } from "../common/OfferPrice";
 
 interface MeetingRoomListingCardProps {
   listing: MeetingRoomListing;
@@ -102,15 +103,7 @@ export default function MeetingRoomListingCard({ listing, defaultHours, layout =
       distanceKm={listing.distanceKm}
       tags={listing.equipment}
       layout={layout}
-      priceBlock={
-        <div>
-          <p className="text-sm font-extrabold leading-none text-primary-text">
-            ₹{(defaultTier?.price ?? listing.bestPrice).toLocaleString()}
-            <span className="text-[10px] font-medium text-muted-text"> /{defaultTier?.label ?? "hr"}</span>
-          </p>
-          {listing.offerCode && <p className="text-[10px] font-semibold text-success">{listing.offerCode}</p>}
-        </div>
-      }
+      priceBlock={<OfferPriceBlock vertical="meeting-room" price={defaultTier?.price ?? listing.bestPrice} centerId={listing.id} unit={`/${defaultTier?.label ?? "hr"}`} />}
       actions={
         <button
           type="button"
